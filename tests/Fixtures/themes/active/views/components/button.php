@@ -1,0 +1,1 @@
+[BUTTON:<?= $this->e($label) ?>]

@@ -1,0 +1,1 @@
+BEFORE-<?php $this->include('components.button', ['label' => 'Click']); ?>-AFTER
