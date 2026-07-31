@@ -1,0 +1,97 @@
+# CMS Architecture
+
+Goal
+
+Build a reusable CMS that can generate unlimited websites.
+
+Core Principles
+
+- Modular
+- Reusable
+- SEO First
+- Component Based
+- API First
+- Clean Architecture
+
+Project Structure
+
+/app
+
+/controllers
+/models
+/services
+/repositories
+/helpers
+
+/core
+
+Router
+Database
+View
+Cache
+Session
+Auth
+
+/modules
+
+Blog
+Page
+Product
+Media
+Menu
+Form
+SEO
+
+/themes
+
+theme-default
+theme-business
+theme-landing
+
+/public
+
+assets
+uploads
+
+/storage
+
+cache
+logs
+
+/resources
+
+scss
+js
+images
+
+/database
+
+migration
+seed
+
+/docs
+
+guideline
+
+Priority
+
+CMS
+↓
+
+Theme
+
+↓
+
+Component
+
+↓
+
+Page
+
+↓
+
+SEO
+
+Never place business logic inside View.
+
+Everything must be reusable.

@@ -1,0 +1,41 @@
+# WordPress Lessons
+
+Keep
+
+Plugin System
+
+Theme System
+
+Hook
+
+Filter
+
+Media Library
+
+Slug
+
+Revision
+
+Menu
+
+Widget
+
+Custom Post Type
+
+Taxonomy
+
+SEO URL
+
+Remove
+
+Heavy Query
+
+Too many Global Variables
+
+Messy Template
+
+Mixed Logic
+
+Goal
+
+Build modern CMS inspired by WordPress.

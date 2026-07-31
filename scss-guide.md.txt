@@ -1,0 +1,61 @@
+# SCSS Guide
+
+Architecture
+
+FLOCSS
+
+Foundation
+
+Layout
+
+Component
+
+Project
+
+Utility
+
+Naming
+
+BEM
+
+Example
+
+.c-card
+
+.c-card__title
+
+.c-card--large
+
+Responsive
+
+Mobile First
+
+Variables
+
+Color
+
+Spacing
+
+Radius
+
+Shadow
+
+Typography
+
+Never
+
+Nested over 3 levels
+
+Use ID Selector
+
+Use !important
+
+Prefer
+
+Clamp
+
+Flex
+
+Grid
+
+CSS Variable

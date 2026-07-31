@@ -1,0 +1,22 @@
+{
+    "name": "cms/multi-site-cms",
+    "description": "CMS da website (multi-tenant, SaaS-ready) - self-built core, khong dung framework nen.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Core\\": "core/",
+            "App\\": "app/",
+            "Modules\\": "modules/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

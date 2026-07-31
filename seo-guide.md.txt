@@ -1,0 +1,39 @@
+Every page must have
+
+Title
+
+Description
+
+Canonical
+
+OpenGraph
+
+Twitter Card
+
+Schema
+
+Breadcrumb
+
+Sitemap
+
+Robots
+
+Slug
+
+Image Alt
+
+JSON-LD
+
+Performance
+
+Core Web Vitals
+
+Lazy Load
+
+Preload
+
+Critical CSS
+
+SSR Ready
+
+SEO Score >95
