@@ -50,7 +50,7 @@ Mục tiêu: dựng khung core tự viết (không framework nền), đủ để
   - [x] Self Code Review — trace tay toàn bộ 21 test case (đặc biệt thứ tự Onion và phân biệt 404/405), không phát hiện lỗi
   - [x] Self Architecture Review — đối chiếu đủ 10 nguyên tắc, không phát hiện vấn đề
   - [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật, 0 Errors/Failures/Warnings/Deprecations → **CMS-006 COMPLETED — tag `v0.0.6`**
-  - [x] **Architecture Review tổng thể HTTP Layer (sau khi Completed)** — phát hiện `Request::fromGlobals()` chỉ đọc `$_POST`, bỏ sót JSON body (PHP không tự điền `$_POST` khi `Content-Type: application/json`) → sẽ chặn cứng `POST /api/v1/auth/login` (module Auth, Phase 3) ngay khi bắt đầu. Đã vá: `resolveBody()` đọc `php://input` + `json_decode` khi Content-Type là JSON, fallback `$_POST` cho form thường; sửa `extractHeaders()` bắt thêm `CONTENT_TYPE`/`CONTENT_LENGTH` (2 header không có tiền tố `HTTP_` trong `$_SERVER`, khác mọi header khác). Thêm 3 test (`tests/Core/Http/RequestFromGlobalsTest.php`, dùng stream wrapper giả lập `php://input`). **Cần chạy lại `vendor/bin/phpunit` để xác nhận không phá vỡ 24 test cũ của CMS-006 trước khi coi v0.0.6 thực sự ổn định.**
+  - [x] **Architecture Review tổng thể HTTP Layer (sau khi Completed)** — phát hiện `Request::fromGlobals()` chỉ đọc `$_POST`, bỏ sót JSON body (PHP không tự điền `$_POST` khi `Content-Type: application/json`) → sẽ chặn cứng `POST /api/v1/auth/login` (module Auth, Phase 3) ngay khi bắt đầu. Đã vá: `resolveBody()` đọc `php://input` + `json_decode` khi Content-Type là JSON, fallback `$_POST` cho form thường; sửa `extractHeaders()` bắt thêm `CONTENT_TYPE`/`CONTENT_LENGTH` (2 header không có tiền tố `HTTP_` trong `$_SERVER`, khác mọi header khác). Thêm 3 test (`tests/Core/Http/RequestFromGlobalsTest.php`, dùng stream wrapper giả lập `php://input`). **Verified** — xác nhận không phá vỡ test cũ.
   - [ ] Ghi nhận (không chặn): `Response::json()` chưa tự bọc chuẩn `{success, data, message, errors}` — cân nhắc thêm `Response::apiSuccess()/apiError()` khi module API đầu tiên viết, không bắt buộc phải làm ở CMS-006/007. `dispatch()` ném exception (không trả `Response`) cho 404/405 — CMS-011/012 phải bắt và map thành `Response`, ghi rõ ở đây để không quên.
 - [x] **CMS-007** — `core/Session.php` (wrapper duy nhất quanh PHP Session)
   - [x] Design Review + 8 điểm bổ sung: Session chỉ Storage (không login/logout/check quyền), Lazy Start (không tự start trong constructor), Flash đúng vòng đời 1 request (hết hạn theo tuổi request, không phải "xoá khi đọc"), Namespace dot-notation lồng nhau giống `Config::get()` (`auth.user_id/roles/permissions`, `csrf.token`, `locale.current`, `tenant.current`), Security (`regenerate()`, `destroy()` xoá cả cookie, cookie params đầy đủ từ Config), API tối giản (không `push()/increment()/decrement()`)
@@ -60,22 +60,48 @@ Mục tiêu: dựng khung core tự viết (không framework nền), đủ để
   - [x] Self Architecture Review — đối chiếu đủ 8 nguyên tắc, không phát hiện vấn đề
   - [x] **Sửa Risky Test** (phát hiện qua PHPUnit thật) — `RouterTest::testDoesNotConfuseNotFoundWithMethodNotAllowed` dựa vào type của `catch` để "xác minh ngầm", không có assertion thật → PHPUnit báo Risky. Viết lại: `catch (Throwable)` rộng + `assertInstanceOf()`/`assertNotInstanceOf()` tường minh cho cả 2 chiều (404 không được là 405, 405 không được là 404) trong cùng 1 test — không dùng `@doesNotPerformAssertions`. Rà soát toàn bộ `catch` khác trong test suite, xác nhận không còn risky nào khác.
   - [x] **Sửa Deprecation** (phát hiện qua PHPUnit thật, root cause do người dùng phân tích) — `Tests\Fixtures\Http\PhpInputStreamStub` không khai báo property `$context` tường minh; PHP Stream Wrapper API tự gán `$stream->context` khi đăng ký wrapper → PHP 8.2+ báo "Creation of dynamic property" Deprecated. Sửa: khai báo `public mixed $context = null;` tường minh (không dùng `#[AllowDynamicProperties]` vì chỉ che cảnh báo, không sửa gốc). Rà soát toàn bộ project — xác nhận đây là stream wrapper tự viết DUY NHẤT, không còn chỗ nào khác.
-  - [ ] **Cần chạy lại `vendor/bin/phpunit`** để xác nhận 0 Errors/Failures/Warnings/Risky/Deprecations trước khi đánh dấu CMS-007 Completed
-- [ ] **CMS-008** — `core/Cache.php` + `core/Cache/CacheDriver.php` (interface) + `FileCacheDriver` + `RedisCacheDriver`
-- [ ] **CMS-009** — `core/Hook.php` (Event Dispatcher lõi + Action/Filter)
-- [ ] **CMS-010** — Middleware cụ thể: `TenantResolverMiddleware` (stub), `AuthMiddleware`, `CsrfMiddleware`... (cơ chế Pipeline đã xong ở CMS-006, đây là các implementation nghiệp vụ cắm vào)
-- [ ] **CMS-011** — `public/index.php` (entry point, bootstrap Container, đăng ký binding, chạy Router)
-- [ ] **CMS-012** — Exception/Error Handler cơ bản (log ra `storage/logs`)
-- [ ] **CMS-013** — Route kiểm thử tạm `/health` (JSON chuẩn `{success, data, message, errors}`) — xác minh pipeline end-to-end, sẽ gỡ bỏ khi có module thật
+  - [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật (94 tests, 140 assertions), 0 Errors/Failures/Warnings/Risky/Deprecations → **CMS-007 COMPLETED — tag `v0.0.7`**
+- [x] **CMS-008** — `core/Cache.php` + `core/Cache/{CacheDriver,FileCacheDriver,RedisCacheDriver,CacheException}.php` (Cache Layer)
+  - [x] Design Review: interface `CacheDriver` tối giản (không tag ở driver), Tag support đặt ở `Cache` facade (registry key portable qua mọi driver), Tenant key là quy ước đặt tên (không phải API riêng, nhất quán `Database`/`QueryBuilder`), `RedisCacheDriver` dùng `ext-redis` (không thêm composer dependency), Redis test có điều kiện (`markTestSkipped` nếu không có Redis thật)
+  - [x] `core/Cache.php`, `core/Cache/CacheDriver.php`, `core/Cache/FileCacheDriver.php` (atomic write: file tạm + `rename()`, chống corrupt khi nhiều PHP-FPM worker ghi đồng thời), `core/Cache/RedisCacheDriver.php`, `core/Cache/CacheException.php`
+  - [x] `tests/Core/Cache/FileCacheDriverTest.php` (8 test), `tests/Core/CacheTest.php` (8 test — facade, tag, prefix, `remember()`), `tests/Core/Cache/RedisCacheDriverTest.php` (4 test, tự skip nếu môi trường không có Redis), `tests/Core/CacheContainerIntegrationTest.php` (1 test — Regression: ráp qua Container)
+  - [x] Self Code Review — trace tay toàn bộ 21 test case mới (đặc biệt cơ chế tag qua registry key và atomic write), không phát hiện lỗi. Không sửa file nào của 7 Core Component trước đó — không có rủi ro regression từ phía đó.
+  - [x] Self Architecture Review — SOLID/KISS/DRY/YAGNI/Security/Performance/Testability đều đạt, không phát hiện vấn đề
+  - [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật (115 tests, 170 assertions), 0 Errors/Failures/Warnings/Risky/Deprecations, 4 Skipped đúng thiết kế (`RedisCacheDriverTest` — môi trường không có `ext-redis`) → **CMS-008 COMPLETED — tag `v0.0.8`**
+  - [x] **Architecture Review riêng Cache Layer (sau khi Completed)** — phát hiện & sửa: `RedisCacheDriver::connection()` chỉ bắt `RedisException`, nhưng `ext-redis` mặc định KHÔNG ném exception cho `auth()`/`select()` thất bại (chỉ trả `false`) → sai password/database index bị bỏ qua âm thầm. Sửa: kiểm tra tường minh giá trị trả về của `connect()/auth()/select()`, ném `CacheException` rõ ràng ngay tại điểm lỗi. Ghi nhận Technical Debt: File cache không có cơ chế dọn định kỳ entry hết hạn chưa đọc lại (lazy-only expiry), registry tag không có TTL riêng — cần cron dọn khi lên production thật.
+- [x] **CMS-009** — `core/Hook.php` (Hook System kiểu WordPress — Action/Filter/priority/wildcard, qua Container)
+  - [x] Design: unified registry cho Action+Filter (khác nhau ở cách gọi `do()`/`apply()`, không khác cách đăng ký — đúng cách WordPress làm bên trong), priority mặc định 10 (số nhỏ chạy trước), wildcard trộn đúng thứ tự priority với exact match (không tách riêng trước/sau), cách ly lỗi try/catch riêng từng callback + điểm mở `onError()` (đúng `13-module-plugin.md`), không static/global/ham global, instance duy nhất trong 1 request qua Container
+  - [x] `core/Hook.php`
+  - [x] `tests/Core/HookTest.php` (17 test: priority, insertion order, filter chain, remove, wildcard, cách ly lỗi, onError, truyền tham số) + `tests/Core/HookContainerIntegrationTest.php` (2 test — Regression: singleton qua Container, auto-wire không cần bind tường minh)
+  - [x] Self Code Review — trace tay toàn bộ 19 test case (đặc biệt thứ tự trộn wildcard+exact theo priority, và filter giữ nguyên giá trị khi 1 callback lỗi giữa chuỗi), không phát hiện lỗi. Không sửa file nào của 8 Core Component trước đó.
+  - [x] Self Architecture Review — SOLID/KISS/DRY/YAGNI/Security/Performance/Testability đều đạt
+  - [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật (133 tests, 192 assertions), 0 Errors/Failures/Warnings/Risky/Deprecations, 4 Skipped đúng thiết kế (Redis) → **CMS-009 COMPLETED — tag `v0.0.9`**
 
-## Phase 2 — Database Migration (Tenant/Auth/User)
+## Roadmap Phase 1+ (phần còn lại) — CHÍNH THỨC, xác nhận ngày hôm nay
 
-Chưa bắt đầu. Xem `database-design.md` mục 2.
+Thay thế hoàn toàn kế hoạch cũ (Middleware cụ thể / `public/index.php` riêng / Error Handler riêng / `/health` riêng). Đối chiếu đã chốt: **Error Handler + `/health`** gộp vào CMS-012 (Application/Bootstrap — nơi tự nhiên để wire global exception handling và route kiểm thử pipeline); **`TenantResolverMiddleware` + `AuthMiddleware`/`CsrfMiddleware`** gộp vào CMS-015 (Authentication — lúc đó mới thực sự cần Auth/Tenant context trong Middleware Pipeline).
 
-## Phase 3 — Module Auth / User / Role
+- [x] **CMS-010** — Module Manager (`core/ModuleManager.php` + `core/Module/*`)
+  - [x] Design: discover module qua `module.json` (glob), resolve thứ tự load bằng topological sort + phát hiện circular dependency (**cùng mô hình** `Container::resolve()` — stack `resolving`, chặn tại chỗ), `boot()` nạp `routes.php` của module đã bật vào `Router` qua closure cô lập scope. Không tự query DB để biết module nào "bật" — nhận `enabledKeys` từ bên ngoài (giữ core trung lập, nhất quán `Database`/`View`/`Cache`).
+  - [x] `core/ModuleManager.php`, `core/Module/{ModuleDescriptor,ModuleException,ModuleNotFoundException,CircularModuleDependencyException}.php`
+  - [x] `tests/Fixtures/Modules/{Alpha,Beta,Circular1,Circular2,NoRoutes}/*`, `tests/Fixtures/ModulesInvalid/BadModule/module.json` + `tests/Core/ModuleManagerTest.php` (9 test) + `tests/Core/ModuleManagerContainerIntegrationTest.php` (1 test Regression — qua Container+Router)
+  - [x] Self Code Review — trace tay toàn bộ 10 test case (đặc biệt: thứ tự load đúng dependency dù `enabledKeys` liệt kê ngược thứ tự), không phát hiện lỗi. Không sửa file nào của 9 Core Component trước đó.
+  - [x] Self Architecture Review — SOLID/KISS/DRY/YAGNI/Security/Performance/Testability đều đạt
+  - [ ] **Cần chạy `vendor/bin/phpunit`** để xác nhận PASS thật trên máy (môi trường này không có PHP)
+- [ ] **CMS-011** — Plugin Manager (`core/PluginManager.php`) — load/enable/disable plugin theo site, cách ly lỗi (đúng `13-module-plugin.md`)
+- [ ] **CMS-012** — Application / Bootstrap (`public/index.php`) — entry point thật, đăng ký binding Container, chạy Router, **Exception/Error Handler** (log `storage/logs`), route kiểm thử `/health`
+- [ ] **CMS-013** — Migration System (`core/Database` migration runner) — hạ tầng chạy migration, chưa phải migration Phase 2 thật
+- [ ] **CMS-014** — Validation Layer
+- [ ] **CMS-015** — Authentication (`AuthService`, `TenantResolverMiddleware`, `AuthMiddleware`, `CsrfMiddleware`)
+- [ ] **CMS-016** — Authorization (RBAC)
+- [ ] **CMS-017** — Module: User
+- [ ] **CMS-018** — Module: Page
+- [ ] **CMS-019** — Module: SEO
 
-Chưa bắt đầu.
+## Phase 2 — Database Migration thật (bảng `sites`, `users`, `roles`...)
 
-## Phase 4+ — Theme Engine, Page, Post, Product, Media, Menu, Form, SEO, Settings, Plugin
+Chưa bắt đầu, phụ thuộc CMS-013 (Migration System). Xem `database-design.md` mục 2.
 
-Chưa bắt đầu. Thứ tự tham khảo `00-master-spec.md`.
+## Phase 3+ — Module Auth/User/Role/Page/SEO...
+
+Tương ứng CMS-014 → CMS-019 ở trên và các module tiếp theo tham khảo `00-master-spec.md`.

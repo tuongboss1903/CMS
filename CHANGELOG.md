@@ -4,7 +4,54 @@
 
 ## [Unreleased]
 
-Chưa có mục nào — task tiếp theo (CMS-008, Cache) đang ở bước Design.
+Chưa có mục nào — task tiếp theo (CMS-011, Plugin Manager) đang ở bước Design.
+
+## [0.0.10] — CMS-010: Module Manager
+
+### Added
+
+- `core/ModuleManager.php` — discover module qua `module.json` (glob `{modulesPath}/*/module.json`), resolve thứ tự load bằng topological sort + phát hiện circular dependency (cùng mô hình `Container::resolve()` — stack `resolving`, chặn tại chỗ không đệ quy vô hạn), `boot(Router, enabledKeys)` nạp `routes.php` của từng module đã bật (theo đúng thứ tự dependency) vào `Router` qua closure cô lập scope, trả về danh sách key đã nạp. Không tự query Database để biết module nào "bật" cho tenant nào — nhận `enabledKeys` từ bên ngoài, giữ core trung lập (nhất quán `Database`/`View`/`Cache`).
+- `core/Module/ModuleDescriptor.php` — value object đọc từ `module.json` (key/name/version/dependencies/path).
+- `core/Module/ModuleException.php`, `ModuleNotFoundException.php` (key không tồn tại / dependency chưa bật), `CircularModuleDependencyException.php` (mang `getChain()`, cùng hình dạng `Core\CircularDependencyException` của Container).
+- `tests/Fixtures/Modules/{Alpha,Beta,Circular1,Circular2,NoRoutes}/*`, `tests/Fixtures/ModulesInvalid/BadModule/module.json` + `tests/Core/ModuleManagerTest.php` (9 test) + `tests/Core/ModuleManagerContainerIntegrationTest.php` (1 test Regression).
+
+### Verified
+
+- Chưa chạy được `vendor/bin/phpunit` thật trong môi trường này (không có PHP) — đã trace tay toàn bộ 10 test, chờ xác nhận từ môi trường thật.
+
+## [0.0.9] — CMS-009: Hook System
+
+### Added
+
+- `core/Hook.php` — Hook System kiểu WordPress (Action + Filter) trên 1 registry dùng chung (action/filter chỉ khác cách gọi `do()`/`apply()`, không khác cách đăng ký — đúng cách WordPress triển khai bên trong). API: `action()/filter()/removeAction()/removeFilter()/do()/apply()/onError()`. Priority mặc định 10 (số nhỏ chạy trước, cùng priority theo thứ tự đăng ký). Wildcard hook (`"post.*"`) trộn đúng thứ tự priority với hook đăng ký chính xác, không tách chạy riêng trước/sau. Mỗi callback chạy trong `try/catch` riêng (đúng `13-module-plugin.md` — 1 plugin lỗi không ảnh hưởng plugin khác), `onError()` là điểm mở cho `PluginManager` (task sau) tự ghi log, `Hook` không tự phụ thuộc Database/Logger. Không static, không hàm global — 1 instance dùng chung qua `Container` trong 1 request.
+- `tests/Core/HookTest.php` (17 test) + `tests/Core/HookContainerIntegrationTest.php` (2 test Regression — singleton qua Container, auto-wire không cần bind tường minh vì không có constructor dependency).
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — 133 tests, 192 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.8] — CMS-008: Cache Layer
+
+### Added
+
+- `core/Cache.php` — facade duy nhất của Cache Layer. Áp `prefix` (namespace cấp app từ `config/cache.php`), `remember(key, ttl, Closure)` (Object cache), Tag support (`put(..., tags: [])`/`flushTags()`) triển khai bằng registry key portable qua mọi driver (không đặt ở driver, tránh viết logic tag riêng cho từng loại storage). Tenant key là **quy ước đặt tên** (`"tenant:{id}:..."`), không phải API riêng — nhất quán với `Database`/`QueryBuilder::forTenant()`.
+- `core/Cache/CacheDriver.php` — interface tối giản (`get/put/has/forget/flush`), không tag.
+- `core/Cache/FileCacheDriver.php` — ghi **atomic** (file tạm + `rename()`), tên file là `hash(key)` (an toàn tuyệt đối với path traversal/ký tự lạ trong key).
+- `core/Cache/RedisCacheDriver.php` — dùng `ext-redis` (PHP extension, không thêm composer dependency), lazy connect.
+- `core/Cache/CacheException.php`.
+- `tests/Core/Cache/FileCacheDriverTest.php` (8 test), `tests/Core/CacheTest.php` (8 test), `tests/Core/Cache/RedisCacheDriverTest.php` (4 test, tự `markTestSkipped` nếu môi trường không có Redis thật), `tests/Core/CacheContainerIntegrationTest.php` (1 test Regression).
+
+### Design decisions
+
+- Quy trình làm việc đổi từ task này: Design → Implementation → Self Code Review → Unit Test → 1 báo cáo tổng hợp cuối, không dừng hỏi xác nhận giữa các bước trừ khi có quyết định kiến trúc lớn/breaking change/ảnh hưởng toàn hệ thống.
+
+### Fixed
+
+- `RedisCacheDriver::connection()` (phát hiện ở Architecture Review riêng Cache Layer, sau khi Completed) chỉ bắt `RedisException`, nhưng `ext-redis` mặc định **không ném exception** cho `auth()`/`select()` thất bại — chỉ trả `false`. Sai password/database index sẽ bị bỏ qua âm thầm, lỗi thật chỉ lộ ra ở 1 lệnh Redis khác sau đó với thông báo khó hiểu. Sửa: kiểm tra tường minh giá trị trả về của `connect()/auth()/select()`, ném `CacheException` rõ ràng ngay tại điểm lỗi.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — 115 tests, 170 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations. 4 Skipped (`RedisCacheDriverTest`) đúng thiết kế — môi trường không có `ext-redis`.
 
 ## [0.0.7] — CMS-007: Session
 
@@ -21,7 +68,7 @@ Chưa có mục nào — task tiếp theo (CMS-008, Cache) đang ở bước Des
 
 ### Verified
 
-- Chờ chạy lại `vendor/bin/phpunit` sau 2 fix trên — mục tiêu 0 Errors/Failures/Warnings/Risky/Deprecations.
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — 94 tests, 140 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations.
 
 ## [0.0.6] — CMS-006: Router + HTTP Layer
 
