@@ -22,16 +22,26 @@ final class RequestFromGlobalsTest extends TestCase
     /** @var array<string, mixed> */
     private array $originalPost;
 
+    /** @var array<string, mixed> */
+    private array $originalFiles;
+
+    /** @var array<string, mixed> */
+    private array $originalCookie;
+
     protected function setUp(): void
     {
         $this->originalServer = $_SERVER;
         $this->originalPost = $_POST;
+        $this->originalFiles = $_FILES;
+        $this->originalCookie = $_COOKIE;
     }
 
     protected function tearDown(): void
     {
         $_SERVER = $this->originalServer;
         $_POST = $this->originalPost;
+        $_FILES = $this->originalFiles;
+        $_COOKIE = $this->originalCookie;
     }
 
     public function testFromGlobalsParsesJsonBodyWhenContentTypeIsJson(): void
@@ -83,6 +93,25 @@ final class RequestFromGlobalsTest extends TestCase
         $request = Request::fromGlobals();
 
         self::assertSame('a@example.com', $request->input('email'));
+    }
+
+    public function testFromGlobalsExtractsFilesCookiesAndServer(): void
+    {
+        $_SERVER = [
+            'REQUEST_METHOD' => 'POST',
+            'REQUEST_URI' => '/upload',
+            'HTTP_HOST' => 'example.com',
+            'REMOTE_ADDR' => '203.0.113.10',
+        ];
+        $_POST = [];
+        $_FILES = ['avatar' => ['name' => 'a.png', 'type' => 'image/png', 'tmp_name' => '/tmp/x', 'error' => 0, 'size' => 10]];
+        $_COOKIE = ['session_id' => 'cookie-value'];
+
+        $request = Request::fromGlobals();
+
+        self::assertSame($_FILES['avatar'], $request->file('avatar'));
+        self::assertSame('cookie-value', $request->cookie('session_id'));
+        self::assertSame('203.0.113.10', $request->ip());
     }
 
     private function withPhpInput(string $content, callable $callback): void

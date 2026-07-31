@@ -87,16 +87,58 @@ Thay thế hoàn toàn kế hoạch cũ (Middleware cụ thể / `public/index.p
   - [x] `tests/Fixtures/Modules/{Alpha,Beta,Circular1,Circular2,NoRoutes}/*`, `tests/Fixtures/ModulesInvalid/BadModule/module.json` + `tests/Core/ModuleManagerTest.php` (9 test) + `tests/Core/ModuleManagerContainerIntegrationTest.php` (1 test Regression — qua Container+Router)
   - [x] Self Code Review — trace tay toàn bộ 10 test case (đặc biệt: thứ tự load đúng dependency dù `enabledKeys` liệt kê ngược thứ tự), không phát hiện lỗi. Không sửa file nào của 9 Core Component trước đó.
   - [x] Self Architecture Review — SOLID/KISS/DRY/YAGNI/Security/Performance/Testability đều đạt
-  - [ ] **Cần chạy `vendor/bin/phpunit`** để xác nhận PASS thật trên máy (môi trường này không có PHP)
-- [ ] **CMS-011** — Plugin Manager (`core/PluginManager.php`) — load/enable/disable plugin theo site, cách ly lỗi (đúng `13-module-plugin.md`)
-- [ ] **CMS-012** — Application / Bootstrap (`public/index.php`) — entry point thật, đăng ký binding Container, chạy Router, **Exception/Error Handler** (log `storage/logs`), route kiểm thử `/health`
-- [ ] **CMS-013** — Migration System (`core/Database` migration runner) — hạ tầng chạy migration, chưa phải migration Phase 2 thật
-- [ ] **CMS-014** — Validation Layer
-- [ ] **CMS-015** — Authentication (`AuthService`, `TenantResolverMiddleware`, `AuthMiddleware`, `CsrfMiddleware`)
-- [ ] **CMS-016** — Authorization (RBAC)
-- [ ] **CMS-017** — Module: User
-- [ ] **CMS-018** — Module: Page
-- [ ] **CMS-019** — Module: SEO
+  - [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật (144 tests, 212 assertions), 0 Errors/Failures/Warnings/Risky/Deprecations, 4 Skipped đúng thiết kế (Redis) → **CMS-010 COMPLETED — tag `v0.0.10`**
+- [x] **CMS-011** — Application / Bootstrap (`core/Application.php` + `public/index.php`)
+  - [x] Design Review + 4 quyết định xác nhận: `View` dùng `config('app.theme')` cho cả active/default theme (chưa có TenantManager), `ModuleManager::boot()` mặc định bật tất cả module đã `discover()`, log lỗi qua `file_put_contents` trực tiếp (chưa xây `Core\Logger` đầy đủ — ngoài phạm vi), response lỗi luôn JSON `{success,data,message,errors}` (chưa phân biệt SSR/API)
+  - [x] `core/Application.php` — `handle(Request): Response` thuần (test được) tách khỏi `run(): void` (I/O boundary duy nhất). `boot()` idempotent (guard `$booted`). Debug gate cho message lỗi 500 (`config('app.debug')`). Bổ sung 1 method ngoài thiết kế đã duyệt: `container(): Container` (cần thiết để test xác nhận Core Service đăng ký đúng, đã ghi rõ trong docblock)
+  - [x] Sửa `config/app.php` (thêm key `theme`), sửa `public/index.php` (thay smoke test bằng bootstrap thật, còn 3 dòng)
+  - [x] `tests/Fixtures/App/*` (config đầy đủ + module + theme fixture), `tests/Fixtures/AppProduction/*` (fixture riêng cho test `debug=false`) + `tests/Core/ApplicationTest.php` (11 test: health route, module route, 404/405/500, debug gate, logging, Container wiring, singleton, boot idempotent)
+  - [x] Self Code Review — trace tay toàn bộ 11 test case, không phát hiện lỗi. Không sửa file nào của 9 Core Component trước đó ngoài `config/app.php` (đã duyệt) và `public/index.php` (đúng phạm vi task)
+  - [x] Self Architecture Review — SOLID/KISS/YAGNI/Security/Performance/Testability đều đạt
+  - [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật (154 tests, 237 assertions), 0 Errors/Failures/Warnings/Risky/Deprecations, 4 Skipped đúng thiết kế (Redis) → **CMS-011 COMPLETED — tag `v0.0.11`**
+- [x] **CMS-012** — Plugin Manager (`core/PluginManager.php` + `core/Plugin/*`)
+  - [x] Design Review + quyết định chốt trước khi code: `PluginManager` độc lập hoàn toàn với `ModuleManager` (không refactor, không chia sẻ abstraction, chấp nhận trùng lặp logic topological sort để giữ ổn định), `discover()` memoize trong instance (khác chủ đích với `ModuleManager::discover()`), `boot()` reset `failures` mỗi lần gọi, cách ly lỗi tuyệt đối ở tầng `require Hooks.php` (không rethrow), giữ public API tối giản (không thêm interface/abstraction ngoài phạm vi)
+  - [x] `core/PluginManager.php`, `core/Plugin/{PluginDescriptor,PluginException,PluginNotFoundException,CircularPluginDependencyException}.php`
+  - [x] `tests/Fixtures/Plugins/{GoodPluginA,GoodPluginB,BrokenPlugin,NoHooksPlugin,CircularA,CircularB,ScopeCheckPlugin}/*`, `tests/Fixtures/PluginsInvalid/BadPlugin/plugin.json`, `tests/Fixtures/PluginsDuplicate/{PluginX,PluginY}/plugin.json` + `tests/Core/PluginManagerTest.php` (16 test) + `tests/Core/PluginManagerContainerIntegrationTest.php` (2 test Regression)
+  - [x] Sửa `core/Application.php` — CHỈ 2 điểm: đăng ký `PluginManager` vào Container, gọi `pluginManager->boot()` trong `boot()` ngay sau `ModuleManager`, không sửa gì khác
+  - [x] Self Code Review — trace tay toàn bộ 18 test case (đặc biệt: thứ tự nạp theo dependency qua filter chain `plugin.trace`, cô lập lỗi 1 plugin không ảnh hưởng plugin khác, reset `failures` mỗi lần `boot()`, scope `Hooks.php` chỉ thấy đúng `$hook`), không phát hiện lỗi. Không sửa file nào của `ModuleManager`/`Hook`/`Container`/9 Core Component trước đó ngoài `core/Application.php` (đúng phạm vi đã duyệt)
+  - [x] Self Architecture Review — SRP/Dependency/KISS/YAGNI/không premature optimization/không trùng Public API/`ModuleManager` không bị ảnh hưởng/không phát sinh Technical Debt mới ngoài trùng lặp đã được chấp nhận trước — đều đạt
+  - [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật (171 tests, 273 assertions), 0 Errors/Failures/Warnings/Risky/Deprecations, 4 Skipped đúng thiết kế (Redis) → **CMS-012 COMPLETED — tag `v0.0.12`**
+- [x] **CMS-013** — Migration System (`core/MigrationManager.php` + `core/Migration/*` + `bin/migrate.php`)
+  - [x] Adversarial Architecture Review trước khi code — phát hiện & xử lý: driver detection không được tự đọc PDO (`getAttribute()`), không thêm API mới cho `Database`; Container trong `bin/migrate.php` sẽ trùng lặp logic wiring `Database` với `Application.php` nên bị loại; định dạng migration file chọn Closure-array (không interface, không class, không DSL)
+  - [x] Final Design 8 quyết định chốt: (1) Closure-array `['up'=>Closure,'down'=>Closure]`, (2) DDL raw SQL qua `Database::statement()` — không Schema Builder, (3) rollback theo batch, (4) CLI entry point riêng `bin/migrate.php` — không sửa `Application.php`/`public/index.php`, (5) không dùng Container trong CLI, (6) fail-fast tuyệt đối (khác `ModuleManager`/`PluginManager`), (7) giữ `status()` trong Public API, (8) `driver: string` truyền qua constructor từ `Config`, `MigrationManager` không biết PDO
+  - [x] `core/MigrationManager.php`, `core/Migration/{MigrationException,MigrationNotFoundException}.php`, `bin/migrate.php`
+  - [x] `tests/Fixtures/Migrations/{Valid,Failing,Malformed}/*` + `tests/Core/MigrationManagerTest.php` (16 test: discover, migrate thành công, batch tăng dần qua nhiều lần chạy, status applied/pending, rollback theo batch đảo ngược, rollback rỗng khi chưa có batch, malformed migration, fail-fast dừng ngay khi lỗi, `MigrationNotFoundException` khi file bị xoá, validate driver, regression không ảnh hưởng bảng khác)
+  - [x] Không sửa file nào trong 12 Core Component đã hoàn thành (`Application`/`Database`/`Container`/`Config`/`Router`/`View`/`Session`/`Cache`/`Hook`/`ModuleManager`/`PluginManager`) — 0 file Core cũ bị đụng, đúng Decision #4/#5/#8
+  - [x] Self Code Review — trace tay toàn bộ 16 test case, phát hiện 1 sai sót đặt tên (không phải bug logic): fixture ban đầu dùng `ALTER TABLE ... DROP COLUMN` (rủi ro không tương thích SQLite cũ) + tên file không khớp nội dung — đã sửa thành 2 migration `CREATE TABLE` độc lập
+  - [x] Self Architecture Review — SRP (chấp nhận mức gộp trách nhiệm tương đương `ModuleManager`), Dependency (không PDO, không Container, không API mới cho `Database`), KISS/YAGNI đạt
+  - [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật (185 tests, 299 assertions), 0 Errors/Failures/Warnings/Risky/Deprecations, 4 Skipped đúng thiết kế (Redis) → **CMS-013 COMPLETED — tag `v0.0.13`**
+- [x] **CMS-014** — Validation Layer (`core/Validator.php` + `core/Validation/*`)
+  - [x] Design Review + 6 quyết định chốt: registry rule dạng closure nội bộ (không class-per-rule), trả `ValidationResult` thay vì throw cho input sai (chỉ throw `ValidationException` khi rule name không tồn tại — lỗi cấu hình), không đăng ký Container/Application (giống `MigrationManager`, không có state cần singleton), chỉ 1 rule format string kiểu Laravel, giữ `extend()` custom rule, validate hết toàn bộ rule của 1 field (không bail)
+  - [x] `core/Validator.php`, `core/Validation/{ValidationResult,ValidationException}.php`
+  - [x] `tests/Core/ValidatorTest.php` (31 test: passes/fails/errors/firstError, 16 rule built-in, custom rule qua `extend()`, custom message, unknown rule throw, field optional bị bỏ qua, nhiều lỗi tích luỹ trên 1 field)
+  - [x] Không sửa file nào trong 13 Core Component đã hoàn thành — 0 dependency vào Config/Container/Database/Router/Session/Hook/ModuleManager/PluginManager/MigrationManager
+  - [x] Self Code Review — phát hiện & sửa 2 vấn đề: (1) test tự viết sai logic (`min`/`max` mâu thuẫn số học trên cùng 1 giá trị) — sửa lại rule độc lập không mâu thuẫn; (2) bug thật trong rule `in` — ép `(string) $value` trực tiếp gây PHP Warning nếu `$value` là mảng, sửa bằng guard `is_scalar()`
+  - [x] Self Architecture Review — SRP/Coupling/Cohesion/KISS/YAGNI đạt, 0 dependency vào Core Component khác
+  - [x] **Verified** — `vendor/bin/phpunit` PASS (bao gồm trong lần chạy toàn bộ suite cùng CMS-015, 229 tests/382 assertions), 0 Errors/Failures/Warnings/Risky/Deprecations, 4 Skipped đúng thiết kế (Redis) → **CMS-014 COMPLETED — tag `v0.0.14`**
+- [x] **CMS-015** — HTTP Request Layer (mở rộng `core/Http/Request.php` đã có từ CMS-006)
+  - [x] Architecture Analysis phát hiện xung đột quan trọng: yêu cầu ban đầu mô tả trùng trách nhiệm với `Core\Http\Request` đã hoàn thành (v0.0.6) — chốt Decision #0: CMS-015 là MỞ RỘNG file đã có (không tạo Request thứ 2), mọi API mới additive, không breaking method cũ
+  - [x] Final Design 9 quyết định chốt: giữ nguyên 8 method cũ (chỉ thêm alias), tham số constructor mới (`files/cookies/server`) đặt cuối với default `[]`, không Container/singleton, copy dữ liệu 1 lần, giữ eager JSON parsing, không phụ thuộc Session/Validator/Database/Auth, không Method Spoofing (`_method`), không Trusted Proxy (`ip()` chỉ đọc `REMOTE_ADDR`)
+  - [x] Sửa `core/Http/Request.php` — CHỈ additive: thêm `files/cookies/server` (cuối constructor), `fromGlobals()` đọc thêm `$_FILES/$_COOKIE/$_SERVER`, `withRouteParams()` giữ nguyên 3 property mới, thêm 13 method (`method/uri/path/all/has/filled/cookie/file/ip/userAgent/isMethod/ajax/json`)
+  - [x] `tests/Core/Http/RequestTest.php` (+14 test), `tests/Core/Http/RequestFromGlobalsTest.php` (+1 test)
+  - [x] Rà soát toàn bộ ~30 lệnh gọi `new Request(...)` hiện có trong codebase — xác nhận 100% backward compatible (đều dùng ≤7 tham số, không bị ảnh hưởng bởi 3 tham số mới)
+  - [x] Self Code Review — phát hiện & sửa 2 failure PHPUnit thật: test `ajax()`/`json()` tự viết dùng header key sai convention (chưa uppercase, trong khi `header()` chỉ chuẩn hoá phía tra cứu, không chuẩn hoá key đã lưu — hành vi đã có từ CMS-006, không sửa production code) — sửa đúng phạm vi trong test data
+  - [x] Self Architecture Review — 0 dependency mới, đúng cả 9 Decision, không breaking Public API
+  - [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật (229 tests, 382 assertions), 0 Errors/Failures/Warnings/Risky/Deprecations, 4 Skipped đúng thiết kế (Redis) → **CMS-015 COMPLETED — tag `v0.0.15`**
+- [ ] **CMS-016** — HTTP Response Layer (mở rộng `core/Http/Response.php` đã có từ CMS-006, theo cùng tinh thần CMS-015)
+- [ ] Redirect — chưa đánh số CMS, sẽ xác nhận khi bắt đầu
+- [ ] Middleware Pipeline (mở rộng) — chưa đánh số CMS, sẽ xác nhận khi bắt đầu
+- [ ] Exception Handler — chưa đánh số CMS, sẽ xác nhận khi bắt đầu
+- [ ] CSRF — chưa đánh số CMS, sẽ xác nhận khi bắt đầu
+- [ ] Authentication (`AuthService`, `TenantResolverMiddleware`, `AuthMiddleware`) — chưa đánh số CMS, sẽ xác nhận khi bắt đầu
+- [ ] Authorization (RBAC) — chưa đánh số CMS, sẽ xác nhận khi bắt đầu
+- [ ] Event / Queue — chưa đánh số CMS, sẽ xác nhận khi bắt đầu
+- [ ] Module System (Module: User/Page/SEO...) — chưa đánh số CMS, sẽ xác nhận khi bắt đầu
 
 ## Phase 2 — Database Migration thật (bảng `sites`, `users`, `roles`...)
 

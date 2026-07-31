@@ -6,7 +6,12 @@ namespace Core\Http;
 
 /**
  * Immutable - moi with*() tra ve instance MOI (new self(...)), khong sua object hien tai.
- * fromGlobals() la noi DUY NHAT doc $_SERVER/$_GET/$_POST - co lap truy cap superglobal vao 1 diem.
+ * fromGlobals() la noi DUY NHAT doc $_SERVER/$_GET/$_POST/$_FILES/$_COOKIE - co lap truy cap
+ * superglobal vao 1 diem.
+ *
+ * CMS-015: bo sung additive (files/cookies/server + method()/uri()/path()/all()/has()/filled()/
+ * cookie()/file()/ip()/userAgent()/isMethod()/ajax()/json()) - KHONG doi/xoa method cu, KHONG
+ * Method Spoofing (_method), KHONG Trusted Proxy (ip() chi doc REMOTE_ADDR).
  */
 final class Request
 {
@@ -15,6 +20,9 @@ final class Request
      * @param array<string, mixed> $body
      * @param array<string, string> $headers
      * @param array<string, string> $routeParams
+     * @param array<string, mixed> $files
+     * @param array<string, string> $cookies
+     * @param array<string, mixed> $server
      */
     public function __construct(
         private readonly string $method,
@@ -24,6 +32,9 @@ final class Request
         private readonly array $body = [],
         private readonly array $headers = [],
         private readonly array $routeParams = [],
+        private readonly array $files = [],
+        private readonly array $cookies = [],
+        private readonly array $server = [],
     ) {
     }
 
@@ -38,7 +49,11 @@ final class Request
             (string) ($_SERVER['HTTP_HOST'] ?? ''),
             $_GET,
             self::resolveBody($headers),
-            $headers
+            $headers,
+            [],
+            $_FILES,
+            $_COOKIE,
+            $_SERVER
         );
     }
 
@@ -133,7 +148,86 @@ final class Request
             $this->query,
             $this->body,
             $this->headers,
-            $params
+            $params,
+            $this->files,
+            $this->cookies,
+            $this->server
         );
+    }
+
+    public function method(): string
+    {
+        return $this->method;
+    }
+
+    public function uri(): string
+    {
+        return $this->uri;
+    }
+
+    /** Hien tai tra cung gia tri voi uri() - thiet ke khong luu URI day du kem query string. */
+    public function path(): string
+    {
+        return $this->uri;
+    }
+
+    /** @return array<string, mixed> query + body, body ghi de query khi trung key */
+    public function all(): array
+    {
+        return \array_merge($this->query, $this->body);
+    }
+
+    public function has(string $key): bool
+    {
+        return \array_key_exists($key, $this->all());
+    }
+
+    public function filled(string $key): bool
+    {
+        if (!$this->has($key)) {
+            return false;
+        }
+
+        $value = $this->all()[$key];
+
+        return $value !== null && $value !== '' && $value !== [];
+    }
+
+    public function cookie(string $key, mixed $default = null): mixed
+    {
+        return $this->cookies[$key] ?? $default;
+    }
+
+    /** Tra ve THO $_FILES[$key], khong co UploadedFile abstraction (ngoai pham vi). */
+    public function file(string $key): ?array
+    {
+        return $this->files[$key] ?? null;
+    }
+
+    /** KHONG doc X-Forwarded-For/X-Real-IP - khong Trusted Proxy (Decision #8 CMS-015). */
+    public function ip(): string
+    {
+        return (string) ($this->server['REMOTE_ADDR'] ?? '');
+    }
+
+    public function userAgent(): ?string
+    {
+        return $this->header('User-Agent');
+    }
+
+    public function isMethod(string $method): bool
+    {
+        return $this->method === \strtoupper($method);
+    }
+
+    public function ajax(): bool
+    {
+        return $this->header('X-Requested-With') === 'XMLHttpRequest';
+    }
+
+    /** True neu request GUI LEN co Content-Type JSON (khong phai client muon nhan gi ve). */
+    public function json(): bool
+    {
+        return \str_contains($this->header('Content-Type') ?? '', 'application/json');
     }
 }

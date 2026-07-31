@@ -1,0 +1,8 @@
+{
+    "key": "scopecheck",
+    "name": "Scope Check Plugin",
+    "version": "1.0.0",
+    "author": "Test Author",
+    "description": "Dung de xac nhan Hooks.php chi thay bien $hook trong scope.",
+    "dependencies": []
+}

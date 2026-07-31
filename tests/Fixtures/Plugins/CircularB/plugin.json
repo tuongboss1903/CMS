@@ -1,0 +1,8 @@
+{
+    "key": "circularB",
+    "name": "Circular B",
+    "version": "1.0.0",
+    "author": "Test Author",
+    "description": "Phu thuoc circularA, dung de test phat hien circular dependency.",
+    "dependencies": ["circularA"]
+}

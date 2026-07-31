@@ -1,0 +1,8 @@
+{
+    "key": "pluginB",
+    "name": "Plugin B",
+    "version": "1.0.0",
+    "author": "Test Author",
+    "description": "Plugin phu thuoc pluginA, dung de test thu tu dependency.",
+    "dependencies": ["pluginA"]
+}

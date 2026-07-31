@@ -4,7 +4,117 @@
 
 ## [Unreleased]
 
-Chưa có mục nào — task tiếp theo (CMS-011, Plugin Manager) đang ở bước Design.
+Chưa có mục nào — chờ chỉ định task tiếp theo (CMS-016, HTTP Response Layer, theo roadmap).
+
+## [0.0.15] — CMS-015: HTTP Request Layer
+
+### Added
+
+- `core/Http/Request.php` — mở rộng **additive** (không tạo Core Component mới, không breaking method cũ). Constructor thêm 3 tham số cuối cùng có default `[]`: `files`, `cookies`, `server`. `fromGlobals()` đọc thêm `$_FILES`/`$_COOKIE`/`$_SERVER` (đúng 1 lần, cùng điểm cô lập superglobal đã có). `withRouteParams()` giữ nguyên 3 property mới khi tạo instance mới. Thêm 13 method: `method()/uri()/path()` (alias các getter cũ), `all()` (query+body, body ghi đè khi trùng key), `has()/filled()`, `cookie()`, `file()` (trả raw `$_FILES` entry, không abstraction), `ip()` (chỉ đọc `REMOTE_ADDR`, không Trusted Proxy), `userAgent()`, `isMethod()`, `ajax()`, `json()` (kiểm tra Content-Type của request, không phải Accept header).
+- `tests/Core/Http/RequestTest.php` (+14 test), `tests/Core/Http/RequestFromGlobalsTest.php` (+1 test, mở rộng setup/teardown cho `$_FILES`/`$_COOKIE`).
+
+### Design decisions
+
+- Trước khi code, Architecture Analysis phát hiện yêu cầu ban đầu mô tả trùng trách nhiệm với `Core\Http\Request` đã hoàn thành ở CMS-006 — chốt: CMS-015 là mở rộng file đã có, không tạo Request thứ 2 (tránh 2 nguồn sự thật cho "request hiện tại").
+- Không Method Spoofing (`_method`), không Trusted Proxy — cả 2 để dành phase sau khi có nhu cầu thật (reverse proxy/HTML form giả lập verb), ghi Technical Debt tường minh thay vì tự bật ngầm định (rủi ro bảo mật nếu làm sai).
+- Giữ eager JSON parsing như CMS-006 — không có lợi ích rõ rệt khi chuyển sang lazy cho use-case thực tế hiện tại.
+
+### Fixed
+
+- 2 failure PHPUnit ở vòng chạy đầu (`testAjaxDetectsXRequestedWithHeader`, `testJsonDetectsJsonContentType`) — do test tự viết dùng header key chưa uppercase, trong khi `header()` (từ CMS-006) chỉ chuẩn hoá phía tra cứu (`strtoupper($name)`), không chuẩn hoá key đã lưu trong mảng `$headers`. Đây là hành vi đã có từ trước, không phải bug phát sinh ở CMS-015 — sửa đúng phạm vi trong dữ liệu test, không đổi `core/Http/Request.php`.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — 229 tests, 382 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.14] — CMS-014: Validation Layer
+
+### Added
+
+- `core/Validator.php` — validate `array $data` theo `array<string,string> $rules` (rule string kiểu Laravel, VD `'required|email|max:255'`), trả `ValidationResult` (không throw cho input sai). Registry rule nội bộ dạng `Closure`, là state riêng của từng instance (không static/global) — 16 rule built-in đăng ký qua chính `extend()` (built-in và custom dùng chung 1 cơ chế): `required/nullable/string/int/integer/numeric/boolean/array/email/min/max/between/in/regex/date/confirmed`. `extend(string $ruleName, Closure $callback): void` cho phép đăng ký rule tuỳ chỉnh, CHO PHÉP ghi đè rule built-in. `validate()` chạy hết toàn bộ rule của 1 field (không bail ở lỗi đầu tiên), gom lỗi vào `array<string, list<string>>`. Field vắng mặt và không có `required` → bỏ qua toàn bộ rule còn lại của field. 0 dependency vào Core Component khác (không Config/Container/Database/Router/Session/Hook) — không đăng ký Container/Application, module tự `new Validator()` khi cần.
+- `core/Validation/ValidationResult.php` — `passes()/fails()/errors()/firstError()`.
+- `core/Validation/ValidationException.php` — chỉ ném khi `$rules` tham chiếu 1 rule không tồn tại trong registry (lỗi cấu hình, không phải lỗi input).
+- `tests/Core/ValidatorTest.php` (31 test).
+
+### Design decisions
+
+- Registry rule dùng Closure nội bộ, không tách mỗi rule thành 1 class riêng (Strategy Pattern) — tránh phình ~15 file nhỏ cho phạm vi tối giản, đúng KISS.
+- Không đăng ký `Validator` vào Container/`Application` — không có state cần singleton (khác `Hook`), giống cách tiếp cận đã dùng cho `MigrationManager`.
+- Chỉ 1 rule format (string kiểu Laravel) — không hỗ trợ song song array format, đúng YAGNI.
+
+### Fixed
+
+- Rule `in` ép `(string) $value` trực tiếp — nếu `$value` là mảng, PHP phát sinh Warning "Array to string conversion". Sửa bằng guard `is_scalar($value) &&` trước khi ép kiểu, giá trị non-scalar tự fail rule `in` thay vì gây Warning. Phát hiện qua Self Code Review, không phải qua PHPUnit thật (không có test nào truyền mảng vào rule `in` trước đó).
+
+### Verified
+
+- `vendor/bin/phpunit` PASS — xác nhận qua lần chạy toàn bộ suite cùng CMS-015 (229 tests/382 assertions, bao gồm 31 test của `ValidatorTest.php`), 0 Errors/Failures/Warnings/Risky/Deprecations.
+
+## [0.0.13] — CMS-013: Migration System
+
+### Added
+
+- `core/MigrationManager.php` — quản lý schema database, không chứa business logic. Constructor nhận `Database $database, string $driver, string $migrationsPath` — validate `$driver` ∈ `{'mysql','sqlite'}` ngay trong constructor (throw `MigrationException` nếu sai, cùng kiểu validate-trong-constructor đã có tiền lệ ở `QueryBuilder`/`IdentifierValidator`, không phải side-effect I/O). `discover()` glob `{migrationsPath}/*.php`, sort theo tên file (timestamp prefix đảm bảo thứ tự), không memoize (mỗi lần gọi CLI là 1 vòng đời `MigrationManager` riêng, khác `PluginManager`). Migration file `require` và validate phải trả đúng shape `['up' => Closure, 'down' => Closure]` (không interface, không class, không DSL — Decision #1). `migrate()` chạy toàn bộ migration chưa áp dụng theo đúng thứ tự, mỗi migration bọc trong `Database::transaction()` riêng, ghi record vào bảng `migrations` (cột `batch` tăng dần theo `MAX(batch)+1`). `rollback()` hoàn tác toàn bộ migration thuộc batch gần nhất, theo thứ tự đảo ngược (`ORDER BY id DESC`). `status()` đối chiếu file đã discover với bảng `migrations`, trả `{name, applied, batch}`. **Fail-fast tuyệt đối** ở cả `migrate()`/`rollback()` — khác hẳn `ModuleManager`/`PluginManager` (không có `getFailures()`), vì các bước thay đổi schema có tính tuần tự/phụ thuộc, cách ly lỗi có thể làm hỏng schema.
+- `core/Migration/MigrationException.php`, `MigrationNotFoundException.php` (rollback nhưng file migration đã bị xoá khỏi disk).
+- `bin/migrate.php` — CLI entry point mỏng, tự bootstrap `new Config()`/`new Database()` trực tiếp (không qua Container), đọc `$argv[1]` (`migrate`/`rollback`/`status`) qua 1 switch đơn giản — không Console Kernel, không Command Registry.
+- `tests/Fixtures/Migrations/{Valid,Failing,Malformed}/*` + `tests/Core/MigrationManagerTest.php` (16 test: migrate/rollback/status, batch tăng dần, fail-fast, malformed migration, `MigrationNotFoundException`, validate driver, regression không ảnh hưởng bảng khác do `Database` quản lý).
+
+### Design decisions
+
+- Trước khi code: thực hiện 1 vòng Adversarial Architecture Review riêng — phát hiện rủi ro `MigrationManager` tự đọc PDO driver qua `getAttribute()` (rò rỉ trách nhiệm khỏi `Database`) và rủi ro dùng Container trong `bin/migrate.php` sẽ trùng lặp logic wiring `Database` với `Application.php`. Cả 2 đều bị loại bỏ khỏi thiết kế cuối.
+- `driver: string` truyền vào `MigrationManager` qua constructor (lấy từ `Config` tại `bin/migrate.php`) — `MigrationManager` không bao giờ chạm PDO, không có API mới nào được thêm vào `Database` (Decision #8).
+- Migration hoàn toàn tách khỏi HTTP lifecycle — không sửa `Application.php`/`public/index.php`, không có Module/Plugin nào biết tới `MigrationManager`.
+
+### Known limitations (ghi nhận chủ động, không phải phát sinh ngoài ý muốn)
+
+- `Database::transaction()` bọc quanh DDL chỉ thực sự transactional trên SQLite — MySQL tự động implicit-commit khi gặp DDL, không rollback được nếu lỗi xảy ra sau câu DDL trong cùng 1 migration.
+- Không hỗ trợ concurrent migration — không có locking chống 2 tiến trình `migrate()`/`rollback()` chạy đồng thời (race condition trên tính `batch`).
+- `rollback()` phụ thuộc migration file gốc còn tồn tại trên disk — xoá file sẽ khiến rollback bất khả thi (`MigrationNotFoundException`).
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — 185 tests, 299 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.12] — CMS-012: Plugin Manager
+
+### Added
+
+- `core/PluginManager.php` — discover plugin qua `plugin.json` (glob `{pluginsPath}/*/plugin.json`), **memoize kết quả trong instance** (`discover()` chỉ glob + parse 1 lần cho cả vòng đời 1 `PluginManager`, khác chủ đích với `ModuleManager::discover()` không memoize). `resolveLoadOrder()` — topological sort + phát hiện circular dependency, **code độc lập hoàn toàn** với `ModuleManager::visit()` (không chia sẻ abstraction, chấp nhận trùng lặp logic để giữ ổn định, đúng quyết định đã chốt trước khi code). `boot(Hook, enabledKeys)` — **reset `failures` ở đầu mỗi lần gọi**, nạp `Hooks.php` của từng plugin đã bật theo đúng thứ tự dependency qua closure cô lập scope (chỉ `$hook` khả kiến), **cách ly lỗi tuyệt đối**: 1 plugin có `Hooks.php` ném lỗi được ghi vào `failures[key]`, không rethrow, không làm crash các plugin còn lại. `getFailures()` trả map lỗi của lần `boot()` gần nhất. `discover()` phát hiện và ném `PluginException` nếu 2 plugin khai `key` trùng nhau (không âm thầm ghi đè).
+- `core/Plugin/PluginDescriptor.php` — value object đọc từ `plugin.json` (key/name/version/author/description/dependencies/path).
+- `core/Plugin/PluginException.php`, `PluginNotFoundException.php` (key không tồn tại / dependency chưa bật), `CircularPluginDependencyException.php` (mang `getChain()`, cùng hình dạng `CircularModuleDependencyException`/`Core\CircularDependencyException`) — 3 exception riêng của Plugin Layer, không kế thừa/dùng chung với `Core\Module\*`.
+- `tests/Fixtures/Plugins/{GoodPluginA,GoodPluginB,BrokenPlugin,NoHooksPlugin,CircularA,CircularB,ScopeCheckPlugin}/*`, `tests/Fixtures/PluginsInvalid/BadPlugin/plugin.json` (fixture riêng, tách khỏi thư mục chính vì `discover()` throw cho cả thư mục nếu có 1 manifest sai), `tests/Fixtures/PluginsDuplicate/{PluginX,PluginY}/plugin.json` (fixture riêng cho test duplicate key) + `tests/Core/PluginManagerTest.php` (16 test) + `tests/Core/PluginManagerContainerIntegrationTest.php` (2 test Regression — `PluginManager`+`Hook` ráp qua `Container`).
+
+### Changed
+
+- `core/Application.php` — CHỈ 2 điểm bổ sung (không sửa gì khác): đăng ký `PluginManager` làm singleton trong `registerCoreServices()`; trong `boot()`, gọi `pluginManager->boot($hook, array_keys($pluginManager->discover()))` ngay sau đoạn boot `ModuleManager` hiện có (mặc định coi mọi plugin đã discover là "enabled", nhất quán với cách `ModuleManager` đang được boot — chưa có cơ chế bật/tắt theo site, nằm ngoài phạm vi CMS-012).
+
+### Design decisions
+
+- `PluginManager` độc lập hoàn toàn với `ModuleManager` — không refactor `ModuleManager`, không tạo abstraction dùng chung cho topological sort dù logic tương tự (đúng nguyên tắc "không tạo abstraction chỉ để DRY"), chấp nhận trùng lặp có chủ đích để không đụng vào component đã ổn định/đã tag version.
+- Ranh giới cách ly lỗi trong `boot()`: chỉ đoạn `require Hooks.php` của từng plugin được try/catch cô lập. Lỗi ở tầng `resolveLoadOrder()` (key không tồn tại, dependency chưa bật, circular dependency) vẫn ném ra ngoài `boot()` — coi là lỗi cấu hình (ai đó khai `enabledKeys` sai), khác bản chất với lỗi runtime của code trong 1 plugin, nhất quán với hành vi hiện tại của `ModuleManager::boot()`.
+- Plugin hợp lệ nhưng không có `Hooks.php` được coi là nạp thành công (không lỗi) — xử lý phòng thủ, tương tự cách `ModuleManager` xử lý module không có `routes.php`.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — 171 tests, 273 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.11] — CMS-011: Application / Bootstrap
+
+### Added
+
+- `core/Application.php` — điểm khởi động duy nhất của framework. `handle(Request): Response` thuần (test được, không cần superglobal) tách khỏi `run(): void` (I/O boundary duy nhất: `Request::fromGlobals()` + `Response::send()`). `boot()` idempotent (guard `$booted`) — nạp `ModuleManager` (mặc định bật tất cả module đã `discover()`), đăng ký route `/health`. Đăng ký toàn bộ Core Service vào `Container` qua Closure lazy (Database, Session, Hook, CacheDriver/Cache, View, Router, ModuleManager). Bắt `RouteNotFoundException`/`MethodNotAllowedException`/`Throwable` ở `handle()`, trả JSON chuẩn `{success,data,message,errors}` cho 404/405/500 — 500 chỉ lộ message exception thật khi `config('app.debug')=true`, log mọi exception chưa bắt vào `storage/logs/app.log`.
+- `public/index.php` — viết lại còn 3 dòng thật (require autoload, `Application::bootstrap(dirname(__DIR__))->run()`), thay thế hoàn toàn smoke test từ CMS-002.
+- `tests/Fixtures/App/*` (config đầy đủ + module + theme fixture), `tests/Fixtures/AppProduction/*` (fixture riêng cho test `debug=false`) + `tests/Core/ApplicationTest.php` (11 test).
+
+### Design decisions
+
+- `config/app.php` thêm key `theme` — dùng chung cho `activeTheme`/`defaultTheme` của `View` cho tới khi có `TenantManager` thật (Phase 2+).
+- `Application::container(): Container` — bổ sung ngoài thiết kế đã duyệt ban đầu (chỉ `bootstrap/handle/run`), cần thiết để test xác nhận Core Service đăng ký đúng vào Container mà không phải đi qua 1 route thật.
+- Không xây `Core\Logger` đầy đủ tính năng (channel/level/formatter) — chỉ `file_put_contents` trực tiếp trong `Application`, đúng phạm vi CMS-011.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — 154 tests, 237 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
 
 ## [0.0.10] — CMS-010: Module Manager
 
@@ -17,7 +127,7 @@ Chưa có mục nào — task tiếp theo (CMS-011, Plugin Manager) đang ở b�
 
 ### Verified
 
-- Chưa chạy được `vendor/bin/phpunit` thật trong môi trường này (không có PHP) — đã trace tay toàn bộ 10 test, chờ xác nhận từ môi trường thật.
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — 144 tests, 212 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
 
 ## [0.0.9] — CMS-009: Hook System
 
