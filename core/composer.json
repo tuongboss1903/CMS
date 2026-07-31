@@ -1,0 +1,10 @@
+{
+    "name": "cms/project",
+    "description": "CMS Core Architecture",
+    "autoload": {
+        "psr-4": {
+            "Core\\": "core/",
+            "App\\": "app/"
+        }
+    }
+}
