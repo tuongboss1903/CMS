@@ -6,11 +6,17 @@ namespace Core;
 
 /**
  * Verify email/password that tu database, goi Auth::login() (khong doi API), nap roles/permissions
- * that vao Session theo site hien tai (TenantManager::id()). Khong Repository, khong RateLimiter,
- * khong route/Controller - Module tuong lai tu goi attempt() truc tiep.
+ * that vao Session theo site hien tai (TenantManager::id()). Khong Repository, khong route/Controller
+ * - Module tuong lai tu goi attempt() truc tiep.
  *
  * Chong user enumeration: email khong ton tai van chay password_verify() voi DUMMY_HASH, tra ve
  * dung 1 diem false giong het truong hop sai password - khong phan biet ly do that bai.
+ *
+ * Rate limit brute-force qua RateLimiter (key "login:{lowercase_email}", config
+ * auth.login_throttle.*): tooManyAttempts() kiem tra TRUOC password_verify(); hit() CHI goi khi
+ * password_verify() that bai; clear() khi password_verify() thanh cong - khong hit() cho lan
+ * goi thanh cong (dung dinh nghia "brute-force" la doan mat khau sai lien tuc, khong phai
+ * status khong active sau khi da dung mat khau).
  */
 final class AuthenticationService
 {
@@ -22,6 +28,8 @@ final class AuthenticationService
         private readonly Auth $auth,
         private readonly Session $session,
         private readonly TenantManager $tenantManager,
+        private readonly RateLimiter $rateLimiter,
+        private readonly Config $config,
     ) {
     }
 
@@ -33,6 +41,14 @@ final class AuthenticationService
             );
         }
 
+        $rateLimitKey = 'login:' . \strtolower($email);
+        $maxAttempts = (int) $this->config->get('auth.login_throttle.max_attempts', 5);
+        $decaySeconds = (int) $this->config->get('auth.login_throttle.decay_seconds', 900);
+
+        if ($this->rateLimiter->tooManyAttempts($rateLimitKey, $maxAttempts)) {
+            return false;
+        }
+
         $user = $this->database->selectOne(
             'SELECT id, password, status FROM users WHERE email = ?',
             [$email]
@@ -41,8 +57,12 @@ final class AuthenticationService
         $passwordHash = $user !== null ? (string) $user['password'] : self::DUMMY_HASH;
 
         if (!\password_verify($password, $passwordHash)) {
+            $this->rateLimiter->hit($rateLimitKey, $maxAttempts, $decaySeconds);
+
             return false;
         }
+
+        $this->rateLimiter->clear($rateLimitKey);
 
         if ($user === null || $user['status'] !== 'active') {
             return false;

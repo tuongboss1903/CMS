@@ -11,4 +11,8 @@ return [
         'http_only' => true,
         'same_site' => 'Lax',
     ],
+    'login_throttle' => [
+        'max_attempts' => 3,
+        'decay_seconds' => 60,
+    ],
 ];

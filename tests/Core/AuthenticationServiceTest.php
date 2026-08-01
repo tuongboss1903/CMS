@@ -8,6 +8,7 @@ use Core\Auth;
 use Core\AuthenticationService;
 use Core\Config;
 use Core\Database;
+use Core\RateLimiter;
 use Core\Session;
 use Core\TenantManager;
 use PHPUnit\Framework\TestCase;
@@ -18,6 +19,7 @@ final class AuthenticationServiceTest extends TestCase
     private Session $session;
     private Auth $auth;
     private TenantManager $tenantManager;
+    private RateLimiter $rateLimiter;
     private AuthenticationService $service;
 
     protected function setUp(): void
@@ -28,7 +30,15 @@ final class AuthenticationServiceTest extends TestCase
         $this->session->start();
         $this->auth = new Auth($this->session);
         $this->tenantManager = new TenantManager();
-        $this->service = new AuthenticationService($this->database, $this->auth, $this->session, $this->tenantManager);
+        $this->rateLimiter = new RateLimiter($this->session);
+        $this->service = new AuthenticationService(
+            $this->database,
+            $this->auth,
+            $this->session,
+            $this->tenantManager,
+            $this->rateLimiter,
+            $config
+        );
 
         $this->migrate();
     }
@@ -229,5 +239,86 @@ final class AuthenticationServiceTest extends TestCase
 
         self::assertSame($wrongPasswordResult, $unknownResult);
         self::assertFalse($unknownResult);
+    }
+
+    public function testAttemptFailsAfterExceedingMaxAttempts(): void
+    {
+        $this->seedActiveUserWithRole(password: 'correct-password');
+
+        // Fixture: auth.login_throttle.max_attempts = 3
+        $this->service->attempt('user@example.com', 'wrong-password');
+        $this->service->attempt('user@example.com', 'wrong-password');
+        $this->service->attempt('user@example.com', 'wrong-password');
+
+        // Da dat max_attempts (3 lan sai) - lan thu 4 bi khoa NGAY CA VOI PASSWORD DUNG.
+        $result = $this->service->attempt('user@example.com', 'correct-password');
+
+        self::assertFalse($result);
+        self::assertFalse($this->auth->check());
+    }
+
+    public function testAttemptSucceedsBeforeReachingMaxAttempts(): void
+    {
+        $this->seedActiveUserWithRole(password: 'correct-password');
+
+        $this->service->attempt('user@example.com', 'wrong-password');
+        $this->service->attempt('user@example.com', 'wrong-password');
+
+        // Chi 2/3 lan sai - van con quota, login dung phai thanh cong.
+        $result = $this->service->attempt('user@example.com', 'correct-password');
+
+        self::assertTrue($result);
+    }
+
+    public function testRateLimitKeyIsScopedPerEmail(): void
+    {
+        $this->seedActiveUserWithRole(email: 'victim@example.com', password: 'correct-password');
+
+        $this->service->attempt('victim@example.com', 'wrong-password');
+        $this->service->attempt('victim@example.com', 'wrong-password');
+        $this->service->attempt('victim@example.com', 'wrong-password');
+
+        // "victim@example.com" da bi khoa, nhung email khac (chua ton tai) khong bi anh huong.
+        $otherEmailResult = $this->service->attempt('other@example.com', 'any-password');
+        $victimResult = $this->service->attempt('victim@example.com', 'correct-password');
+
+        self::assertFalse($victimResult, 'victim@example.com phai dang bi khoa.');
+        self::assertFalse($otherEmailResult, 'other@example.com sai (unknown email), khong lien quan rate limit cua victim.');
+        self::assertFalse($this->rateLimiter->tooManyAttempts('login:other@example.com', 3));
+    }
+
+    public function testAttemptClearsRateLimitOnSuccessfulPasswordVerify(): void
+    {
+        $this->seedActiveUserWithRole(password: 'correct-password');
+
+        $this->service->attempt('user@example.com', 'wrong-password');
+        $this->service->attempt('user@example.com', 'wrong-password');
+        $this->service->attempt('user@example.com', 'correct-password');
+
+        self::assertSame(0, $this->rateLimiter->attempts('login:user@example.com'));
+    }
+
+    /**
+     * Hanh vi da duoc Owner chap thuan (khong phai bug): clear() goi ngay khi password_verify()
+     * dung, TRUOC status check - tai khoan inactive dung dung password se luon reset ve 0, khong
+     * bao gio bi tooManyAttempts() chan du goi vuot qua max_attempts (fixture: 3). Test nay khoa
+     * hanh vi lai de tranh refactor sau nay vo tinh doi thu tu clear()/status check.
+     */
+    public function testRateLimitClearsEvenWhenInactiveAccountUsesCorrectPassword(): void
+    {
+        $this->seedActiveUserWithRole(password: 'correct-password', status: 'locked');
+
+        for ($i = 0; $i < 6; $i++) {
+            $result = $this->service->attempt('user@example.com', 'correct-password');
+
+            self::assertFalse($result, "Lan goi thu {$i}: phai return false vi account inactive.");
+        }
+
+        self::assertFalse(
+            $this->rateLimiter->tooManyAttempts('login:user@example.com', 3),
+            'Khong bao gio bi rate-limit vi clear() luon reset counter sau moi lan password_verify() dung.'
+        );
+        self::assertSame(0, $this->rateLimiter->attempts('login:user@example.com'));
+        self::assertFalse($this->auth->check());
     }
 }
