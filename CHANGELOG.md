@@ -6,6 +6,192 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.47] — CMS-047: Admin Role Management UI
+
+### Added
+
+- Admin Role Management UI (`modules/Admin/Role*Controller.php`) — mở rộng `modules/Admin/` với 8 Controller mới: `RoleListController`, `RoleShowCreateController`, `RoleCreateController`, `RoleShowEditController`, `RoleUpdateController`, `RoleDeleteController`, `RoleShowPermissionsController`, `RoleAssignPermissionsController`.
+- Role listing HTML (`GET /admin/roles`) — hiển thị cả System Role và Tenant Role của tenant hiện tại.
+- Create/Edit role HTML form (`GET/POST /admin/roles`, `GET /admin/roles/{id}/edit`, `POST /admin/roles/{id}`).
+- Delete role (`POST /admin/roles/{id}/delete`).
+- Permission assignment UI (`GET/POST /admin/roles/{id}/permissions`) — hiển thị "Đã gán"/"Chưa gán", nút "Gán" cho từng permission chưa gán.
+- `themes/default/views/admin/pages/roles/{list,create,edit,permissions}.php`.
+- `tests/Core/AdminRoleManagementUiTest.php` (14 test).
+
+### Architecture Decisions
+
+- **Route `/admin/roles/*`** — cùng convention `modules/Admin/` đã có từ CMS-045/046, không tạo Module riêng.
+- **`POST` thay `PATCH`/`DELETE`** cho Edit/Delete — `core/Http/Request.php` không hỗ trợ Method Spoofing, form trình duyệt chỉ gửi được `GET`/`POST` thật (đúng tiền lệ CMS-046).
+- **Permission assignment chỉ ADD, không REMOVE** (Owner Decision #1) — khớp đúng capability thật của `Modules\Role\AssignPermissionController` (INSERT idempotent, không có endpoint gỡ nào trong dự án); UI chỉ hiển thị nút "Gán" cho permission chưa gán, không có nút "Gỡ".
+- **Delete Role thất bại trả HTML rõ lý do** (Owner Decision #2) — `Response::html('403 Forbidden', 403)` (System Role) / `Response::html('409 Role dang duoc su dung', 409)` (đang được user dùng) — không redirect im lặng, vì Delete là hành động phá huỷ dữ liệu.
+- **System Role xác định bằng `tenant_id IS NULL`** (Owner Decision #3) — nhất quán tuyệt đối với `modules/Role/*`, không dùng cột `roles.is_system` (tồn tại trong migration nhưng không Controller nào đọc/ghi).
+- **CSRF tái sử dụng nguyên `CsrfMiddleware` group** đã kích hoạt từ CMS-045 — không sửa `core/Csrf.php`/`core/Middleware/*`.
+- **System Role vẫn xem được trang Permissions** (200, "View allowed" — Owner Decision 3 gốc CMS-038) — chỉ hành động `POST` assign mới bị chặn 403.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/AdminRoleManagementUiTest.php` trên môi trường thật: **PASS** — 14 tests, 32 assertions.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 486 tests, 900 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế). PHP 8.3.30.
+
+## [0.0.46] — CMS-046: Admin User Management UI
+
+### Added
+
+- Admin User Management UI (`modules/Admin/User*Controller.php`) — mở rộng `modules/Admin/` (CMS-045) với 8 Controller mới: `UserListController`, `UserShowCreateController`, `UserCreateController`, `UserShowEditController`, `UserUpdateController`, `UserLockController`, `UserUnlockController`, `UserAssignRoleController`.
+- User listing HTML (`GET /admin/users`) — scoped tenant hiện tại, kèm dropdown gán role ngay trong danh sách.
+- Create user HTML form (`GET/POST /admin/users`) — validate, transaction (role + user + user_site_roles), render lại form khi lỗi.
+- Edit user HTML form (`GET /admin/users/{id}/edit`, `POST /admin/users/{id}`).
+- Lock/Unlock user (`POST /admin/users/{id}/lock`, `POST /admin/users/{id}/unlock`).
+- Assign role (`POST /admin/users/{id}/role`).
+- CSRF bảo vệ toàn bộ route `POST` mới, mở rộng `CsrfMiddleware` group đã có từ CMS-045.
+- `themes/default/views/admin/pages/users/{list,create,edit}.php`.
+- `tests/Core/AdminUserManagementUiTest.php` (12 test).
+
+### Architecture Decisions
+
+- **Admin UI tiếp tục nằm trong `modules/Admin/`** — không tạo Module `Admin\User` riêng.
+- **Không sửa `modules/User/*` (API JSON đã hoàn thành)** — hành vi/response không đổi.
+- **Không tạo Service Layer mới** — dự án chưa có Repository/Service, giữ nguyên kiến trúc CMS-034 → CMS-045.
+- **`UserCreateController` (Admin) copy nguyên transaction logic từ `Modules\User\CreateUserController`** — chấp nhận trùng lặp (Owner Decision Phương án A, CMS-046), không trích xuất abstraction chỉ để tránh duplication.
+- **HTML form dùng `POST` thay vì `PATCH`** cho Edit — `core/Http/Request.php` không hỗ trợ Method Spoofing (`_method`), form trình duyệt chỉ gửi được `GET`/`POST` thật.
+- **Không có `GET /admin/users/{id}`** (trang xem chi tiết riêng) và không Delete — đúng phạm vi đã duyệt.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/AdminUserManagementUiTest.php` trên môi trường thật: **PASS** — 12 tests, 28 assertions.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 472 tests, 868 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
+## [0.0.45] — CMS-045: Admin UI Foundation
+
+### Added
+
+- `modules/Admin/` — Admin UI Foundation Module (Module thứ 6 của dự án, `dependencies: [auth]`): `ShowLoginController` (`GET /admin/login`), `LoginController` (`POST /admin/login`), `LogoutController` (`POST /admin/logout`), `DashboardController` (`GET /admin/dashboard`).
+- HTML login flow — form đăng nhập server-rendered đầu tiên của dự án, tái sử dụng nguyên `AuthenticationService`/`Auth`/`Session` (không viết lại logic xác thực).
+- Admin dashboard shell — HTML dashboard đầu tiên, hiển thị `user_count`/`role_count`.
+- CSRF kích hoạt thật lần đầu cho admin POST route (`POST /admin/login`, `POST /admin/logout`) — dùng nguyên `core/Csrf.php`/`core/Middleware/CsrfMiddleware.php` đã tồn tại từ trước nhưng chưa từng gắn vào route thật.
+- `themes/default/views/admin/{layouts/main.php,pages/login.php,pages/dashboard.php}` — Admin theme structure, dùng chung `themes/default/` (không tạo theme riêng).
+- `tests/Core/AdminUiFoundationTest.php` (7 test).
+
+### Architecture Decisions
+
+- **Admin UI tách riêng `modules/Admin/`** — không sửa `modules/Auth/*` (giữ nguyên `POST /login` JSON API hiện có, không đổi hành vi/response).
+- **Tái sử dụng `AuthenticationService`/`Auth`/`Session`** — không viết lại rate-limit/verify/session logic.
+- **Admin dùng `View` với `activeTheme = defaultTheme = 'default'`** — tận dụng cơ chế fallback 2 cấp có sẵn của `View::resolvePath()` (CMS-005), template Admin đặt dưới `themes/default/views/admin/*`, không tạo theme riêng, không sửa `core/View.php`.
+- **`POST /admin/logout` bắt buộc CSRF** — không có route logout dùng GET.
+- **Không PRG (Post-Redirect-Get) khi login thất bại** — render lại form login ngay trong cùng response (Owner Decision CMS-045), không dùng `Session::flash()`, không tạo Form Helper.
+- **`AuthMiddleware` không được dùng** — trả JSON 401, sai ngữ nghĩa cho luồng HTML; Controller tự `Auth::check()` + `Response::redirect('/admin/login')`.
+- **`DashboardController` (Admin) copy nguyên logic SQL** từ `Modules\Dashboard\DashboardController` (JSON) — không gọi lại Controller đó, không sửa `modules/Dashboard/*`.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/AdminUiFoundationTest.php` trên môi trường thật: **PASS** — 7 tests, 19 assertions.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 460 tests, 840 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
+## [0.0.44] — CMS-044: Theme/Layout Runtime & Public Website Rendering
+
+### Added
+
+- `modules/Public/` — Public Website Module (Module thứ 5 của dự án, load **sau cùng** qua `module.json.dependencies: [auth,user,role,dashboard,page]`): `HomeController` (`GET /`), `PublicPageController` (`GET /{slug}`).
+- Public HTML rendering route — trả `Response::html()`, không JSON, không `Authorization::can()` (public, không yêu cầu đăng nhập).
+- Theme runtime integration — `View` (đã có từ CMS-005) lần đầu render thật trong production, qua `activeTheme`/`defaultTheme` (CMS-030).
+- `themes/default/` — Default theme structure đầu tiên của dự án: `theme.json`, `views/layouts/main.php`, `views/pages/default.php`.
+- Page rendering từ `pages` đã publish: `WHERE tenant_id = ? AND slug = ? AND status = 'published' AND deleted_at IS NULL` (slug), tương tự cho `is_homepage = 1` (homepage).
+- `tests/Core/PublicPageRenderingTest.php` (8 test) + fixture theme riêng `tests/Fixtures/themes/test-theme/`.
+
+### Architecture Decisions
+
+- **Public route `GET /{slug}`** (không `/pages/{slug}`) — ưu tiên URL website thật (`/`, `/about`, `/contact`); rủi ro collision với route Admin GET 1-segment (`/users`, `/roles`...) giải quyết bằng cách buộc Module `Public` load **cuối cùng** qua `dependencies` trong `module.json` (dùng đúng cơ chế topological sort có sẵn của `ModuleManager`, không sửa `Router`).
+- **`TenantResolverMiddleware` dùng lại nguyên trạng** — route Public nằm chung `Router::group()` hiện có, không tạo group/middleware riêng.
+- **Không `Authorization::can()` cho public page** — nhất quán với việc dự án chưa dùng Middleware cho permission ở bất kỳ route nào (mọi check đều trong Controller).
+- **Theme resolution `activeTheme → defaultTheme`** — dùng nguyên `View::resolvePath()` từ CMS-005, không sửa.
+- **Template fallback trong Controller** (`View::exists()` trước khi `render()`) — không phải cơ chế N-path trong `View`, giữ đúng thiết kế 2 cấp cố định của `View`.
+- **Không migration mới** — schema `pages` (CMS-040) đã đủ dữ liệu để render.
+- **Reserved slug collision được chấp nhận là Technical Debt** — page có slug trùng route hệ thống (`login`, `users`...) sẽ không truy cập public được (route Admin luôn thắng vì đăng ký trước); không blacklist slug, không sửa `CreatePageController`.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/PublicPageRenderingTest.php` trên môi trường thật: **PASS** — 8 tests, 14 assertions.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 453 tests, 821 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
+## [0.0.40] — CMS-040: Page Management
+
+### Added
+
+- `database/migrations/2026_08_02_000001_create_pages_table.php` — bảng `pages` (Content Schema thật đầu tiên của dự án): `tenant_id, parent_id (self), title, slug, content TEXT, template, status, published_at, is_homepage, created_by, created_at/updated_at/deleted_at`. UNIQUE `(tenant_id, slug)`, index `(tenant_id, status)`, index `(parent_id)`.
+- `modules/Page/` — Module thứ 4 của dự án (sau `Auth`/`User`/`Role`+`Dashboard`): 6 Controller — `ListPagesController`, `CreatePageController`, `EditPageController`, `DeletePageController`, `PublishPageController`, `SetHomepageController`.
+- CRUD Page API: `GET/POST /pages`, `PATCH/DELETE /pages/{id}`.
+- Publish workflow: `POST /pages/{id}/publish` — `status` (`draft/published/scheduled`), `published_at` chỉ set lần đầu (`COALESCE`), không ghi đè khi publish lại.
+- Soft delete workflow: `DELETE /pages/{id}` chỉ `UPDATE deleted_at`, không xoá thật, không restore/trash.
+- Homepage transaction: `POST /pages/{id}/homepage` — `Database::transaction()` bọc 2 bước UPDATE (bỏ homepage cũ, gán homepage mới), đúng `database-design.md` mục 6.1.
+- `bin/bootstrap.php` — mở rộng permission bootstrap từ 11 → 16 (thêm `page.view/create/update/delete/publish`).
+- `tests/Core/ModulePageIntegrationTest.php` (17 test).
+
+### Design Decisions
+
+- **`content` lưu `TEXT`**, không dùng cột `JSON` — Application layer (Controller) tự `json_encode()`/`json_decode()`.
+- **Permission bootstrap là tiền lệ chính thức** cho Module tương lai cần permission mới — mở rộng mảng `$permissionKeys` trong `bin/bootstrap.php`, không tạo Permission Module/migration seed riêng.
+- **Không transaction** cho Create/Edit/Delete/Publish (1 câu SQL/thao tác, atomic tự nhiên) — chỉ `SetHomepage` cần `Database::transaction()` (2 UPDATE liên quan).
+- **Không `PageService`/Repository** — Controller gọi `Database` trực tiếp, đúng tiền lệ `User`/`Role` Module.
+- Cross-tenant và page đã xoá mềm đều trả 404 (không 403) — nhất quán nguyên tắc đã dùng từ `User`/`Role` Module.
+
+### Verification
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — `ModulePageIntegrationTest`: 17 tests/27 assertions; toàn bộ suite: 445 tests, 807 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.38] — CMS Foundation Completion
+
+### Added
+
+- `bin/bootstrap.php` — CLI khởi tạo CMS lần đầu (one-time), tạo Site + Site Domain + Admin User + System Admin Role + 11 permission bootstrap + gán toàn bộ cho role Admin + liên kết `user_site_roles`, toàn bộ trong 1 `Database::transaction()`.
+- `modules/Role/` — Role Management Module: `GET /roles` (System + Tenant role), `POST /roles` (luôn tạo Tenant Role), `PATCH /roles/{id}`, `DELETE /roles/{id}`, `POST /roles/{id}/permissions` (gán permission).
+- `modules/Role/ListPermissionsController.php` — Permission Management (danh mục toàn hệ thống): `GET /permissions`.
+- `modules/Dashboard/` — Dashboard Foundation: `GET /dashboard` (`user_count`, `role_count`, scoped tenant hiện tại).
+- `tests/Core/ModuleRoleIntegrationTest.php` (12 test), `tests/Core/ModuleDashboardIntegrationTest.php` (2 test).
+
+### Architecture Decisions
+
+- **System Role (`roles.tenant_id NULL`)**: dùng chung mọi tenant, chỉ được `bin/bootstrap.php` tạo — qua Module chỉ **View allowed**, `Update`/`Delete`/`Permission modification` đều **403 Forbidden**.
+- **Tenant Role (`roles.tenant_id = site`)**: CRUD đầy đủ qua `Role` Module, scoped tuyệt đối theo `TenantManager::id()`, cross-tenant → 404 (không 403, nhất quán nguyên tắc đã dùng từ `User` Module).
+- **CLI bootstrap one-time**: kiểm tra `SELECT COUNT(*) FROM users` trước khi chạy — nếu đã có user, từ chối chạy lại, không tạo Admin trùng lặp.
+- **Không migration mới** — toàn bộ Role/Permission/Dashboard dùng nguyên schema 7 bảng đã có từ CMS-028.
+- **Permission bootstrap tách khỏi `User` Module** — `bin/bootstrap.php` độc lập, không import bất kỳ class nào từ `modules/`, không đưa logic bootstrap vào `Auth`/`User`.
+- **Xoá Role dùng application-level check** (không dựa vào FK exception) — `SELECT COUNT(*) FROM user_site_roles WHERE role_id = ?` trước `DELETE`, vì SQLite trong `Database::connect()` không bật `PRAGMA foreign_keys = ON` mặc định (giới hạn đã ghi nhận từ CMS-030).
+
+### Verification
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — `ModuleRoleIntegrationTest`: 12 tests/17 assertions; `ModuleDashboardIntegrationTest`: 2 tests/4 assertions; toàn bộ suite: 428 tests, 775 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.37] — CMS-037: User Management Module
+
+### Added
+
+- `modules/User/` — Module thứ 2 của dự án (sau `Auth`, CMS-034/035). 6 User Management endpoints:
+  - `GET /users` — List (scoped theo tenant hiện tại).
+  - `POST /users` — Create User.
+  - `PATCH /users/{id}` — Edit User.
+  - `POST /users/{id}/lock` — Lock User.
+  - `POST /users/{id}/unlock` — Unlock User.
+  - `POST /users/{id}/role` — Assign Role.
+- User CRUD operations — List/Create/Edit, permission-based qua `Authorization::can()`.
+- Lock/Unlock User — đổi `users.status` giữa `active`/`locked`.
+- Assign Role — đổi role của user đã thuộc tenant hiện tại (không tạo user_site_roles mới).
+- `tests/Core/ModuleUserIntegrationTest.php` — 7 integration test, dùng `ModuleManager` trỏ `modules/` thật.
+
+### Design Decisions
+
+- **No permission migration seed** — CMS-037 giả định permission key (`user.view/create/update/lock/assign_role`) đã tồn tại sẵn; bootstrap để CMS-038/cơ chế riêng, không tạo migration data-seed trong CMS-037.
+- **Lock/Unlock dùng chung `user.lock`** — không tách `user.unlock` riêng, cùng 1 capability.
+- **No Delete User** — out of scope CMS-037.
+- **No Repository/Service layer** — Controller gọi `Database` trực tiếp (YAGNI, đúng tiền lệ `TenantResolverMiddleware`/`AuthenticationService`).
+- **Transaction bảo vệ `users` + `user_site_roles`** — `CreateUserController` dùng `Database::transaction()` (đã có từ CMS-004), validate role **bên trong** transaction (`\InvalidArgumentException` built-in, không Exception class mới), đảm bảo không orphan user nếu role không hợp lệ hoặc email trùng.
+- Toàn bộ thao tác scoped theo `TenantManager::id()`; cross-tenant trả 404 (không 403).
+- Không sửa `core/*`/`modules/Auth/*`/migration nào.
+
+### Verification
+
+- CMS-037 tests PASS — `ModuleUserIntegrationTest`: 7 tests/21 assertions.
+- Full PHPUnit PASS — 414 tests, 754 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis).
+
 ## [0.0.36] — CMS-036: Site Status Policy
 
 ### Added

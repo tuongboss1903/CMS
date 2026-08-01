@@ -26,6 +26,7 @@ final class RealMigrationsTest extends TestCase
         '2026_08_01_000005_create_permissions_table',
         '2026_08_01_000006_create_role_permissions_table',
         '2026_08_01_000007_create_user_site_roles_table',
+        '2026_08_02_000001_create_pages_table',
     ];
 
     public function testMigrateCreatesAllSevenTablesInOrder(): void
