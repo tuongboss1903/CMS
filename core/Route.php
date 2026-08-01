@@ -21,7 +21,7 @@ final class Route
 
     /**
      * @param Closure|array{class-string, string} $handler
-     * @param list<class-string> $middleware
+     * @param list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface> $middleware
      */
     public function __construct(
         private readonly string $method,
@@ -72,7 +72,7 @@ final class Route
         return $this->handler;
     }
 
-    /** @return list<class-string> */
+    /** @return list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface> */
     public function getMiddleware(): array
     {
         return $this->middleware;

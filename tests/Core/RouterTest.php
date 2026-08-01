@@ -16,6 +16,7 @@ use Throwable;
 use Tests\Fixtures\Http\DependentController;
 use Tests\Fixtures\Http\MiddlewareA;
 use Tests\Fixtures\Http\MiddlewareB;
+use Tests\Fixtures\Http\MiddlewareC;
 use Tests\Fixtures\Http\ShortCircuitMiddleware;
 use Tests\Fixtures\Http\TestController;
 
@@ -175,5 +176,78 @@ final class RouterTest extends TestCase
 
         self::assertSame('a-site', $this->router->dispatch(new Request('GET', '/dashboard', 'a.example.com'))->getBody());
         self::assertSame('b-site', $this->router->dispatch(new Request('GET', '/dashboard', 'b.example.com'))->getBody());
+    }
+
+    public function testGlobalMiddlewareRunsOnEveryRegisteredRoute(): void
+    {
+        $this->router->middleware([MiddlewareA::class]);
+        $this->router->get('/one', fn (Request $request): Response => Response::html('ONE'));
+        $this->router->get('/two', fn (Request $request): Response => Response::html('TWO'));
+
+        $first = $this->router->dispatch(new Request('GET', '/one', 'example.com'));
+        $second = $this->router->dispatch(new Request('GET', '/two', 'example.com'));
+
+        self::assertSame('A(before)ONEA(after)', $first->getBody());
+        self::assertSame('A(before)TWOA(after)', $second->getBody());
+    }
+
+    public function testGlobalGroupAndRouteMiddlewareRunInCorrectOnionOrder(): void
+    {
+        $this->router->middleware([MiddlewareA::class]);
+        $this->router->group(['middleware' => [MiddlewareB::class]], function (Router $router): void {
+            $router->get('/nested', [TestController::class, 'index'], [MiddlewareC::class]);
+        });
+
+        $response = $this->router->dispatch(new Request('GET', '/nested', 'example.com'));
+
+        self::assertSame('A(before)B(before)C(before)CONTROLLERC(after)B(after)A(after)', $response->getBody());
+    }
+
+    public function testRouteLevelMiddlewareOnlyAppliesToThatSpecificRoute(): void
+    {
+        $this->router->get('/with-mw', fn (Request $request): Response => Response::html('WITH'), [MiddlewareA::class]);
+        $this->router->get('/without-mw', fn (Request $request): Response => Response::html('WITHOUT'));
+
+        $withResponse = $this->router->dispatch(new Request('GET', '/with-mw', 'example.com'));
+        $withoutResponse = $this->router->dispatch(new Request('GET', '/without-mw', 'example.com'));
+
+        self::assertSame('A(before)WITHA(after)', $withResponse->getBody());
+        self::assertSame('WITHOUT', $withoutResponse->getBody());
+    }
+
+    public function testRouteLevelMiddlewareCombinesWithGroupMiddleware(): void
+    {
+        $this->router->group(['middleware' => [MiddlewareA::class]], function (Router $router): void {
+            $router->get('/combo', [TestController::class, 'index'], [MiddlewareB::class]);
+        });
+
+        $response = $this->router->dispatch(new Request('GET', '/combo', 'example.com'));
+
+        self::assertSame('A(before)B(before)CONTROLLERB(after)A(after)', $response->getBody());
+    }
+
+    public function testGlobalMiddlewareCanShortCircuitBeforeGroupAndRouteMiddleware(): void
+    {
+        $this->router->middleware([ShortCircuitMiddleware::class]);
+        $this->router->group(['middleware' => [MiddlewareA::class]], function (Router $router): void {
+            $router->get('/blocked-by-global', [TestController::class, 'index'], [MiddlewareB::class]);
+        });
+
+        $response = $this->router->dispatch(new Request('GET', '/blocked-by-global', 'example.com'));
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertSame('BLOCKED', $response->getBody());
+    }
+
+    public function testRouteWithoutAnyMiddlewareStillDispatchesNormallyWhenGlobalMiddlewareRegisteredElsewhere(): void
+    {
+        $otherRouter = new Router(new Container());
+        $otherRouter->middleware([MiddlewareA::class]);
+
+        $this->router->get('/plain', fn (Request $request): Response => Response::html('PLAIN'));
+
+        $response = $this->router->dispatch(new Request('GET', '/plain', 'example.com'));
+
+        self::assertSame('PLAIN', $response->getBody());
     }
 }

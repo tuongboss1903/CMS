@@ -9,8 +9,7 @@ use Core\Cache\FileCacheDriver;
 use Core\Cache\RedisCacheDriver;
 use Core\Http\Request;
 use Core\Http\Response;
-use Core\Router\MethodNotAllowedException;
-use Core\Router\RouteNotFoundException;
+use Core\Middleware\TenantResolverMiddleware;
 use Throwable;
 
 /**
@@ -59,17 +58,14 @@ final class Application
 
         try {
             return $router->dispatch($request);
-        } catch (RouteNotFoundException) {
-            return $this->errorResponse(404, 'Not Found');
-        } catch (MethodNotAllowedException) {
-            return $this->errorResponse(405, 'Method Not Allowed');
         } catch (Throwable $exception) {
-            $this->logException($exception);
+            $response = $this->container->get(ExceptionHandler::class)->handle($exception, $this->isDebug());
 
-            return $this->errorResponse(
-                500,
-                $this->isDebug() ? $exception->getMessage() : 'Internal Server Error'
-            );
+            if ($response->getStatusCode() >= 500) {
+                $this->logException($exception);
+            }
+
+            return $response;
         }
     }
 
@@ -87,10 +83,21 @@ final class Application
         $moduleManager = $this->container->get(ModuleManager::class);
         $router = $this->container->get(Router::class);
 
-        $moduleManager->boot($router, \array_keys($moduleManager->discover()));
+        $router->group(['middleware' => [TenantResolverMiddleware::class]], function (Router $router) use ($moduleManager): void {
+            $moduleManager->boot($router, \array_keys($moduleManager->discover()));
+        });
 
         $pluginManager = $this->container->get(PluginManager::class);
         $hook = $this->container->get(Hook::class);
+
+        $hook->onError(function (Throwable $exception, string $hookName, callable $callback): void {
+            $this->container->get(Logger::class)->log('error', $exception->getMessage(), [
+                'hook' => $hookName,
+                'exception_class' => $exception::class,
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+            ]);
+        });
 
         $pluginManager->boot($hook, \array_keys($pluginManager->discover()));
 
@@ -138,10 +145,17 @@ final class Application
             (string) $c->get(Config::class)->get('cache.prefix', '')
         ));
 
-        $this->container->singleton(View::class, function (Container $c): View {
-            $theme = (string) $c->get(Config::class)->get('app.theme', 'default');
+        $this->container->singleton(TenantManager::class, static fn (): TenantManager => new TenantManager());
 
-            return new View($this->basePath . '/themes', $theme, $theme);
+        $this->container->singleton(View::class, function (Container $c): View {
+            $defaultTheme = (string) $c->get(Config::class)->get('app.theme', 'default');
+            $tenantManager = $c->get(TenantManager::class);
+
+            $activeTheme = $tenantManager->check()
+                ? (string) ($tenantManager->current()['theme_active'] ?? $defaultTheme)
+                : $defaultTheme;
+
+            return new View($this->basePath . '/themes', $activeTheme, $defaultTheme);
         });
 
         $this->container->singleton(Router::class, static fn (Container $c): Router => new Router($c));
@@ -155,16 +169,16 @@ final class Application
             PluginManager::class,
             fn (): PluginManager => new PluginManager($this->basePath . '/plugins')
         );
-    }
 
-    private function errorResponse(int $status, string $message): Response
-    {
-        return Response::json([
-            'success' => false,
-            'data' => null,
-            'message' => $message,
-            'errors' => [],
-        ], $status);
+        $this->container->singleton(
+            ExceptionHandler::class,
+            static fn (): ExceptionHandler => new ExceptionHandler()
+        );
+
+        $this->container->singleton(
+            Logger::class,
+            fn (): Logger => new Logger($this->basePath . '/storage/logs/app.log')
+        );
     }
 
     private function isDebug(): bool
@@ -174,22 +188,11 @@ final class Application
 
     private function logException(Throwable $exception): void
     {
-        $logPath = $this->basePath . '/storage/logs';
-
-        if (!\is_dir($logPath)) {
-            @\mkdir($logPath, 0775, true);
-        }
-
-        $line = \sprintf(
-            '[%s] %s: %s in %s:%d%s',
-            \date('Y-m-d H:i:s'),
-            $exception::class,
-            $exception->getMessage(),
-            $exception->getFile(),
-            $exception->getLine(),
-            PHP_EOL
-        );
-
-        @\file_put_contents($logPath . '/app.log', $line, FILE_APPEND | LOCK_EX);
+        $this->container->get(Logger::class)->log('error', $exception->getMessage(), [
+            'exception_class' => $exception::class,
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+            'trace' => \explode("\n", $exception->getTraceAsString()),
+        ]);
     }
 }

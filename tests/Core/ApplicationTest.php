@@ -44,6 +44,33 @@ final class ApplicationTest extends TestCase
         }
     }
 
+    /**
+     * Seed toi thieu sites/site_domains de TenantResolverMiddleware (CMS-030) khop domain
+     * 'example.com' - khong chay MigrationManager that (giu test doc lap/nhanh).
+     */
+    private function seedTenant(Database $database, ?string $themeActive = null): void
+    {
+        $database->statement('CREATE TABLE sites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name VARCHAR(150) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT \'active\',
+            plan_id BIGINT NULL,
+            theme_active VARCHAR(100) NULL,
+            storage_used_bytes BIGINT NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NULL
+        )');
+        $database->statement('CREATE TABLE site_domains (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            site_id BIGINT NOT NULL,
+            domain VARCHAR(255) NOT NULL,
+            is_primary BOOLEAN NOT NULL DEFAULT 0
+        )');
+
+        $database->insert('INSERT INTO sites (name, theme_active) VALUES (?, ?)', ['Site A', $themeActive]);
+        $database->insert('INSERT INTO site_domains (site_id, domain) VALUES (1, ?)', ['example.com']);
+    }
+
     public function testHealthRouteReturnsOkJson(): void
     {
         $app = Application::bootstrap(self::FIXTURE_PATH);
@@ -60,6 +87,7 @@ final class ApplicationTest extends TestCase
     public function testModuleRouteIsLoadedAndReachable(): void
     {
         $app = Application::bootstrap(self::FIXTURE_PATH);
+        $this->seedTenant($app->container()->get(Database::class));
 
         $response = $app->handle(new Request('GET', '/ping', 'example.com'));
 
@@ -95,6 +123,7 @@ final class ApplicationTest extends TestCase
     public function testUnhandledExceptionReturns500WithRealMessageWhenDebugTrue(): void
     {
         $app = Application::bootstrap(self::FIXTURE_PATH);
+        $this->seedTenant($app->container()->get(Database::class));
 
         $response = $app->handle(new Request('GET', '/boom', 'example.com'));
 
@@ -108,6 +137,7 @@ final class ApplicationTest extends TestCase
     public function testUnhandledExceptionReturns500WithGenericMessageWhenDebugFalse(): void
     {
         $app = Application::bootstrap(self::PRODUCTION_FIXTURE_PATH);
+        $this->seedTenant($app->container()->get(Database::class));
 
         $response = $app->handle(new Request('GET', '/boom', 'example.com'));
 
@@ -122,6 +152,7 @@ final class ApplicationTest extends TestCase
     public function testUnhandledExceptionIsLoggedToStorageLogs(): void
     {
         $app = Application::bootstrap(self::FIXTURE_PATH);
+        $this->seedTenant($app->container()->get(Database::class));
 
         $app->handle(new Request('GET', '/boom', 'example.com'));
 
@@ -129,6 +160,74 @@ final class ApplicationTest extends TestCase
 
         self::assertFileExists($logFile);
         self::assertStringContainsString('boom-test', (string) \file_get_contents($logFile));
+    }
+
+    public function testExceptionLogContainsExceptionClassFileLineAndTrace(): void
+    {
+        $app = Application::bootstrap(self::FIXTURE_PATH);
+        $this->seedTenant($app->container()->get(Database::class));
+
+        $app->handle(new Request('GET', '/boom', 'example.com'));
+
+        $logFile = self::FIXTURE_PATH . '/storage/logs/app.log';
+        $content = (string) \file_get_contents($logFile);
+
+        self::assertStringContainsString('RuntimeException', $content);
+        self::assertStringContainsString('routes.php', $content);
+    }
+
+    public function testHookCallbackExceptionIsLoggedViaLogger(): void
+    {
+        $app = Application::bootstrap(self::FIXTURE_PATH);
+        $app->handle(new Request('GET', '/health', 'example.com'));
+
+        $hook = $app->container()->get(Hook::class);
+        $hook->action('test.hook_boom', function (): void {
+            throw new \RuntimeException('hook-boom-test');
+        });
+        $hook->do('test.hook_boom');
+
+        $logFile = self::FIXTURE_PATH . '/storage/logs/app.log';
+        $content = (string) \file_get_contents($logFile);
+
+        self::assertStringContainsString('hook-boom-test', $content);
+        self::assertStringContainsString('test.hook_boom', $content);
+    }
+
+    public function testViewUsesTenantThemeActiveWhenTenantResolved(): void
+    {
+        $app = Application::bootstrap(self::FIXTURE_PATH);
+        $this->seedTenant($app->container()->get(Database::class), 'custom-theme');
+
+        $app->handle(new Request('GET', '/ping', 'example.com'));
+
+        self::assertSame('custom-theme', $this->activeThemeOf($app->container()->get(View::class)));
+    }
+
+    public function testViewFallsBackToConfigThemeWhenTenantThemeActiveIsNull(): void
+    {
+        $app = Application::bootstrap(self::FIXTURE_PATH);
+        $this->seedTenant($app->container()->get(Database::class), null);
+
+        $app->handle(new Request('GET', '/ping', 'example.com'));
+
+        self::assertSame('default', $this->activeThemeOf($app->container()->get(View::class)));
+    }
+
+    public function testHealthRouteStillWorksWithoutTenantSeed(): void
+    {
+        $app = Application::bootstrap(self::FIXTURE_PATH);
+
+        $response = $app->handle(new Request('GET', '/health', 'example.com'));
+
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    private function activeThemeOf(View $view): string
+    {
+        $reflection = new \ReflectionProperty(View::class, 'activeTheme');
+
+        return (string) $reflection->getValue($view);
     }
 
     public function testAllCoreServicesResolveThroughContainerAfterBootstrap(): void
@@ -163,5 +262,15 @@ final class ApplicationTest extends TestCase
 
         self::assertSame(200, $first->getStatusCode());
         self::assertSame(200, $second->getStatusCode());
+    }
+
+    public function testRouteNotFoundDoesNotWriteToLogFile(): void
+    {
+        $app = Application::bootstrap(self::FIXTURE_PATH);
+
+        $response = $app->handle(new Request('GET', '/does-not-exist', 'example.com'));
+
+        self::assertSame(404, $response->getStatusCode());
+        self::assertFileDoesNotExist(self::FIXTURE_PATH . '/storage/logs/app.log');
     }
 }

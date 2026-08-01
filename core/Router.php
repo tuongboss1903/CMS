@@ -32,8 +32,17 @@ final class Router
     private readonly ControllerResolver $controllerResolver;
     private readonly MiddlewarePipeline $middlewarePipeline;
 
-    /** @var list<class-string> */
+    /** @var list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface> */
     private array $groupMiddleware = [];
+
+    /**
+     * Middleware chay tren MOI route, bat ke group/route-specific - gop o dispatch() luc runtime
+     * (KHONG "nuong cung" vao Route luc dang ky) de khong phu thuoc thu tu goi middleware() so voi
+     * luc route duoc dang ky.
+     *
+     * @var list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface>
+     */
+    private array $globalMiddleware = [];
 
     private string $groupPrefix = '';
     private ?string $groupDomain = null;
@@ -44,41 +53,64 @@ final class Router
         $this->middlewarePipeline = new MiddlewarePipeline($container);
     }
 
-    /** @param Closure|array{class-string, string} $handler */
-    public function get(string $uri, Closure|array $handler): Route
+    /** @param list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface> $middleware */
+    public function middleware(array $middleware): static
     {
-        return $this->addRoute('GET', $uri, $handler);
+        $this->globalMiddleware = [...$this->globalMiddleware, ...$middleware];
+
+        return $this;
     }
 
-    /** @param Closure|array{class-string, string} $handler */
-    public function post(string $uri, Closure|array $handler): Route
+    /**
+     * @param Closure|array{class-string, string} $handler
+     * @param list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface> $middleware
+     */
+    public function get(string $uri, Closure|array $handler, array $middleware = []): Route
     {
-        return $this->addRoute('POST', $uri, $handler);
+        return $this->addRoute('GET', $uri, $handler, $middleware);
     }
 
-    /** @param Closure|array{class-string, string} $handler */
-    public function put(string $uri, Closure|array $handler): Route
+    /**
+     * @param Closure|array{class-string, string} $handler
+     * @param list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface> $middleware
+     */
+    public function post(string $uri, Closure|array $handler, array $middleware = []): Route
     {
-        return $this->addRoute('PUT', $uri, $handler);
+        return $this->addRoute('POST', $uri, $handler, $middleware);
     }
 
-    /** @param Closure|array{class-string, string} $handler */
-    public function patch(string $uri, Closure|array $handler): Route
+    /**
+     * @param Closure|array{class-string, string} $handler
+     * @param list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface> $middleware
+     */
+    public function put(string $uri, Closure|array $handler, array $middleware = []): Route
     {
-        return $this->addRoute('PATCH', $uri, $handler);
+        return $this->addRoute('PUT', $uri, $handler, $middleware);
     }
 
-    /** @param Closure|array{class-string, string} $handler */
-    public function delete(string $uri, Closure|array $handler): Route
+    /**
+     * @param Closure|array{class-string, string} $handler
+     * @param list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface> $middleware
+     */
+    public function patch(string $uri, Closure|array $handler, array $middleware = []): Route
     {
-        return $this->addRoute('DELETE', $uri, $handler);
+        return $this->addRoute('PATCH', $uri, $handler, $middleware);
+    }
+
+    /**
+     * @param Closure|array{class-string, string} $handler
+     * @param list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface> $middleware
+     */
+    public function delete(string $uri, Closure|array $handler, array $middleware = []): Route
+    {
+        return $this->addRoute('DELETE', $uri, $handler, $middleware);
     }
 
     /**
      * Chi merge prefix/middleware/domain - khong tu dong merge bat ky cau hinh nao khac (giu API
      * don gian theo dung thiet ke da chot). Ho tro group long nhau (luu/khoi phuc trang thai truoc).
      *
-     * @param array{prefix?: string, middleware?: list<class-string>, domain?: string} $attributes
+     * @param array{prefix?: string, middleware?: list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface>, domain?: string} $attributes
      */
     public function group(array $attributes, Closure $callback): void
     {
@@ -102,17 +134,25 @@ final class Router
         $route = $this->match($request);
         $requestWithParams = $request->withRouteParams($route->extractParams($request->getUri()));
 
+        // Global luon gop o day (runtime), khong luc dang ky - moi route deu nhan dung global
+        // middleware hien tai, bat ke thu tu goi middleware() so voi luc route duoc dang ky.
+        $middleware = [...$this->globalMiddleware, ...$route->getMiddleware()];
+
         return $this->middlewarePipeline->handle(
             $requestWithParams,
-            $route->getMiddleware(),
+            $middleware,
             fn (Request $req): Response => $this->controllerResolver->resolve($route->getHandler(), $req)
         );
     }
 
-    /** @param Closure|array{class-string, string} $handler */
-    private function addRoute(string $method, string $uri, Closure|array $handler): Route
+    /**
+     * @param Closure|array{class-string, string} $handler
+     * @param list<class-string<\Core\Middleware\MiddlewareInterface>|\Core\Middleware\MiddlewareInterface> $middleware
+     */
+    private function addRoute(string $method, string $uri, Closure|array $handler, array $middleware = []): Route
     {
-        $route = new Route($method, $this->groupPrefix . $uri, $handler, $this->groupMiddleware, $this->groupDomain);
+        $combinedMiddleware = [...$this->groupMiddleware, ...$middleware];
+        $route = new Route($method, $this->groupPrefix . $uri, $handler, $combinedMiddleware, $this->groupDomain);
         $signature = $route->signature();
 
         if (isset($this->signatures[$signature])) {

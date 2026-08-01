@@ -21,20 +21,34 @@ final class MiddlewarePipeline
     {
     }
 
-    /** @param list<class-string<MiddlewareInterface>> $middleware */
+    /** @param list<class-string<MiddlewareInterface>|MiddlewareInterface> $middleware */
     public function handle(Request $request, array $middleware, Closure $destination): Response
     {
         $chain = \array_reduce(
             \array_reverse($middleware),
-            fn (Closure $next, string $middlewareClass): Closure => function (Request $request) use ($next, $middlewareClass): Response {
-                /** @var MiddlewareInterface $instance */
-                $instance = $this->container->get($middlewareClass);
-
-                return $instance->process($request, $next);
+            fn (Closure $next, mixed $middlewareEntry): Closure => function (Request $request) use ($next, $middlewareEntry): Response {
+                return $this->resolve($middlewareEntry)->process($request, $next);
             },
             $destination
         );
 
         return $chain($request);
+    }
+
+    private function resolve(mixed $middlewareEntry): MiddlewareInterface
+    {
+        if (\is_string($middlewareEntry)) {
+            /** @var MiddlewareInterface */
+            return $this->container->get($middlewareEntry);
+        }
+
+        if ($middlewareEntry instanceof MiddlewareInterface) {
+            return $middlewareEntry;
+        }
+
+        throw new \InvalidArgumentException(\sprintf(
+            'Middleware phai la class-string hoac instance cua MiddlewareInterface, nhan duoc: %s.',
+            \get_debug_type($middlewareEntry)
+        ));
     }
 }
