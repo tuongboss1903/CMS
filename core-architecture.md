@@ -1,6 +1,6 @@
 # CORE ARCHITECTURE — CMS Đa Website
 
-> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-015, tag `v0.0.1` → `v0.0.15`). Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
+> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-031, tag `v0.0.1` → `v0.0.31`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code). Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
 >
 > **`public/index.php` nay đã là bootstrap thật** (`Application::bootstrap(dirname(__DIR__))->run()`), không còn là smoke test — sơ đồ mục 2 dưới đây giờ mô tả đúng luồng chạy thực tế.
 
@@ -65,6 +65,10 @@ Theme Engine PHP thuần (không compiler). View Resolution 2 cấp cố định
 
 `Request`/`Response`: tự viết nhẹ (không PSR-7/15), Immutable (`with*()` dùng `new self(...)`, không `clone`). `Router`: đăng ký/match route, phân biệt 404 (`RouteNotFoundException`)/405 (`MethodNotAllowedException`), chặn đăng ký trùng Method+URI+Domain ngay lúc boot (`DuplicateRouteException`). `MiddlewarePipeline`: mô hình Onion (Before/After + short-circuit). `ControllerResolver`: bước cuối, resolve Controller qua `Container`.
 
+**Middleware Pipeline (CMS-018 mở rộng `Router`, không đổi `MiddlewareInterface`/`MiddlewarePipeline`)**: `Router` là owner **duy nhất** của middleware lifecycle — `Application` không biết middleware tồn tại. `Router::middleware(array): static` đăng ký Global Middleware (chạy trên MỌI route). `get()/post()/put()/patch()/delete()` nhận thêm tham số cuối `array $middleware = []` để gán middleware cho 1 route đơn lẻ mà không cần bọc `group()`. Thứ tự onion cuối cùng: `Global → Group → Route-specific → Controller` — Global gộp **runtime** trong `dispatch()` (không lưu vào `Route` lúc đăng ký), đảm bảo mọi route luôn nhận đúng global middleware hiện tại bất kể thứ tự gọi. `Route.php` không đổi (vẫn nhận middleware phẳng, không biết nguồn gốc global/group/route).
+
+**Middleware Parameterization (CMS-027, xem chi tiết mục 3.24)**: `MiddlewarePipeline::handle()` từ v0.0.27 chấp nhận `list<class-string<MiddlewareInterface>|MiddlewareInterface>` — mỗi phần tử có thể là class-string (resolve qua `Container`, hành vi cũ) hoặc `MiddlewareInterface` instance đã cấu hình sẵn (dùng trực tiếp). `Router`/`Route` chỉ cập nhật PHPDoc, runtime không đổi.
+
 ### 3.6. `Session` (`core/Session.php` + 1 exception) — v0.0.7
 
 Wrapper duy nhất quanh `$_SESSION`/`session_*()`. Chỉ Storage (không login/logout/authorization — thuộc `AuthService` Phase 3). Lazy start. Namespace dot-notation lồng nhau **giống `Config::get()`** (`auth.user_id`, `csrf.token`, `locale.current`, `tenant.current`...). Flash message hết hạn theo tuổi request (2-bucket `_flash_old`/`_flash_new`).
@@ -81,9 +85,15 @@ Hook System kiểu WordPress (Action + Filter) trên 1 registry dùng chung — 
 
 Discover module qua `module.json` (glob), resolve thứ tự load bằng topological sort + phát hiện circular dependency (cùng mô hình `Container::resolve()` — stack `resolving`, chặn tại chỗ). `boot(Router, enabledKeys)` nạp `routes.php` của module đã bật vào `Router` qua closure cô lập scope, trả về danh sách key đã nạp (phục vụ log/debug). Không tự query Database để biết module nào "bật" cho tenant nào — nhận `enabledKeys` từ bên ngoài, giữ core trung lập (nhất quán `Database`/`View`/`Cache`).
 
-### 3.10. `Application` (`core/Application.php`) — v0.0.11
+### 3.10. `Application` (`core/Application.php`) — v0.0.11, cập nhật CMS-012/CMS-019/CMS-029/CMS-030
 
-Điểm khởi động **duy nhất** của framework — `public/index.php` chỉ còn 3 dòng (`Application::bootstrap(dirname(__DIR__))->run()`). `handle(Request): Response` thuần (test được, không cần superglobal) tách khỏi `run(): void` (I/O boundary duy nhất — `Request::fromGlobals()`/`Response::send()`), cùng triết lý `Router::dispatch()` vs `Response::send()`. `boot()` idempotent — nạp `ModuleManager` (mặc định bật tất cả module đã `discover()` cho tới khi có bảng `site_modules` thật, Phase 2+), đăng ký `/health`. Đăng ký toàn bộ Core Service vào `Container` qua Closure lazy. Bắt `RouteNotFoundException`/`MethodNotAllowedException`/`Throwable`, trả JSON chuẩn `{success,data,message,errors}`; lỗi 500 chỉ lộ message thật khi `config('app.debug')=true`, luôn log vào `storage/logs/app.log` (ghi trực tiếp qua `file_put_contents`, chưa xây `Core\Logger` đầy đủ tính năng — ngoài phạm vi CMS-011). Từ CMS-012, `boot()` cũng nạp `PluginManager` ngay sau `ModuleManager`.
+Điểm khởi động **duy nhất** của framework — `public/index.php` chỉ còn 3 dòng (`Application::bootstrap(dirname(__DIR__))->run()`). `handle(Request): Response` thuần (test được, không cần superglobal) tách khỏi `run(): void` (I/O boundary duy nhất — `Request::fromGlobals()`/`Response::send()`), cùng triết lý `Router::dispatch()` vs `Response::send()`. `boot()` idempotent — nạp `ModuleManager` (mặc định bật tất cả module đã `discover()` cho tới khi có bảng `site_modules` thật, Phase 2+), đăng ký `/health`. Đăng ký toàn bộ Core Service vào `Container` qua Closure lazy. Từ CMS-012, `boot()` cũng nạp `PluginManager` ngay sau `ModuleManager`.
+
+**Logger Integration (CMS-029, `v0.0.29`)** — lần đầu sửa `Application.php` kể từ CMS-019: (1) `registerCoreServices()` đăng ký `Logger` singleton (`logPath` cố định `storage/logs/app.log`, giữ nguyên path cũ) — `Logger` không tự auto-wire được (constructor cần `string $logPath` không default) nên phải đăng ký tường minh, khác các Foundation Component trước; (2) `logException()` (gọi khi response status ≥ 500, điều kiện không đổi) chuyển từ tự viết `mkdir`/`sprintf`/`file_put_contents` sang gọi `Logger::log('error', $message, ['exception_class', 'file', 'line', 'trace'])`; (3) `boot()` đăng ký `Hook::onError()` listener (điểm mở từ CMS-009, trước đó chưa từng có listener) ghi log qua `Logger` khi callback Action/Filter throw, context `['hook', 'exception_class', 'file', 'line']`, không đổi cơ chế cô lập callback của `Hook`. **Không triển khai**: `Database::onQueryExecuted()` (điểm mở từ CMS-004, vẫn chưa có listener — fire cho mọi query, chưa có requirement debug/performance), `PluginManager::getFailures()` logging (khác domain — lifecycle error Plugin, không phải runtime Hook error), log rotation. Không sửa `Logger.php`/`Database.php`/`Hook.php`/`PluginManager.php`/`ExceptionHandler.php`.
+
+**TenantManager Integration (CMS-030, `v0.0.30`)** — lần thứ 2 liên tiếp sửa `Application.php`: (1) `registerCoreServices()` đăng ký `TenantManager::class` **singleton** (bắt buộc — phát hiện qua trace `Container::get()` trước khi báo cáo PHPUnit: không có binding thì không cache dù `class_exists()` cho phép auto-wire, mỗi lần gọi sẽ tạo instance mới, tích hợp sẽ không hoạt động nếu thiếu bước này); sửa Closure `View::class` đọc `TenantManager::current()['theme_active'] ?? config('app.theme')` làm `activeTheme`, giữ `defaultTheme = config('app.theme')` như cũ; (2) `boot()` bọc `$moduleManager->boot($router, ...)` trong `$router->group(['middleware' => [TenantResolverMiddleware::class]], ...)`, `/health` giữ nguyên đăng ký ngoài group. Chữ ký `boot()` không đổi, tính idempotent giữ nguyên. Chi tiết đầy đủ ở mục 3.25. Không sửa `TenantManager.php`/`View.php`/`Router.php`/`Route.php`/`MiddlewarePipeline.php`.
+
+**Exception handling (CMS-019)**: `handle()` chỉ còn **1 nhánh `catch (Throwable)` duy nhất**, delegate mapping cho `ExceptionHandler` (3.16). Quyết định có gọi `logException()` hay không dựa trên `$response->getStatusCode() >= 500` (không còn `instanceof` theo từng loại exception) — `Application` không cần biết tên class exception cụ thể nào. `logException()` giữ nguyên (ghi trực tiếp qua `file_put_contents` vào `storage/logs/app.log`, chưa xây `Core\Logger` đầy đủ tính năng — vẫn ngoài phạm vi, đã xác nhận lại ở CMS-019).
 
 ### 3.11. `PluginManager` (`core/PluginManager.php` + `core/Plugin/*`) — v0.0.12
 
@@ -91,7 +101,11 @@ Discover plugin qua `plugin.json` (glob), **memoize kết quả trong instance**
 
 ### 3.12. `MigrationManager` (`core/MigrationManager.php` + `core/Migration/*` + `bin/migrate.php`) — v0.0.13
 
-Quản lý schema database, không chứa business logic, **hoàn toàn tách khỏi HTTP lifecycle** — không có Module/Plugin/Application nào biết tới `MigrationManager`, chạy qua CLI entry point riêng `bin/migrate.php` (tự bootstrap `Config`/`Database` trực tiếp, không qua Container). Migration file trả `['up' => Closure, 'down' => Closure]` (không interface, không class, không DSL). `discover()` glob + sort theo tên file, không memoize. DDL bằng raw SQL qua `Database::statement()` — không Schema Builder/Blueprint. `migrate()`/`rollback()` **fail-fast tuyệt đối** (khác `ModuleManager`/`PluginManager` — không có `getFailures()`, vì các bước thay đổi schema có tính tuần tự/phụ thuộc, cách ly lỗi có thể phá schema). `rollback()` hoàn tác theo batch (`MAX(batch)+1` khi migrate, `ORDER BY id DESC` khi rollback). `driver: string` truyền qua constructor (từ `Config`) — `MigrationManager` không bao giờ đọc PDO/`getAttribute()`, không có API mới nào được thêm vào `Database`.
+Quản lý schema database, không chứa business logic, **hoàn toàn tách khỏi HTTP lifecycle** — không có Module/Plugin/Application nào biết tới `MigrationManager`, chạy qua CLI entry point riêng `bin/migrate.php` (tự bootstrap `Config`/`Database` trực tiếp, không qua Container). Migration file trả `['up' => Closure, 'down' => Closure]` (không interface, không class, không DSL). `discover()` glob + sort theo tên file, không memoize. DDL bằng raw SQL qua `Database::statement()` — không Schema Builder/Blueprint. `migrate()`/`rollback()` **fail-fast tuyệt đối** (khác `ModuleManager`/`PluginManager` — không có `getFailures()`, vì các bước thay đổi schema có tính tuần tự/phụ thuộc, cách ly lỗi có thể phá schema). `rollback()` hoàn tác theo batch (`MAX(batch)+1` khi migrate, `ORDER BY id DESC` khi rollback). `driver: string` truyền qua constructor (từ `Config`) — `MigrationManager` **bản thân nó** không bao giờ đọc PDO/`getAttribute()`, không có API mới nào được thêm vào `Database`.
+
+**Migration thật đầu tiên — CMS-028, `v0.0.28`, nhóm Tenant/Auth/Role**: `database/migrations/2026_08_01_00000{1-7}_*.php` — 7 bảng `sites/site_domains/users/roles/permissions/role_permissions/user_site_roles`, đúng schema `database-design.md` mục 2 (đã lược bỏ `ENUM`/`UNSIGNED`/`ON UPDATE CURRENT_TIMESTAMP` — coi là chi tiết triển khai DB, xử lý ở Service layer sau; không seed data; không FK `plans` — bảng chưa tồn tại). **Điểm rẽ nhánh driver duy nhất được chấp thuận** (khác nguyên tắc "MigrationManager không đọc PDO" ở trên — nguyên tắc đó áp dụng cho chính class `MigrationManager`, không cấm migration FILE tự đọc): mỗi migration Closure gọi `$db->connection()->getAttribute(\PDO::ATTR_DRIVER_NAME)` (dùng `Database::connection(): PDO` đã public từ CMS-004) để chọn `AUTOINCREMENT` (SQLite) hoặc `AUTO_INCREMENT` (MySQL) cho mệnh đề Primary Key — không có cú pháp SQL chung cho 2 engine ở đúng điểm này. Không rẽ nhánh thêm ở phần schema khác nếu chưa có Architecture Issue Report riêng.
+
+**Technical Debt phát sinh (không sửa trong CMS-028)**: UNIQUE `(tenant_id, name)` ở bảng `roles` không ngăn được 2 role hệ thống (`tenant_id IS NULL`) trùng tên — đúng ANSI SQL semantics (`NULL ≠ NULL` trong composite UNIQUE, giống nhau ở cả SQLite lẫn MySQL, không phải bug migration). Phát hiện qua PHPUnit thật, xử lý để dành CMS Role/Auth Service sau (Service layer tự kiểm tra, không Trigger — nhất quán ràng buộc homepage `database-design.md` mục 6.1).
 
 ### 3.13. `Validator` (`core/Validator.php` + `core/Validation/*`) — v0.0.14
 
@@ -100,6 +114,151 @@ Validate `array $data` theo rule string kiểu Laravel (`'required|email|max:255
 ### 3.14. `Request` — mở rộng ở CMS-015 (v0.0.15)
 
 `core/Http/Request.php` (gốc từ CMS-006, v0.0.6) được mở rộng **additive**: thêm `files/cookies/server` (constructor, cuối cùng, default `[]`), `fromGlobals()` đọc thêm `$_FILES/$_COOKIE/$_SERVER`. Thêm method `method()/uri()/path()` (alias), `all()/has()/filled()`, `cookie()`, `file()` (raw, không abstraction), `ip()` (chỉ `REMOTE_ADDR`, không Trusted Proxy), `userAgent()`, `isMethod()`, `ajax()`, `json()`. Không Method Spoofing. Toàn bộ method cũ (`getMethod/getUri/getHost/query/input/header/routeParam/withRouteParams`) giữ nguyên — 100% backward compatible.
+
+### 3.15. `Response` — mở rộng ở CMS-016 (v0.0.16)
+
+`core/Http/Response.php` (gốc từ CMS-006, v0.0.6) được mở rộng **additive**: thêm `cookies` (constructor, cuối cùng, default `[]`, tách riêng khỏi `headers` vì HTTP cho phép nhiều `Set-Cookie` cùng lúc). Thêm `withHeader()/withHeaders()/withStatus()` (immutable, trả instance mới), `withCookie()` (không đọc Config, caller tự truyền `secure/httponly/samesite`, `httponly` mặc định `true`), `withCache()/noCache()` (chỉ `Cache-Control`, không ETag/Last-Modified/Vary), `getCookies()`. **Có chủ đích KHÔNG** làm `apiSuccess()/apiError()` (business convention, không phải HTTP contract) và **KHÔNG** `download()/file()` (filesystem là chủ đề riêng, để dành module Media). Toàn bộ method cũ (`json/html/redirect/getStatusCode/getBody/getHeaders/send`) giữ nguyên — 100% backward compatible.
+
+### Quy ước "Redirect kèm Flash Message" (CMS-017 — quyết định kiến trúc, không có code mới)
+
+`Response::redirect()` (3.5) + `Session::flash()`/`getFlash()` (3.6) đã đủ để Controller tự dựng pattern "redirect kèm dữ liệu tạm" (validation errors, old input) mà không cần lớp trung gian:
+```php
+$session->flash('errors', $result->errors());
+$session->flash('old', $request->all());
+return Response::redirect('/login');
+```
+**Quyết định có chủ đích KHÔNG tạo `core/Redirector.php` hay bất kỳ class nào cầu nối `Response`↔`Session`** — làm vậy sẽ phá vỡ nguyên tắc "Response/Session độc lập tuyệt đối" đã xuyên suốt từ CMS-001 và vừa tái khẳng định ở CMS-016 (giữ `Response` 0 dependency). Chỉ xem xét lại nếu Module Auth/Form (Phase 3+) thực sự lặp lại boilerplate này ở ≥2 nơi — đúng nguyên tắc "không tạo abstraction chỉ để DRY".
+
+### 3.16. `ExceptionHandler` (`core/ExceptionHandler.php`) — v0.0.19
+
+Tách khỏi `Application` để cải thiện SRP. `final class`, **0 dependency** (không Config/Container/logging/Session/Database/View/Request) — mức cô lập cao nhất cùng `Validator`. Public API duy nhất: `handle(Throwable $exception, bool $debug): Response`. Mapping **tĩnh** (không registry/`extend()` — YAGNI, chỉ 2/23 exception hiện có cần map riêng): `RouteNotFoundException`→404, `MethodNotAllowedException`→405, mọi `Throwable` khác→500 (`debug ? getMessage() : 'Internal Server Error'`). Debug block (`exception`/`file`/`line`/`trace`) chỉ xuất hiện khi `status===500 && debug===true` — `trace` dùng `explode("\n", getTraceAsString())`, không dùng `getTrace()` (tránh lỗi serialize JSON với object/resource không encode được). Không logging — `Application` tiếp tục sở hữu `logException()`, quyết định gọi hay không dựa trên status code trả về từ `ExceptionHandler`. **Phát hiện quan trọng khi thiết kế**: `Router::match()` ném `RouteNotFoundException`/`MethodNotAllowedException` TRƯỚC KHI `MiddlewarePipeline` (CMS-006/CMS-018) được gọi — vì vậy Exception Handler KHÔNG thể triển khai dưới dạng Middleware (dù CMS-018 vừa có Global Middleware), phải nằm ở `Application::handle()`.
+
+### 3.17. `Csrf` + `CsrfMiddleware` (`core/Csrf.php` + `core/Middleware/CsrfMiddleware.php`) — v0.0.20
+
+**`Csrf`** — thuần quản lý vòng đời token, không biết HTTP. `token(): string` get-or-generate qua `Session` (namespace `csrf.token`, đã dự trù từ CMS-007), sinh bằng `bin2hex(random_bytes(32))` (256-bit). `verify(string $submitted): bool` so khớp timing-safe bằng `hash_equals()`. Không tự `Session::start()`, không throw exception mới. Token sống theo Session, không regenerate mỗi request.
+
+**`CsrfMiddleware`** — implement `MiddlewareInterface` (CMS-006, không đổi contract). Safe methods (`GET/HEAD/OPTIONS`) bỏ qua. Unsafe methods (`POST/PUT/PATCH/DELETE`) đọc token theo thứ tự `_token` (input) → `X-CSRF-TOKEN` (header) → `X-XSRF-TOKEN` (header), guard `is_string()` trước khi verify (không ép kiểu, tránh Warning nếu client gửi mảng), fail trả `Response::json({success:false,data:null,message:"CSRF token mismatch.",errors:[]}, 419)` — không dùng `CsrfException`, không mở rộng `ExceptionHandler`.
+
+**Dependency Graph**: `CsrfMiddleware → Csrf → Session` (tuyến tính, không nhánh phụ, không circular). **0 file Core cũ nào bị sửa** — đã xác nhận qua đọc trực tiếp `Container.php`: `Container::resolve()` tự fallback `class_exists($id) → autoWire()` khi không có binding tường minh, nên `Csrf`/`CsrfMiddleware` auto-wire được mà không cần đăng ký trong `Application::registerCoreServices()`. Hệ quả: 2 class này **không phải singleton** trong Container (tạo instance mới mỗi lần resolve) — vô hại vì cả 2 hoàn toàn stateless, `Session` (dependency thật giữ state) vẫn đúng singleton như đã đăng ký.
+
+**Middleware Flow**: `Request → Router::match() → MiddlewarePipeline (Global→Group→Route) → CsrfMiddleware::process() → [safe: next() ngay | unsafe: verify token, fail=419 short-circuit hoặc pass=next()] → Controller → Response`. **CSRF hoàn toàn opt-in** — CMS-020 không tự gắn `CsrfMiddleware::class` vào bất kỳ route/group nào; việc này thuộc phạm vi Module/App khi khai báo route Admin thật (không áp dụng cho `/api/*`, đúng định hướng gốc `cms-architecture-proposal.md`: Session cho Admin Panel dùng CSRF, JWT cho `/api/*` không cần).
+
+**Security Design**: Synchronizer Token Pattern chuẩn (không Cookie CSRF/Double-Submit). Entropy 256-bit CSPRNG (`random_bytes`), so sánh timing-safe (`hash_equals`), safe methods loại trừ đúng OWASP Cheat Sheet, thiếu token = fail tuyệt đối (không bypass). Ghi nhận cho CMS-021: `Session::regenerate()` không tự cascade đổi `csrf.token` — rotate token khi đăng nhập (nếu cần) dùng `Session::remove('csrf.token')` + `Csrf::token()` (API sẵn có).
+
+### 3.18. `Auth` + `AuthMiddleware` (`core/Auth.php` + `core/Middleware/AuthMiddleware.php`) — v0.0.21
+
+Quản lý trạng thái "đã đăng nhập hay chưa" trong Session (`auth.user_id`/`auth.user`) — **không verify credential, không Database, không password**. `login(int|string $userId, array $user = []): void`: `regenerate()` → `remove('csrf.token')` → `set('auth.user_id')` → `set('auth.user')`. `logout(): void`: `Session::destroy()`. `check()/id()/user()` đọc lại từ Session. `AuthMiddleware` chặn request chưa đăng nhập → 401 JSON, không redirect/Config. Module Auth đầy đủ (verify password, JWT, password reset — theo `02-module-auth.md`) là phạm vi Phase 3+ riêng, gọi `Auth::login()` SAU KHI tự xác thực xong.
+
+**Xác nhận sau CMS-031**: `Auth.php` **không sửa 1 dòng nào**, tiếp tục **không chứa password logic** — việc verify password thật thuộc `AuthenticationService` (mục 3.26), gọi `Auth::login()` đúng như thiết kế gốc "SAU KHI tự xác thực xong".
+
+### 3.19. `Authorization` + `AuthorizationMiddleware` (`core/Authorization.php` + `core/Middleware/AuthorizationMiddleware.php`) — v0.0.22
+
+Đọc `roles`/`permissions` từ Session (`auth.roles`/`auth.permissions`), thuần đọc, 0 ghi, 0 DB, 0 dependency vào `Auth`. `roles()/permissions(): list<string>` (default `[]`). `hasRole()/hasAnyRole()/hasAllRoles()/hasPermission()/hasAnyPermission()/hasAllPermissions()`, `can()` = alias thuần `hasPermission()`. `AuthorizationMiddleware` là gate chung (403 nếu `roles()===[] && permissions()===[]`) — **không tham số hoá per-route** (xem Technical Debt #16 — giới hạn kiến trúc Middleware hiện tại), kiểm tra quyền cụ thể per-route là trách nhiệm Controller tự gọi `hasRole()/can()` trực tiếp.
+
+**Xác nhận sau CMS-031**: `Authorization.php` **không sửa 1 dòng nào**, tiếp tục **chỉ đọc Session** — `AuthenticationService` (mục 3.26) ghi `auth.roles`/`auth.permissions` qua `Session::set()` công khai đã có sẵn, không cần API mới ở `Authorization.php`.
+
+### 3.20. `RateLimiter` + `RateLimitMiddleware` (`core/RateLimiter.php` + `core/Middleware/RateLimitMiddleware.php`) — v0.0.23
+
+Đếm "hit" theo key trong 1 cửa sổ decay, lưu Session (`rate_limit.{key}` = `{attempts:int, expires_at:int}`, chỉ integer timestamp). API: `hit()/tooManyAttempts()/attempts()/remaining()/clear()/availableIn()`. **`RateLimitMiddleware` là placeholder có chủ đích** — chỉ `implements MiddlewareInterface` và `return $next($request);`, không tự xác định key/limit, không gọi `hit()` (cùng giới hạn kiến trúc như `AuthorizationMiddleware` — xem Technical Debt #16). Logic rate-limit thật do Module tương lai tự gọi `RateLimiter` trực tiếp (biết đủ business context để xác định bucket, VD `hit('login:'.$ip, 5, 60)`).
+
+### 3.21. `Logger` (`core/Logger.php`) — v0.0.24
+
+**Responsibility**: Ghi 1 dòng có cấu trúc vào 1 file log cố định. Không bắt exception, không quyết định policy, không biết HTTP/Database/Hook/ExceptionHandler/Config.
+
+**Public API**: `__construct(string $logPath)`, `log(string $level, string $message, array $context = []): void`.
+
+**Dependency Graph**: `Logger` — lá trong dependency graph, 0 dependency vào Core Component nào khác. Không PSR-3 (không thêm Composer package), không level filtering/channel/formatter/handler/rotation/async/buffering.
+
+**Lifecycle**: Stateless theo mỗi lời gọi `log()`, không singleton bắt buộc, không đăng ký `Container`/`Application` (Foundation thuần, chưa nối dây vào luồng chính).
+
+**Security Notes**: Không tự lọc dữ liệu nhạy cảm trong `$context` (trách nhiệm caller). Ghi qua `@file_put_contents(..., FILE_APPEND|LOCK_EX)`, tự `mkdir()` thư mục cha nếu thiếu — không throw khi ghi thất bại (nhất quán `Application::logException()`).
+
+**Testing**: `tests/Core/LoggerTest.php` (8 test, filesystem thật/temp dir).
+
+**Quan hệ với `Application::logException()` và 2 điểm mở đã dự trù từ trước**: `Database::onQueryExecuted()` (CMS-004) và `Hook::onError()` (CMS-009) đều có docblock chờ sẵn "Logger thật sẽ gọi hàm này ở task sau" — `Logger` (CMS-024) **chưa** được nối vào 2 điểm này, cũng chưa thay thế `Application::logException()` — đây là Foundation Component độc lập, việc tích hợp để dành 1 CMS sau (xem Technical Debt #17).
+
+### 3.22. `TenantManager` (`core/TenantManager.php`) — v0.0.25
+
+**Responsibility**: Giữ state "tenant hiện tại" trong phạm vi 1 request. Không resolve domain→tenant (bảng `sites`/`site_domains` chưa tồn tại — chưa có migration thật), không Database, không Session, không Request.
+
+**Public API**: `setCurrent(int|string $tenantId, array $data = []): void`, `check(): bool`, `id(): int|string|null`, `current(): ?array`.
+
+**Dependency Graph**: `TenantManager` — **0 dependency**, không constructor. Lá tuyệt đối, mức cô lập cao nhất trong toàn bộ Core (thấp hơn cả `Logger`).
+
+**Lifecycle**: State per-instance, tự cô lập theo từng request vì `Container` đã là 1-per-request — không cần cơ chế dọn dẹp nào (khác `Session`).
+
+**Quyết định khác biệt có chủ đích**: KHÔNG dùng Session làm nơi lưu (dù `Session.php` đã dự trù `tenant.current` từ CMS-007) — vì tenant cần xác định cho MỌI request kể cả API/JWT không cookie, ép `Session::start()` chỉ để biết site nào sẽ vi phạm triết lý lazy-start của `Session`.
+
+**Quan hệ với các điểm mở đã dự trù trước đó**: `View` (docblock CMS-005: `$activeTheme` "tương lai: TenantManager"), `config/app.php` (comment CMS-011: chờ "TenantManager thật Phase 2+"), `Cache`/`QueryBuilder::forTenant()` (chờ nguồn cung cấp `{tenantId}`) — **chưa được nối dây** trong CMS-025, để dành 1 CMS sau khi có migration `sites`/`site_domains` thật (xem Technical Debt #18).
+
+**Integration thật (CMS-030, `v0.0.30`)** — ~~Technical Debt #18~~ **✅ đã giải quyết phần domain resolution + View**: `TenantManager` giờ đăng ký **singleton** trong `Application::registerCoreServices()` (bắt buộc — không có binding thì `Container::get()` không cache, mỗi lần gọi tạo instance mới, tích hợp sẽ không hoạt động nếu thiếu bước này). `core/Middleware/TenantResolverMiddleware.php` (mới) gọi `setCurrent()` sau khi resolve domain→site qua `sites JOIN site_domains`; `View` Closure factory đọc `TenantManager::current()['theme_active']`. `TenantManager.php` **bản thân không đổi 1 dòng** — vẫn đúng vai trò thuần state holder. Chi tiết đầy đủ ở mục 3.24. `Cache`/`QueryBuilder::forTenant()` **vẫn chưa nối dây** (ngoài phạm vi CMS-030).
+
+### 3.23. `ThemeManager` (`core/ThemeManager.php` + `core/Theme/*`) — v0.0.26
+
+**Responsibility**: discover installed theme (glob `{themesPath}/*/theme.json`), parse metadata, tra cứu 1 theme theo key. Không render (thuộc `View`), không biết theme nào active (business state), không Database.
+
+**Public API**: `ThemeManager::discover(): array<string, ThemeDescriptor>`, `find(string $key): ?ThemeDescriptor`. `ThemeDescriptor`: `key/name/version/screenshot/path` (readonly).
+
+**Dependency Graph**: `ThemeManager` — **0 dependency Core** (chỉ 1 string `$themesPath`), giống `ModuleManager`/`PluginManager`.
+
+**Lifecycle**: **Không memoize** — mỗi `discover()` đọc lại filesystem độc lập (khác `PluginManager`, giống `ModuleManager`) — filesystem luôn là source of truth, theme có thể cài/gỡ giữa các lần gọi. Không đăng ký `Container`/`Application` (Foundation trước).
+
+**Architecture boundary** (không đổi ranh giới đã có): `ThemeManager` — biết theme nào tồn tại + metadata. `View` — render template dùng theme đã biết trước (không đổi, vẫn nhận `$activeTheme` qua constructor). 2 Component không phụ thuộc lẫn nhau, chỉ gặp nhau ở tầng gọi bên ngoài (Application/Module tương lai).
+
+**Quan hệ với `database-design.md`**: bảng `themes` (nếu có migration sau này) chỉ là bản ĐỒNG BỘ từ filesystem, không phải nguồn gốc — `ThemeManager` không dùng Database, kể cả trong tương lai (khác `Auth`/`TenantManager`, vốn chỉ tạm thời thiếu Database do chưa có migration).
+
+### 3.24. Middleware Parameterization (`core/Middleware/MiddlewarePipeline.php`, mở rộng) — v0.0.27
+
+**Responsibility**: giải quyết Technical Debt #16 — `MiddlewarePipeline` giờ nhận diện được 2 dạng middleware entry trong cùng 1 danh sách: class-string (resolve qua `Container`, hành vi gốc từ CMS-006) và `MiddlewareInterface` instance đã cấu hình sẵn (dùng trực tiếp, không qua `Container`). Không mang business/security logic — chỉ là cơ chế resolve.
+
+**Internal Logic**: thêm `private resolve(mixed $middlewareEntry): MiddlewareInterface` bên trong `MiddlewarePipeline` — `is_string()` → `Container::get()` (như cũ); `instanceof MiddlewareInterface` → trả thẳng; còn lại → `throw new \InvalidArgumentException` kèm `get_debug_type($middlewareEntry)` trong message. `handle()` gọi `resolve()` thay vì `Container::get()` trực tiếp; tham số closure trong `array_reduce` đổi từ `string` sang `mixed` có chủ đích — để lỗi kiểu dữ liệu sai rơi vào `\InvalidArgumentException` rõ ràng của `resolve()`, không bị PHP tự ném `TypeError` mù mờ trước.
+
+**Public API**: không đổi chữ ký (`handle(Request, array, Closure): Response` giữ nguyên) — chỉ đổi PHPDoc kiểu phần tử mảng `$middleware` thành `list<class-string<MiddlewareInterface>|MiddlewareInterface>`, áp dụng đồng bộ ở `MiddlewarePipeline`/`Route`/`Router`.
+
+**Dependency Graph**: không đổi — `MiddlewarePipeline → ContainerInterface` (PSR-11), không thêm dependency mới, không tạo abstraction mới (`MiddlewareResolver`/`MiddlewareFactory`/`MiddlewareDefinition`/`ParameterBag` đều bị từ chối — `resolve()` chỉ là private method nội bộ).
+
+**Backward Compatibility**: tuyệt đối — mọi middleware hiện có (`CsrfMiddleware`/`AuthMiddleware`/`AuthorizationMiddleware`/`RateLimitMiddleware` và toàn bộ fixture test) đăng ký bằng class-string, đi đúng nhánh `is_string()` cũ, không có lệnh gọi nào đổi kết quả. `Container.php` không sửa.
+
+**Phạm vi bị loại trừ có chủ đích (Owner Decision)**: KHÔNG redesign `AuthorizationMiddleware`/`RateLimitMiddleware`, KHÔNG thêm permission parameter hay rate limit configuration, KHÔNG đổi security policy — đây thuần là hạ tầng cho `MiddlewarePipeline`, việc dùng khả năng "truyền instance" để tham số hoá 2 middleware đó là quyết định của 1 CMS riêng sau này (Architecture Analysis riêng, business/security context riêng).
+
+### 3.25. `TenantResolverMiddleware` (`core/Middleware/TenantResolverMiddleware.php`) — v0.0.30
+
+**Responsibility**: Host → domain lookup → tenant resolve → `TenantManager::setCurrent()`. Không Auth, không Permission, không site status policy, không Super Admin domain.
+
+**Internal Logic**: `process()` gọi `Database::selectOne('SELECT sites.* FROM sites INNER JOIN site_domains ON site_domains.site_id = sites.id WHERE site_domains.domain = ?', [$request->getHost()])` — 1 câu SQL, không qua `QueryBuilder::join()` (giới hạn `table.column` đã ghi nhận ở Technical Debt #3). Không khớp → trả `Response::json(['success'=>false,'data'=>null,'message'=>'Not Found','errors'=>[]], 404)`, **không gọi `$next()`** (fail-closed, không fallback tenant mặc định). Khớp → `TenantManager::setCurrent((int) $site['id'], $site)` → `$next($request)`.
+
+**Public API**: `process(Request, Closure): Response`, implement `MiddlewareInterface` (không đổi contract, đúng pattern `AuthMiddleware`/`CsrfMiddleware`).
+
+**Dependency Graph**: `TenantResolverMiddleware → Database, TenantManager` (constructor injection, cả 2 đều resolve qua Container — `Database` đã singleton từ CMS-004, `TenantManager` singleton từ CMS-030, xem mục 3.22).
+
+**Đăng ký (`Application::boot()`, CMS-030)**: **không** dùng Global Middleware (`Router::middleware()`) — đã xác nhận `Router::dispatch()` gộp Global Middleware vô điều kiện cho MỌI route, không có cơ chế exclude per-route. Thay vào đó, `boot()` bọc `ModuleManager::boot($router, ...)` trong `$router->group(['middleware' => [TenantResolverMiddleware::class]], function (Router $router) use ($moduleManager) { $moduleManager->boot($router, ...); })` — chỉ route do Module đăng ký mới đi qua Middleware này; `/health` (đăng ký trực tiếp trên `$router`, ngoài group) không bị ảnh hưởng. Dùng nguyên `Router::group()` đã có từ CMS-006/018 — không sửa `Router.php`/`Route.php`/`MiddlewarePipeline.php`.
+
+**Vị trí resolve — Middleware, không phải `Application::boot()`**: `boot()` idempotent (chạy đúng 1 lần/instance, guard `$booted`) và không nhận `Request` — nhét domain resolution vào `boot()` sẽ phá tính idempotent nếu `handle()` được gọi nhiều lần trên cùng 1 `Application` instance (`testBootIsIdempotentAcrossMultipleHandleCalls`).
+
+**Security**: `Request::getHost()` đọc `$_SERVER['HTTP_HOST']` trực tiếp — client-controllable, **chỉ dùng làm giá trị lookup qua prepared statement** (`WHERE site_domains.domain = ?`), không tin cậy cho mục đích khác. Fail-closed tuyệt đối — không domain nào được chấp nhận nếu không khớp chính xác 1 dòng `site_domains`, không có "tenant mặc định" nào trong bất kỳ trường hợp nào.
+
+**Test**: `tests/Core/Middleware/TenantResolverMiddlewareTest.php` (4 test, `Database` SQLite in-memory thật + seed tay, không mock).
+
+**Không xử lý (Owner Decision, để dành CMS riêng)**: `system_admin.domains` bypass (đã có sẵn trong `config/tenants.php`, chưa dùng), site `status` (`suspended`/`maintenance`), domain normalization (lowercase/strip port) — xem Technical Debt #21/#22/#23.
+
+### 3.26. `AuthenticationService` (`core/AuthenticationService.php`) — v0.0.31
+
+**Responsibility**: Verify email/password thật từ `users`, gọi `Auth::login()` (không đổi API), nạp `roles`/`permissions` thật vào Session theo site hiện tại. Không route, không Controller, không rate limit, không JWT, không Repository.
+
+**Public API**: `attempt(string $email, string $password): bool` — method public duy nhất. Trả `bool` cho mọi lỗi xác thực (email không tồn tại/password sai/status không active — hội tụ về đúng 1 điểm `return false`, không phân biệt lý do), chỉ `throw new \LogicException` (built-in, không tạo class mới) khi `TenantManager::check() === false` (lỗi tiền điều kiện của caller, không phải lỗi user).
+
+**Dependency Graph**: `AuthenticationService → Database, Auth, Session, TenantManager` (constructor injection, cả 4 đã resolve được qua Container hiện có — `Database`/`Session`/`TenantManager` singleton, `Auth` auto-wire qua `Session`). **Không đăng ký tường minh trong `Application::registerCoreServices()`** — service không giữ state, auto-wire đủ dùng; CMS-031 **không chạm `core/Application.php`** (khác 3 CMS liên tiếp trước CMS-028/029/030).
+
+**Security Design**:
+- **Chống user enumeration**: khi email không tồn tại, dùng `DUMMY_HASH` (hằng số bcrypt cố định, không tương ứng password thật nào) để `password_verify()` vẫn thực thi đúng 1 lần CPU work — tránh phản hồi nhanh bất thường tiết lộ "email này không tồn tại".
+- **`status` check đặt SAU `password_verify()`, không phải trước** — nếu check trước, kẻ tấn công phân biệt được tài khoản `locked`/`pending` qua tốc độ phản hồi (bỏ qua bước bcrypt tốn thời gian). Đặt sau đảm bảo mọi request tốn đúng 1 lần bcrypt verify.
+- Query login chỉ `SELECT id, password, status` (không `SELECT *`), `Auth::login()` chỉ nhận `id`/`email` (không `password`) — không log/lưu/trả password hash ở bất kỳ đâu.
+
+**Database Query Design**: Login — 1 câu `SELECT id, password, status FROM users WHERE email = ?`. Permission loading — 2 câu raw SQL riêng (không qua `QueryBuilder::join()`, né Technical Debt #3): roles qua `user_site_roles JOIN roles`, permissions qua `user_site_roles JOIN roles JOIN role_permissions JOIN permissions` — cả 2 lọc theo `user_id` + `site_id` (`TenantManager::id()`).
+
+**Session Data**: `auth.roles`/`auth.permissions` lưu `list<string>` (tên role/key permission, không lưu ID) — khớp đúng kiểu dữ liệu `Authorization::hasRole()/hasPermission()` đã có từ CMS-022, không cần sửa `Authorization.php`.
+
+**Không xử lý (Owner Decision, để dành CMS riêng)**: `POST /login`/Controller/UI, rate limiting brute-force (dù `config('auth.login_throttle')` đã sẵn sàng khớp `RateLimiter::hit()`), JWT (`config('auth.jwt')` — dành cho `/api/v1/*` theo thiết kế Hybrid Auth gốc), register/forgot-password/user-management/permission-management UI, multi-site session (1 session = 1 site, đổi site cần login lại) — xem Technical Debt #24/#25/#26.
 
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
@@ -113,22 +272,36 @@ Validate `array $data` theo rule string kiểu Laravel (`'required|email|max:255
 
 ## 5. Testing Summary
 
-**229 test, 382 assertion — 0 Errors/Failures/Warnings/Risky/Deprecations** (PHPUnit 10.5.64, PHP 8.3.30), Verified PASS thật tính đến CMS-015. Chạy trên SQLite in-memory (Database/View/Router integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`.
+**391 test, 676 assertion — PASS** (PHP 8.3.30), Verified PASS thật tính đến CMS-031. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`.
 
 | Component | Số test | Chiến lược |
 |---|---|---|
 | Container | 12 | Unit thuần (fixture class nhỏ) |
 | Database + QueryBuilder | 31 | Integration (SQLite in-memory) |
 | View | 15 + 1 regression | Integration (fixture 2 theme) |
-| Router + HTTP (Request/Response) | 24 + 15 (CMS-015) | Integration (fixture Controller/Middleware) + 1 regression toàn chuỗi Container+Database+View |
+| Router + HTTP (Request/Response/Middleware) | 24 + 15 (CMS-015) + 17 (CMS-016) + 6 (CMS-018) | Integration (fixture Controller/Middleware) + 1 regression toàn chuỗi Container+Database+View |
 | Session | 13 | Integration (session thật, mô phỏng nhiều "request" qua `session_write_close()`) |
 | Cache | 20 + 1 regression | Integration (filesystem thật, temp dir) + Redis có điều kiện (skip nếu không có `ext-redis`) |
 | Hook | 17 + 2 regression | Unit thuần (không I/O) + Regression qua Container |
 | ModuleManager | 9 + 1 regression | Integration (fixture module thật) + Regression qua Container+Router |
-| Application | 11 | Integration toàn chuỗi (2 fixture app: debug bật/tắt, module thật, filesystem thật) |
+| Application | 11 (10 + 1 mới CMS-019) | Integration toàn chuỗi (2 fixture app: debug bật/tắt, module thật, filesystem thật) |
 | PluginManager | 16 + 2 regression | Integration (fixture plugin thật, quan sát qua `Hook::apply()` filter chain) + Regression qua Container+Hook |
 | MigrationManager | 16 (gồm 1 regression) | Integration (SQLite in-memory thật, fixture migration thật, temp dir cho kịch bản batch/rollback nhiều lần chạy) |
 | Validator | 31 | Unit thuần (không I/O, 0 dependency vào Core Component khác) |
+| ExceptionHandler | 8 | Unit thuần (không I/O, 0 dependency vào Core Component khác) |
+| Csrf + CsrfMiddleware | 6 + 11 | Integration (Session thật, không mock) |
+| Auth + AuthMiddleware | 13 + 3 | Integration (Session thật, không mock) |
+| Authorization + AuthorizationMiddleware | 17 + 4 | Integration (Session thật, không mock) |
+| RateLimiter + RateLimitMiddleware | 14 + 4 | Integration (Session thật, không mock) |
+| Logger | 8 | Integration (filesystem thật, temp dir) |
+| TenantManager | 9 | Unit thuần (0 dependency, không I/O) |
+| ThemeManager | 7 | Integration (filesystem thật, fixture theme.json) |
+| MiddlewarePipeline (parameterization) | 5 | Unit/Integration (Container thật, fixture middleware class-string + instance) |
+| Database Migration Phase 2 (Tenant/Auth/Role) | 11 | Integration (SQLite in-memory thật, `MigrationManager` chạy migration thật trong `database/migrations/`) |
+| Logger Integration (Application) | 2 (+ regression trong `ApplicationTest` cũ) | Integration (filesystem thật, `Hook`/`Container` thật qua `Application::bootstrap()`) |
+| TenantResolverMiddleware | 4 | Integration (`Database` SQLite in-memory thật, seed tay) |
+| TenantManager Integration (Application/View) | 3 (+ 5 test cũ được thêm seed) | Integration (`Database` SQLite in-memory thật qua `Application::bootstrap()`) |
+| AuthenticationService | 10 | Integration (`Database` SQLite in-memory thật, seed tay, `Session`/`Auth`/`TenantManager` thật) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 
@@ -149,6 +322,17 @@ Validate `array $data` theo rule string kiểu Laravel (`'required|email|max:255
 | 13 | `Validator`: message lỗi chỉ 1 ngôn ngữ, không i18n đầy đủ; rule set tối thiểu (~16 rule); không rule DB-aware built-in (`unique`/`exists`) | Theo dõi, mở rộng dần theo nhu cầu module thật (Phase 3+) qua `extend()` |
 | 14 | `Request::ip()` không hỗ trợ Trusted Proxy — chỉ đáng tin khi PHP nhận kết nối trực tiếp từ client, không qua reverse proxy | Cần bổ sung khi có Nginx/Load Balancer thật phía trước |
 | 15 | `Request` không hỗ trợ Method Spoofing (`_method`) — form SSR thuần HTML chỉ dùng được GET/POST | Để dành phase sau khi Module cần verb PUT/DELETE qua `<form>` |
+| ~~16~~ | ~~**Giới hạn kiến trúc thật của Middleware**: cơ chế `list<class-string>` + `Container::get(string $id)` (từ CMS-006/018) không hỗ trợ tham số hoá per-route~~ | **✅ Hạ tầng đã giải quyết ở CMS-027** (`v0.0.27`) — `MiddlewarePipeline` giờ chấp nhận cả class-string lẫn `MiddlewareInterface` instance đã cấu hình sẵn. Việc THỰC SỰ dùng khả năng này để tham số hoá `AuthorizationMiddleware`/`RateLimitMiddleware` (roles/permissions/key/maxAttempts riêng từng route) vẫn để dành 1 CMS riêng — CMS-027 chỉ là infrastructure, không redesign 2 middleware đó (Owner Decision) |
+| ~~17~~ | ~~`Logger` (CMS-024) chưa được nối vào `Application::logException()`, `Database::onQueryExecuted()` (CMS-004), `Hook::onError()` (CMS-009)~~ | **✅ Một phần đã giải quyết ở CMS-029** (`v0.0.29`) — `logException()` và `Hook::onError()` đã nối `Logger` thật. **Còn deferred có chủ đích**: `Database::onQueryExecuted()` (query logging — fire cho mọi query, chưa có requirement debug/performance thật) và log rotation — để dành CMS riêng khi có nhu cầu thật |
+| ~~18~~ | ~~`TenantManager` (CMS-025) chưa được nối vào `View`, chưa có cơ chế resolve domain→tenant thật~~ | **✅ Đã giải quyết ở CMS-030** (`v0.0.30`) — `TenantResolverMiddleware` resolve domain→tenant thật qua `sites`/`site_domains` (CMS-028), `View` đọc `theme_active` từ `TenantManager`. Còn deferred: `Cache`/`QueryBuilder::forTenant()` vẫn chưa nối dây |
+| 19 | `ThemeManager` (CMS-026) chưa được nối vào `View`/`Application` — chưa có `ThemeService` kích hoạt theme, chưa có database synchronization service đồng bộ filesystem→bảng `themes` | Quyết định phạm vi có chủ đích (Foundation trước), không phải bug — cần 1 CMS riêng khi có nhu cầu thật (Module Theme/Admin Dashboard) |
+| 20 | `roles` (CMS-028): UNIQUE `(tenant_id, name)` không ngăn được 2 role hệ thống (`tenant_id IS NULL`) trùng tên — đúng ANSI SQL semantics (`NULL ≠ NULL` trong composite UNIQUE ở cả SQLite lẫn MySQL), không phải bug migration, phát hiện qua PHPUnit thật | Xử lý ở Service layer khi có CMS Role/Auth Service thật (tự kiểm tra trùng tên trước khi insert khi `tenant_id IS NULL`) — không Trigger, nhất quán ràng buộc homepage `database-design.md` mục 6.1 |
+| 21 | `TenantResolverMiddleware` (CMS-030) chưa kiểm tra `sites.status` (`suspended`/`maintenance`) — site không active vẫn resolve tenant thành công, request vẫn đi tiếp bình thường | Quyết định phạm vi có chủ đích (Owner Decision CMS-030) — cần 1 CMS Authorization site-level riêng khi có route Admin/Super Admin thật |
+| 22 | `TenantResolverMiddleware` (CMS-030) không normalize domain (không lowercase, không strip `:port` khỏi `Request::getHost()`) — domain có hoa/thường khác nhau hoặc kèm port sẽ không khớp `site_domains` dù về mặt logic là cùng 1 host | Chưa có bằng chứng nhu cầu thật (chưa có site nào cấu hình domain có port khác 80/443) — cần 1 CMS riêng nếu phát sinh |
+| 23 | `system_admin.domains` (đã có sẵn trong `config/tenants.php` từ trước CMS-030) chưa được `TenantResolverMiddleware` xử lý — domain Super Admin thật (nếu có) sẽ bị 404 thay vì bypass | Quyết định phạm vi có chủ đích (Owner Decision CMS-030, Q4) — hiện chưa có route `/system-admin/*` nào tồn tại nên chưa phải regression thật; cần CMS Super Admin/Authorization riêng |
+| 24 | `AuthenticationService` (CMS-031) chưa có rate limiting brute-force — dù `config('auth.login_throttle')` đã sẵn sàng khớp `RateLimiter::hit()` (Foundation từ CMS-023), `attempt()` không tự gọi | Quyết định phạm vi có chủ đích (Owner Decision CMS-031, Q4) — cần 1 CMS Security/RateLimit riêng khi có route `/login` thật |
+| 25 | `AuthenticationService` (CMS-031) chưa có `POST /login`/Controller — chỉ Foundation Service, chưa có Module nào gọi `attempt()` thật | Quyết định phạm vi có chủ đích (Owner Decision CMS-031, Q2) — cần CMS Module Admin/Auth riêng khi viết Controller đăng nhập thật |
+| 26 | `AuthenticationService` (CMS-031) giả định 1 session = 1 site (`TenantManager::id()` tại thời điểm login) — user thuộc nhiều site (`user_site_roles`) phải đăng nhập lại khi đổi site, không có cơ chế switch-site giữ nguyên session | Quyết định phạm vi có chủ đích (Owner Decision CMS-031, Q8) — cần CMS riêng nếu có nhu cầu "1 user quản lý nhiều site trong cùng phiên" |
 
 Từ CMS-012, dự án áp dụng quy trình chuẩn hoá 9 bước (Architecture Analysis → Design → Chờ duyệt → Implementation → Self Code Review → Self Architecture Review → Regression Review → Unit Test → Báo cáo) và nguyên tắc kiến trúc: **không tạo interface cho 1 implementation, không tạo abstraction chỉ để DRY, không tối ưu sớm, không sửa code đã ổn định chỉ vì "đẹp hơn"**.
 

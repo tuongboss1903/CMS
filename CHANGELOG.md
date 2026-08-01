@@ -4,7 +4,333 @@
 
 ## [Unreleased]
 
-Chưa có mục nào — chờ chỉ định task tiếp theo (CMS-016, HTTP Response Layer, theo roadmap).
+Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
+
+## [0.0.31] — CMS-031: Auth/Authorization Foundation
+
+### Added
+
+- `core/AuthenticationService.php` — `AuthenticationService Foundation`, method public duy nhất `attempt(string $email, string $password): bool`. Constructor inject `Database`/`Auth`/`Session`/`TenantManager`.
+  - **Password verification**: `password_verify()` với hash thật từ `users.password` (query chỉ lấy `id/password/status`, không `SELECT *`).
+  - **Dummy verify chống user enumeration**: khi email không tồn tại, dùng `DUMMY_HASH` (hằng số bcrypt cố định, không tương ứng password thật nào) để `password_verify()` vẫn thực thi đúng 1 lần CPU work — email không tồn tại và sai password hội tụ về đúng 1 điểm `return false`, không phân biệt được qua kết quả hay hành vi.
+  - **`status` check sau `password_verify()`** (không phải trước) — chống timing side-channel phân biệt tài khoản `locked`/`pending`.
+  - **Tenant-aware role/permission loading**: roles/permissions nạp theo `TenantManager::id()` (site hiện tại), 2 query raw SQL riêng qua `user_site_roles`→`roles`→`role_permissions`→`permissions`, ghi vào `Session::set('auth.roles'/'auth.permissions', list<string>)`.
+  - Gọi `Auth::login()` hiện có (chỉ `id`/`email`, không `password`) — không sửa `Auth.php`.
+  - Guard `TenantManager::check()` — throw `\LogicException` built-in nếu chưa resolve tenant (lỗi tiền điều kiện của caller, không phải lỗi user).
+- `tests/Core/AuthenticationServiceTest.php` (mới, 10 test).
+
+### Design decisions
+
+- **Không route/Controller/UI** — chỉ Foundation Service, Module tương lai (Admin/User/API) tự gọi `attempt()` trực tiếp.
+- **Không RateLimiter** — `config('auth.login_throttle')` đã sẵn sàng nhưng chưa dùng trong CMS-031, để dành CMS Security riêng.
+- **Không JWT, không register/forgot-password/user-management/permission-management UI, không multi-site session** (1 session = 1 site, đổi site cần login lại).
+- **Không Repository** — Service gọi `Database::select()`/`selectOne()` trực tiếp (đúng tiền lệ `TenantResolverMiddleware` CMS-030), né giới hạn `QueryBuilder::join()` (Technical Debt #3).
+- **Không tạo Exception class mới** — lỗi xác thực trả `bool` (đúng convention `Csrf::verify()`/`RateLimiter::hit()`), chỉ dùng `\LogicException` built-in cho lỗi tiền điều kiện.
+- **Không đăng ký Container tường minh trong `Application.php`** — `AuthenticationService` không giữ state, auto-wire đủ dùng; CMS-031 không chạm `Application.php` (khác 3 CMS liên tiếp trước CMS-028/029/030).
+- **`Auth.php` tiếp tục không chứa password logic, `Authorization.php` tiếp tục chỉ đọc Session** — cả 2 file không sửa 1 dòng, đúng ranh giới đã chốt từ CMS-021/022.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — `AuthenticationServiceTest`: 10 tests; toàn bộ suite: 391 tests, 676 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.30] — CMS-030: TenantManager Integration
+
+### Added
+
+- `core/Middleware/TenantResolverMiddleware.php` — resolve domain (`Request::getHost()`) → tenant qua `sites JOIN site_domains` (1 câu SQL, `Database::selectOne()`), gọi `TenantManager::setCurrent()` khi khớp. Domain không khớp → 404 JSON envelope (`{success:false,data:null,message:'Not Found',errors:[]}`), không gọi `$next()`, không fallback tenant mặc định.
+- `core/Application.php` — đăng ký `TenantManager::class` singleton (bắt buộc để state persist giữa Middleware và `View`/Controller trong cùng 1 request); sửa Closure `View::class` đọc `TenantManager::current()['theme_active'] ?? config('app.theme')`; `boot()` bọc `ModuleManager::boot()` trong `Router::group(['middleware' => [TenantResolverMiddleware::class]], ...)`, `/health` giữ ngoài group.
+- `tests/Core/Middleware/TenantResolverMiddlewareTest.php` (mới, 4 test).
+- `tests/Core/ApplicationTest.php` (+3 test, +helper `seedTenant()`, +5 test cũ được thêm seed).
+- `tests/Fixtures/AppProduction/config/database.php` (mới — fixture thiếu, phát hiện khi viết test).
+
+### Design decisions
+
+- **`TenantResolverMiddleware` chịu trách nhiệm duy nhất Host → tenant resolution** — không Auth, không Permission, không site status, không Super Admin (đúng SRP, tránh lặp lại bài học gộp responsibility từ CMS-022/023).
+- **Fail-closed tuyệt đối**: domain không tồn tại trong `site_domains` → 404 ngay tại Middleware, **không fallback tenant mặc định** — loại trừ hoàn toàn rủi ro rò rỉ dữ liệu tenant khác.
+- **Vị trí resolve là Middleware, không phải `Application::boot()`** — `boot()` idempotent (chạy 1 lần/instance) và không nhận `Request`, nhét domain resolution vào đó sẽ phá tính idempotent nếu `handle()` được gọi nhiều lần.
+- **`/health` và route hệ thống nằm ngoài `TenantResolverMiddleware`** — dùng `Router::group()` (đã có từ CMS-006/018) bọc riêng phần đăng ký route Module, không sửa `Router.php`/`MiddlewarePipeline.php`/`Route.php`, không tạo cơ chế exclude middleware mới.
+- **`View` runtime theme đọc từ `TenantManager`** — Closure factory trong `Application` đọc `theme_active`, fallback `config('app.theme')` khi NULL hoặc chưa có tenant — không sửa `View.php`.
+- **`TenantManager` đăng ký singleton trong Application wiring** — phát hiện qua trace `Container::get()` (không binding thì không cache, dù auto-wire được) trước khi báo cáo PHPUnit; không sửa `TenantManager.php`.
+- **Database query strategy**: 1 câu SQL JOIN qua `Database::selectOne()`, không qua `QueryBuilder::join()` (giới hạn đã ghi nhận ở Technical Debt #3), không tạo Repository/Service mới.
+- **Không xử lý trong CMS-030** (Owner Decision, để dành CMS riêng): `system_admin.domains` bypass (đã có sẵn trong `config/tenants.php`, chưa dùng), site `status` (`suspended`/`maintenance`), domain normalization (lowercase/strip port).
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30): **PASS** — `TenantResolverMiddlewareTest`: 4 tests/9 assertions; `ApplicationTest`: 16 tests/34 assertions; toàn bộ suite: 381 tests, 664 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.29] — CMS-029: Logger Integration
+
+### Added
+
+- `Application` đăng ký `Logger` singleton trong `registerCoreServices()` (path giữ nguyên `storage/logs/app.log`).
+- `Application::logException()` chuyển sang gọi `Logger::log('error', $message, $context)` — context gồm `exception_class/file/line/trace`, thay cho logic `mkdir`/`sprintf`/`file_put_contents` tự viết trước đây.
+- `Application::boot()` đăng ký `Hook::onError()` listener — lỗi callback Action/Filter được ghi log qua `Logger` (context `hook/exception_class/file/line`), không đổi cơ chế cô lập callback hiện có của `Hook`.
+- `tests/Core/ApplicationTest.php` (+2 test): `testExceptionLogContainsExceptionClassFileLineAndTrace`, `testHookCallbackExceptionIsLoggedViaLogger`.
+
+### Design decisions
+
+- **Không triển khai Database query logging** — `Database::onQueryExecuted()` fire cho MỌI query (không riêng lỗi), chưa có requirement debug/performance thật, tránh log volume tăng không kiểm soát — giữ nguyên là điểm mở chưa dùng, để dành CMS riêng nếu có nhu cầu.
+- **Không log `PluginManager::getFailures()`** — khác domain (lifecycle error của Plugin system, không phải runtime Hook callback error), để dành CMS PluginManager observability riêng nếu cần.
+- **Không log rotation** — Technical Debt đã ghi nhận từ CMS-024, tiếp tục deferred.
+- **Logger giữ Single Responsibility** — không thêm enum/hằng số level mới, không Exception/Adapter/abstraction logging mới. `Logger` là nơi duy nhất format output; `Application` chỉ truyền dữ liệu.
+- Lần đầu sửa `core/Application.php` kể từ CMS-019 — thay đổi khoanh vùng rõ (3 điểm đúng Owner Decision), không đổi luồng điều khiển `handle()`/`boot()`.
+- Không sửa `core/Logger.php`/`core/Database.php`/`core/Hook.php`/`core/PluginManager.php`/`core/ExceptionHandler.php`.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `ApplicationTest`: 13 tests/31 assertions; toàn bộ suite: 374 tests, 652 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.28] — CMS-028: Database Migration Phase 2 (Tenant/Auth/Role)
+
+### Added
+
+- `database/migrations/2026_08_01_000001_create_sites_table.php` — `sites` (name/status/plan_id nullable không FK/theme_active không FK/storage_used_bytes/timestamps), index `idx_sites_status`, `idx_sites_plan_storage`.
+- `database/migrations/2026_08_01_000002_create_site_domains_table.php` — `site_domains` (FK `site_id → sites.id ON DELETE CASCADE`), unique `domain`, index `site_id`.
+- `database/migrations/2026_08_01_000003_create_users_table.php` — `users` (email/password/status/timestamps), unique `email` (không theo tenant).
+- `database/migrations/2026_08_01_000004_create_roles_table.php` — `roles` (FK `tenant_id → sites.id ON DELETE CASCADE`, nullable = role hệ thống), unique composite `(tenant_id, name)`.
+- `database/migrations/2026_08_01_000005_create_permissions_table.php` — `permissions` (`key`/description), unique `key`.
+- `database/migrations/2026_08_01_000006_create_role_permissions_table.php` — bảng trung gian N-N, composite PK `(role_id, permission_id)`, FK CASCADE cả 2 chiều.
+- `database/migrations/2026_08_01_000007_create_user_site_roles_table.php` — FK `user_id`/`site_id` CASCADE, FK `role_id` RESTRICT, unique `(user_id, site_id)`.
+- `tests/Core/RealMigrationsTest.php` (mới, 11 test) — chạy `MigrationManager` trỏ thẳng `database/migrations/` thật (SQLite in-memory, không mock), khác `MigrationManagerTest.php` (dùng fixture riêng để test cơ chế).
+
+### Design decisions
+
+- **SQLite-compatible DDL strategy** (Owner Decision, Phương án A): loại `ENUM`→`VARCHAR` (giá trị hợp lệ validate ở Service layer sau), loại `UNSIGNED`, loại `ON UPDATE CURRENT_TIMESTAMP`→`TIMESTAMP NULL` (Service tự set khi ghi) — giữ nguyên tắc "mọi thay đổi phải PHPUnit-verify thật" xuyên suốt CMS-001→CMS-027, thay vì migration MySQL-only không thể test tự động trong môi trường hiện tại (test suite luôn chạy SQLite).
+- **Driver-specific auto-increment handling** — điểm rẽ nhánh driver DUY NHẤT được Owner approve: mỗi migration Closure tự đọc `$db->connection()->getAttribute(\PDO::ATTR_DRIVER_NAME)` để chọn `AUTOINCREMENT` (SQLite) hoặc `AUTO_INCREMENT` (MySQL) cho mệnh đề Primary Key — không có cú pháp SQL chung cho cả 2 engine ở điểm này. Không rẽ nhánh thêm ở phần schema khác.
+- **Không seed data** — CMS-028 chỉ tạo schema.
+- **Không tạo bảng `plans`** — `sites.plan_id` giữ nullable, không FK (YAGNI, chưa có requirement Billing/SaaS thật).
+- **Không migration `login_logs`/`password_resets`/`personal_access_tokens`** — thuộc Auth enhancement/security audit layer, chưa cần để mở khoá TenantManager/Auth cơ bản, để dành CMS Auth Module sau.
+- **Không business logic trong migration** — thuần DDL, đúng `database-design.md` mục 6 ("không Trigger cho business logic").
+- **Không sửa `MigrationManager.php`/`Database.php`** — dùng nguyên hạ tầng đã có từ CMS-013/CMS-004.
+- **Technical Debt ghi nhận** (không sửa trong CMS-028): UNIQUE `(tenant_id, name)` ở `roles` không ngăn được trùng tên role hệ thống khi `tenant_id IS NULL` (đúng ANSI SQL semantics — `NULL ≠ NULL` trong composite UNIQUE ở cả SQLite lẫn MySQL, không phải bug migration). Phát hiện qua PHPUnit thật (`testRolesTenantNameUniqueConstraintIsEnforced` FAIL lần đầu, root cause xác nhận là test giả định sai chứ không phải migration lỗi) — test đã sửa lại đúng phạm vi UNIQUE thật sự enforce (`tenant_id` không NULL). Xử lý trùng tên role hệ thống để dành CMS Role/Auth Service sau (Service layer, không Trigger — nhất quán ràng buộc homepage ở `database-design.md` mục 6.1).
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `RealMigrationsTest`: 11 tests/51 assertions; toàn bộ suite: 372 tests, 648 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.27] — CMS-027: Middleware Parameterization
+
+### Added
+
+- `core/Middleware/MiddlewarePipeline.php` — thêm `MiddlewareInterface` instance support: pipeline chấp nhận `list<class-string<MiddlewareInterface>|MiddlewareInterface>`. Thêm `private resolve(mixed $middlewareEntry): MiddlewareInterface` — string resolve qua `Container::get()` (hành vi cũ, không đổi), `MiddlewareInterface` instance dùng trực tiếp (khả năng mới), giá trị khác throw `\InvalidArgumentException` với message chứa `get_debug_type()`.
+- `tests/Core/Middleware/MiddlewarePipelineTest.php` (mới) — 5 test case, unit test riêng đầu tiên cho `MiddlewarePipeline` (trước đây chỉ được kiểm chứng gián tiếp qua `RouterTest.php`).
+
+### Changed
+
+- PHPDoc-only (không đổi runtime): `core/Route.php` (constructor, `getMiddleware()`), `core/Router.php` (`middleware()/get()/post()/put()/patch()/delete()/group()/addRoute()` và 2 property `$groupMiddleware`/`$globalMiddleware`) — cập nhật kiểu `list<class-string>` → `list<class-string<MiddlewareInterface>|MiddlewareInterface>`.
+
+### Design decisions
+
+- Backward compatible tuyệt đối — class-string middleware hiện có (`CsrfMiddleware`/`AuthMiddleware`/`AuthorizationMiddleware`/`RateLimitMiddleware` và mọi fixture test) đi qua đúng nhánh `is_string()`, hành vi giống hệt code cũ.
+- Phạm vi CMS-027 CHỈ là infrastructure của `MiddlewarePipeline` — không redesign `AuthorizationMiddleware`/`RateLimitMiddleware`, không thêm permission parameter/rate limit configuration, không đổi security policy (Owner Decision).
+- Không tạo Exception class mới cho invalid middleware — dùng `\InvalidArgumentException` built-in (tránh abstraction thừa cho lỗi invalid developer input).
+- Tham số closure trong `handle()` đổi `string` → `mixed` có chủ đích: giữ type-check bên trong `resolve()` để trả message lỗi rõ ràng, tránh PHP tự ném `TypeError` mù mờ trước khi `resolve()` kịp chạy.
+- Không tạo abstraction mới (`MiddlewareResolver`/`MiddlewareFactory`/`MiddlewareDefinition`/`ParameterBag`) — `resolve()` là private method nội bộ.
+- Không breaking change — `Container.php` không sửa, `Router`/`Route` runtime không đổi (chỉ PHPDoc).
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — 361 tests, 597 assertions, PASS.
+
+## [0.0.26] — CMS-026: ThemeManager
+
+### Added
+
+- `core/ThemeManager.php` — discovery-based theme management, manifest-driven (`theme.json`, glob `{themesPath}/*/theme.json`). API: `discover(): array<string, ThemeDescriptor>`, `find(string $key): ?ThemeDescriptor`. **Không memoize** — mỗi `discover()` đọc lại filesystem độc lập (filesystem là source of truth, theme có thể đổi runtime).
+- `core/Theme/ThemeDescriptor.php` — value object readonly: `key/name/version/screenshot/path`.
+- `core/Theme/ThemeException.php` — `cannotRead()/invalidManifest()`, mirror `ModuleException`.
+- `tests/Core/ThemeManagerTest.php` (7 test) + fixture `tests/Fixtures/Themes/{Alpha,Beta}`, `tests/Fixtures/ThemesInvalid/BadTheme`.
+
+### Design decisions
+
+- Filesystem là source of truth cho theme — không chỉ giới hạn tạm thời (khác `Auth`/`TenantManager`, vốn thiếu migration DB), mà là nguyên tắc thiết kế vĩnh viễn (đã xác nhận qua `database-design.md`: bảng `themes` chỉ đồng bộ TỪ filesystem, không phải nguồn gốc) — **`ThemeManager` không dùng Database, kể cả tương lai**.
+- Không `active()/setActive()` — "theme nào đang active" là business state (cột `sites.theme_active`), không thuộc discovery layer, đúng nguyên tắc "core trung lập" đã áp dụng cho `ModuleManager`.
+- Không boot system, không dependency resolution giữa theme (không có bằng chứng cần).
+- Không breaking change — 0 file Core cũ bị sửa (`View`/`Application`/`Container`/`Config`/`TenantManager` giữ nguyên).
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `ThemeManagerTest`: 7 tests/15 assertions; toàn bộ suite: 354 tests, 589 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.25] — CMS-025: TenantManager
+
+### Added
+
+- `core/TenantManager.php` — `final class`, **0 dependency** (không constructor, không Session/Database/Request/Config) — mức cô lập cao nhất từ trước tới nay. Giữ state "tenant hiện tại" trong phạm vi 1 request (in-memory thuần, không Session). API: `setCurrent(int|string $tenantId, array $data = []): void`, `check(): bool`, `id(): int|string|null`, `current(): ?array`. Không tự resolve domain→tenant (bảng `sites`/`site_domains` chưa tồn tại — chưa có migration thật), không tự validate/normalize dữ liệu truyền vào.
+- `tests/Core/TenantManagerTest.php` (9 test, unit thuần — không Session/filesystem/DB).
+
+### Design decisions
+
+- Đối xứng có chủ đích với `Auth` (CMS-021) — cùng gặp giới hạn "bảng liên quan chưa tồn tại" nên chỉ quản lý state, không tự resolve/query.
+- **Khác biệt có chủ đích với `Auth`/`Authorization`/`Csrf`/`RateLimiter`**: KHÔNG dùng Session làm nơi lưu (dù `Session.php` đã dự trù namespace `tenant.current` từ CMS-007) — vì tenant phải xác định cho MỌI request (kể cả API/JWT không dùng cookie), ép `Session::start()` chỉ để biết site nào sẽ vi phạm triết lý lazy-start đã thiết kế cho `Session` từ đầu. Dùng property in-memory thuần — state tự cô lập đúng theo từng request vì `Container` đã là 1-per-request.
+- Không nối `View`/`Application` (factory `View::class` vẫn dùng `config('app.theme')` tĩnh như cũ) — Foundation trước, nối dây để dành 1 CMS sau khi có migration `sites`/`site_domains` thật.
+- Không breaking change — 0 file Core cũ bị sửa.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `TenantManagerTest`: 9 tests; toàn bộ suite: 347 tests, 574 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.24] — CMS-024: Logger
+
+### Added
+
+- `core/Logger.php` — `final class`, 0 dependency (không Config/Container/HTTP), nhận `string $logPath` qua constructor (đường dẫn file log cụ thể, không phải thư mục). Public API duy nhất: `log(string $level, string $message, array $context = []): void`. Không PSR-3, không level filtering, không channel/formatter/handler/rotation/async/buffering. Format 1 dòng: `[Y-m-d H:i:s] level: message {context json nếu có}`. Tự tạo thư mục cha nếu thiếu (`mkdir(..., true)`), ghi qua `@file_put_contents(..., FILE_APPEND | LOCK_EX)` — không throw khi ghi thất bại (nhất quán `Application::logException()` đã có từ CMS-011).
+- `tests/Core/LoggerTest.php` (8 test, filesystem thật/temp dir, không mock).
+
+### Design decisions
+
+- Đề xuất ban đầu "CMS-024 — Cache" bị phát hiện trùng lặp hoàn toàn với `Cache`/`CacheDriver` đã hoàn thành từ CMS-008 (tag `v0.0.8`) — dừng lại, đổi thành Logger (gap thật, đã được nhắc tới nhiều lần từ CMS-011/CMS-019 nhưng chưa triển khai).
+- Không dùng `psr/log` (tránh thêm Composer dependency ngoài phạm vi cần thiết) — API tối giản tự thiết kế, đúng YAGNI.
+- Constructor nhận `string $logPath` trực tiếp thay vì qua `Config` mới — theo đúng tiền lệ `MigrationManager(string $migrationsPath)`.
+- **Không breaking change** — 0 file Core cũ bị sửa. `Application::logException()` tiếp tục hoạt động độc lập, song song, chưa bị thay thế. 2 điểm mở đã dự trù từ trước (`Database::onQueryExecuted()` từ CMS-004, `Hook::onError()` từ CMS-009) vẫn chưa được nối dây — để dành CMS sau khi quyết định tích hợp `Logger` vào luồng chính.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `LoggerTest`: 8 tests/10 assertions; toàn bộ suite: 338 tests, 561 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.23] — CMS-023: Rate Limiter
+
+### Added
+
+- `core/RateLimiter.php` — đếm số lần "hit" theo key trong 1 cửa sổ thời gian (decay), lưu trong Session (namespace `rate_limit.{key}`, giá trị `{attempts:int, expires_at:int}` — chỉ integer timestamp, không object/DateTime/serialize). API: `hit(key, maxAttempts, decaySeconds): bool`, `tooManyAttempts(key, maxAttempts): bool`, `attempts(key): int`, `remaining(key, maxAttempts): int`, `clear(key): void`, `availableIn(key): int`. Không DB, không Redis, không Config.
+- `core/Middleware/RateLimitMiddleware.php` — **placeholder framework component có chủ đích**: chỉ implement `MiddlewareInterface`, `return $next($request);`, không tự xác định key/limit, không gọi `hit()`. Logic rate-limit thật do Module tương lai tự gọi `RateLimiter` trực tiếp (biết đủ business context để xác định bucket).
+- `tests/Core/RateLimiterTest.php` (14 test) + `tests/Core/Middleware/RateLimitMiddlewareTest.php` (4 test — chỉ xác nhận passthrough).
+
+### Design decisions
+
+- Architecture Analysis phát hiện xung đột kiến trúc: cơ chế Middleware hiện tại (`list<class-string>` + `Container::get(string $id)`) không hỗ trợ tham số hoá per-route — không thể gắn `new RateLimitMiddleware($limiter, 'login', 5, 60)` trực tiếp vào 1 route. Owner quyết định **không sửa `MiddlewarePipeline`** để phục vụ tính năng này — chấp nhận `RateLimitMiddleware` là placeholder tối thiểu, giữ nhất quán hình dạng với middleware khác (`Auth`/`Csrf`/`Authorization` đều nhận đúng 1 service qua constructor) mà không có logic thật, tránh thiết kế sai ngay từ Foundation.
+- Không breaking change — 0 file cũ sửa.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — `RateLimiterTest`: 14 tests; `RateLimitMiddlewareTest`: 4 tests (trong lần chạy toàn bộ suite cùng CMS-022/024).
+
+## [0.0.22] — CMS-022: Authorization
+
+### Added
+
+- `core/Authorization.php` — đọc `roles`/`permissions` từ Session (namespace `auth.roles`/`auth.permissions`, đã dự trù từ CMS-007), thuần đọc, không ghi, không DB, không biết `Auth`. API: `roles()/permissions()/hasRole()/hasAnyRole()/hasAllRoles()/hasPermission()/hasAnyPermission()/hasAllPermissions()/can()` (`can()` alias thuần của `hasPermission()`).
+- `core/Middleware/AuthorizationMiddleware.php` — gate chung: chặn (403 JSON) nếu user không có role/permission nào được gán. Không tham số hoá per-route (cùng lý do kiến trúc như CMS-023) — kiểm tra quyền cụ thể cho từng hành động là trách nhiệm Controller tự gọi `Authorization::hasRole()/can()` trực tiếp.
+- `tests/Core/AuthorizationTest.php` (17 test) + `tests/Core/Middleware/AuthorizationMiddlewareTest.php` (4 test).
+
+### Design decisions
+
+- Cùng phát hiện xung đột kiến trúc Middleware-tham-số-hoá như CMS-023 (Owner Decision: Phương án C — không sửa `MiddlewarePipeline`/`Router`/`Route`/`Container`).
+- Không breaking change — 0 file cũ sửa.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — `AuthorizationTest`: 17 tests; `AuthorizationMiddlewareTest`: 4 tests (trong lần chạy toàn bộ suite cùng CMS-023/024).
+
+## [0.0.21] — CMS-021: Authentication
+
+### Added
+
+- `core/Auth.php` — quản lý trạng thái "đã đăng nhập hay chưa" trong Session (namespace `auth.user_id`/`auth.user`, đã dự trù từ CMS-007). Không verify credential, không Database, không password — việc xác thực thuộc Module Auth tương lai. `login(int|string $userId, array $user = []): void` theo đúng thứ tự `Session::regenerate()` (chống fixation) → `remove('csrf.token')` (rotate CSRF khi nâng mức tin cậy) → `set('auth.user_id', $userId)` → `set('auth.user', $user)`. `logout(): void` dùng `Session::destroy()` (huỷ toàn bộ session, không chỉ xoá key `auth.*`). `check(): bool`/`id(): int|string|null`/`user(): ?array` đọc lại từ Session.
+- `core/Middleware/AuthMiddleware.php` — implement `MiddlewareInterface` (CMS-006, không đổi contract), chặn request chưa đăng nhập trả `Response::json({success:false,data:null,message:'Unauthenticated.',errors:[]}, 401)`, không redirect, không Config.
+- `tests/Core/AuthTest.php` (13 test), `tests/Core/Middleware/AuthMiddlewareTest.php` (3 test).
+
+### Design decisions
+
+- **Option A** (đã cân nhắc kỹ ở Architecture Analysis): `Auth` thuần quản lý session-state, KHÔNG query Database/verify password — vì chưa có bảng `users` nào tồn tại (chưa có migration thật), và giữ đúng ranh giới Core=cơ chế/Module=nghiệp vụ đã áp dụng xuyên suốt (`Validator`, `Csrf`, `ExceptionHandler`...). Module Auth đầy đủ (JWT, password reset, login_logs — theo `02-module-auth.md`) là phạm vi Phase 3+ riêng.
+- `login()` rotate CSRF token (`remove('csrf.token')`) — theo khuyến nghị OWASP, phòng thủ theo chiều sâu khi nâng mức tin cậy; `Auth` biết chuỗi literal `'csrf.token'` độc lập (không phụ thuộc `Csrf`, tránh coupling không cần thiết).
+- 0 file Core cũ bị sửa — `Container` tự auto-wire `Auth`/`AuthMiddleware` (đã xác nhận qua đọc trực tiếp `Container.php`, nhất quán CMS-020).
+
+### Fixed
+
+- Bug trong test tự viết (không phải trong `Auth`): `Session::destroy()` khiến `isStarted()` trở về `false` — test kiểm tra `check()`/`id()` ngay sau `logout()` mà chưa `start()` lại session sẽ nhận `SessionException`. Sửa bằng cách mô phỏng đúng "request kế tiếp tự `start()` lại" trong test, không đổi `Auth.php`/`Session.php`.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `AuthTest`: 13 tests/17 assertions; `AuthMiddlewareTest`: 3 tests/4 assertions; toàn bộ suite: 291 tests, 500 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.20] — CMS-020: CSRF Protection
+
+### Added
+
+- `core/Csrf.php` — quản lý vòng đời token CSRF (sinh/lưu/đọc/so khớp), thuần logic, không biết HTTP. `token(): string` — get-or-generate qua `Session` (namespace `csrf.token`, đã dự trù sẵn từ CMS-007), sinh bằng `bin2hex(random_bytes(32))` (256-bit CSPRNG) nếu chưa có, không regenerate nếu đã tồn tại. `verify(string $submitted): bool` — so khớp `timing-safe` bằng `hash_equals()`, tự guard kiểu dữ liệu trước khi so sánh. Không tự `Session::start()`, không throw exception mới, phụ thuộc duy nhất `Session` (coupling cần thiết cố hữu của bài toán, không tránh được).
+- `core/Middleware/CsrfMiddleware.php` — implement `MiddlewareInterface` có sẵn từ CMS-006 (không đổi contract). Safe methods (`GET/HEAD/OPTIONS`) đi thẳng `$next()`, không kiểm tra. Unsafe methods (`POST/PUT/PATCH/DELETE`) đọc token theo đúng thứ tự `_token` (input) → `X-CSRF-TOKEN` (header) → `X-XSRF-TOKEN` (header); guard `is_string()` trước khi gọi `Csrf::verify()` (không ép kiểu `(string)` mù quáng, tránh PHP Warning "Array to string conversion" nếu client gửi `_token[]=...`); fail trả `Response::json({success:false,data:null,message:"CSRF token mismatch.",errors:[]}, 419)`.
+- `tests/Core/CsrfTest.php` (6 test), `tests/Core/Middleware/CsrfMiddlewareTest.php` (11 test — gồm 2 edge case: `_token` rỗng không fallback qua header, `_token` dạng mảng bị từ chối sạch không Warning).
+
+### Design decisions
+
+- Tách 2 class (`Csrf` logic thuần / `CsrfMiddleware` tích hợp HTTP) thay vì gộp 1 class — đúng SRP, nhất quán pattern đã dùng cho `Validator`/`ExceptionHandler`.
+- Hardcode tên field/header (`_token`/`X-CSRF-TOKEN`/`X-XSRF-TOKEN`) — không thêm `Config` dependency chỉ để đổi tên, đúng YAGNI.
+- Fail trả **419** (không 403) — quy ước riêng cho lỗi CSRF, tách biệt khỏi lỗi phân quyền (403, dành cho CMS-022 Authorization sau này).
+- Không tạo `CsrfException`/mở rộng `ExceptionHandler` — Middleware tự trả `Response` trực tiếp (giống `ShortCircuitMiddleware` đã có tiền lệ trong test suite từ CMS-018), giữ `ExceptionHandler` (CMS-019) ổn định.
+- Token sống theo Session (không one-time, không regenerate mỗi request) — chuẩn thực dụng phổ biến (Laravel/Django/Rails).
+- Đặt trong Core (`core/`, không phải Module/App) — CSRF thuần cơ chế, không business logic, nhất quán mọi Core Component khác (`Validator`/`MigrationManager`/`ExceptionHandler`).
+- **Xác nhận qua đọc trực tiếp `Container.php`**: không cần đăng ký `Csrf`/`CsrfMiddleware` vào `Application::registerCoreServices()` — Container tự auto-wire qua fallback `class_exists()`. **0 file Core cũ nào bị sửa.**
+- CSRF hoàn toàn **opt-in** — không tự động áp dụng cho bất kỳ route nào; việc gắn `CsrfMiddleware::class` vào route/group cụ thể (Admin Panel, không phải `/api/*`) thuộc phạm vi Module/App sau này.
+- Ghi nhận cho CMS-021 (Authentication): `Session::regenerate()` không tự cascade đổi `csrf.token` — nếu cần rotate token khi đăng nhập (session fixation defense-in-depth), CMS-021 có thể dùng `Session::remove('csrf.token')` + `Csrf::token()` (API đã có sẵn, không cần đổi `Csrf`).
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `CsrfTest`: 6 tests/7 assertions; `CsrfMiddlewareTest`: 11 tests/17 assertions; toàn bộ suite: 275 tests, 479 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.19] — CMS-019: Exception Handler
+
+### Added
+
+- `core/ExceptionHandler.php` — `final class`, **0 dependency** (không Config/Container/logging/Session/Database/View/Request) — mức cô lập cao nhất cùng `Validator`. Public API duy nhất: `handle(Throwable $exception, bool $debug): Response`. Mapping tĩnh (không registry/extend): `RouteNotFoundException`→404/`'Not Found'`, `MethodNotAllowedException`→405/`'Method Not Allowed'`, mọi `Throwable` khác→500 (`debug ? getMessage() : 'Internal Server Error'`). Debug block (`exception`/`file`/`line`/`trace`) chỉ xuất hiện khi `status===500 && debug===true` — `trace` dùng `explode("\n", getTraceAsString())` (không dùng `getTrace()` để tránh lỗi serialize JSON với object/resource không encode được, VD instance `PDO`/`Closure` trong tham số hàm). Giữ nguyên envelope `{success:false,data:null,message,errors:[]}` qua `Response::json()` đã có.
+- `tests/Core/ExceptionHandlerTest.php` (8 test, unit thuần — không `Router`/`Application`/filesystem).
+
+### Changed
+
+- `core/Application.php` — gộp 3 nhánh `catch` (`RouteNotFoundException`/`MethodNotAllowedException`/`Throwable`) thành 1 `catch (Throwable $exception)` duy nhất, delegate toàn bộ mapping cho `ExceptionHandler` (đăng ký singleton, 0 dependency riêng). Quyết định có `logException()` hay không dựa trên `$response->getStatusCode() >= 500` (thay vì `instanceof` từng loại exception) — giữ **chính xác** hành vi log cũ (404/405 không log, 500 vẫn log) đồng thời giúp `Application` không cần biết tên class exception cụ thể nào nữa. Xoá `errorResponse()` (không còn dùng). `isDebug()`/`logException()` không đổi.
+- `tests/Core/ApplicationTest.php` — thêm 1 test `testRouteNotFoundDoesNotWriteToLogFile` khoá tường minh hành vi "chỉ log status ≥ 500" (trước đây chỉ đúng ngầm định qua cấu trúc 3 catch riêng).
+
+### Design decisions
+
+- Trước khi code, Architecture Analysis phát hiện xung đột cấu trúc loại bỏ hướng "Middleware-based Exception Handler": `Router::match()` (nơi ném `RouteNotFoundException`/`MethodNotAllowedException`) chạy TRƯỚC `MiddlewarePipeline::handle()` — 1 Middleware (kể cả Global, mới có ở CMS-018) không bao giờ có cơ hội bắt được 2 exception này. Chọn tách `Core\ExceptionHandler` riêng (cải thiện SRP cho `Application`) thay vì tiếp tục mở rộng `Application::handle()` bằng nhiều nhánh `catch`.
+- Không xây registry/`extend()` cho mapping — chỉ 2/23 exception hiện có cần map riêng, thêm registry lúc này là YAGNI.
+- Logger (Core Component đầy đủ tính năng) tiếp tục ngoài phạm vi — `logException()` giữ nguyên tại `Application`, không chuyển vào `ExceptionHandler` (tách bạch rõ 2 mối quan tâm: "map lỗi thành Response" vs "ghi log").
+- Không auto-map `ValidationException`→422 — ranh giới rõ: `Application`/`ExceptionHandler` chỉ xử lý exception KHÔNG ai bắt (unexpected); Controller/Form layer tự quyết định catch `ValidationException` nếu muốn custom response.
+- Không map 403 — chưa có Auth/Authz module, chưa có exception contract cho authorization, để dành CMS sau.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `ExceptionHandlerTest`: 8 tests/20 assertions; `ApplicationTest`: 11 tests/27 assertions; `RouterTest`: 19 tests/29 assertions; toàn bộ suite: 258 tests, 455 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.18] — CMS-018: Middleware Pipeline Extension
+
+> Không có `v0.0.17` — CMS-017 (Redirect) kết thúc bằng Architecture Decision, không phát sinh code/tag (xem mục "CMS-017" bên dưới).
+
+### Added
+
+- `core/Router.php` — mở rộng **additive** (Middleware Pipeline gốc từ CMS-006 — `MiddlewareInterface`/`MiddlewarePipeline` — giữ nguyên tuyệt đối, không sửa). Thêm `middleware(array $middleware): static` — đăng ký Global Middleware (append, fluent), chạy trên **mọi route** bất kể group/route-level. `get()/post()/put()/patch()/delete()` thêm tham số cuối `array $middleware = []` — cho phép gán middleware trực tiếp cho 1 route đơn lẻ mà không cần bọc `group()`. Thứ tự onion cuối cùng: `Global → Group → Route-specific → Controller` (Global gộp **runtime** trong `dispatch()`, không "nướng cứng" vào `Route` lúc đăng ký — đảm bảo mọi route luôn nhận đúng global middleware hiện tại bất kể thứ tự gọi `middleware()` so với lúc route được đăng ký).
+- `tests/Fixtures/Http/MiddlewareC.php`, `tests/Core/RouterTest.php` (+6 test).
+
+### Design decisions
+
+- Trước khi code, Architecture Analysis phát hiện Middleware Pipeline **đã tồn tại và hoạt động từ CMS-006** — phạm vi CMS-018 không phải "xây Pipeline mới" mà là hoàn thiện 2 gap thật: Global Middleware (chưa có cơ chế áp dụng cho mọi route) và Route-level middleware đơn lẻ (trước đây chỉ gán được qua `group()`).
+- `core/Route.php` xác nhận **không cần sửa** — constructor tiếp tục nhận `list<class-string>` middleware phẳng, không cần biết nguồn gốc (global/group/route).
+- Router tiếp tục là owner duy nhất của middleware lifecycle — `core/Application.php` không đổi, không biết middleware tồn tại (đúng ranh giới đã có từ CMS-006).
+- Loại trừ có chủ đích khỏi phạm vi: middleware alias/registry (`'auth'` string), terminate/after-response hook, plugin middleware, event middleware — đúng YAGNI, chưa có nhu cầu thật.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `RouterTest.php` riêng: 19 tests/29 assertions; toàn bộ suite: 249 tests, 433 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## CMS-017: Redirect — Architecture Decision (không có code/tag)
+
+Kết luận: `Response::redirect()` (CMS-006) + `Session::flash()`/`getFlash()` (CMS-007) + `Request::all()`/`header('Referer')` (CMS-015) đã đủ để Controller tự viết pattern "redirect kèm flash message" — quyết định **không tạo `core/Redirector.php`** hay bất kỳ class nào cầu nối `Response`↔`Session` (sẽ phá vỡ nguyên tắc "Response/Session độc lập tuyệt đối" đã xuyên suốt từ CMS-001). Ghi nhận convention: `$session->flash($key, $value)` rồi `return Response::redirect($location)`. Chi tiết đầy đủ trong `core-architecture.md`.
+
+## [0.0.16] — CMS-016: HTTP Response Layer
+
+### Added
+
+- `core/Http/Response.php` — mở rộng **additive** (không tạo Core Component mới, không breaking method cũ). Constructor thêm 1 tham số cuối cùng có default `[]`: `cookies` (lưu tách riêng khỏi `headers` vì HTTP cho phép nhiều `Set-Cookie` header cùng lúc, còn `headers` chỉ giữ 1 giá trị/tên). Thêm: `withHeader()/withHeaders()/withStatus()` (immutable, trả instance mới), `withCookie(name, value, options)` (`options`: `expires/path/domain/secure/httponly[default true]/samesite`, caller tự truyền tường minh — Response không đọc Config), `withCache(seconds, public = true)`/`noCache()` (chỉ thao tác header `Cache-Control`, không ETag/Last-Modified/Vary), `getCookies()`. `send()` cập nhật gửi thêm `Set-Cookie` qua `header(..., false)` để không ghi đè khi có nhiều cookie.
+- `tests/Core/Http/ResponseTest.php` (17 test) — file test đầu tiên dành riêng cho `Response` (trước đây chỉ được kiểm chứng gián tiếp qua `RouterTest`/`ControllerResolverTest`).
+
+### Design decisions
+
+- **KHÔNG** thêm `apiSuccess()/apiError()` — envelope JSON (`{success,data,message,errors}`) là business convention (REST/GraphQL/JSON:API/HAL đều khác nhau), không phải HTTP contract, Core không nên áp đặt. Module/Helper tự dựng body rồi truyền `Response::json()`. Technical Debt #4 (đã ghi từ CMS-006) tiếp tục tồn đọng có chủ đích.
+- **KHÔNG** thêm `download()/file()` — đưa filesystem vào Response sẽ thay đổi boundary (Streaming/Range Request/MIME detection là chủ đề riêng), để dành CMS khác khi Module Media cần thật.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật: **PASS** — 243 tests, 424 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
 
 ## [0.0.15] — CMS-015: HTTP Request Layer
 
