@@ -1,6 +1,6 @@
 # CORE ARCHITECTURE — CMS Đa Website
 
-> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-031, tag `v0.0.1` → `v0.0.31`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code). Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
+> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-035, tag `v0.0.1` → `v0.0.35`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
 >
 > **`public/index.php` nay đã là bootstrap thật** (`Application::bootstrap(dirname(__DIR__))->run()`), không còn là smoke test — sơ đồ mục 2 dưới đây giờ mô tả đúng luồng chạy thực tế.
 
@@ -258,7 +258,108 @@ Quản lý trạng thái "đã đăng nhập hay chưa" trong Session (`auth.use
 
 **Session Data**: `auth.roles`/`auth.permissions` lưu `list<string>` (tên role/key permission, không lưu ID) — khớp đúng kiểu dữ liệu `Authorization::hasRole()/hasPermission()` đã có từ CMS-022, không cần sửa `Authorization.php`.
 
-**Không xử lý (Owner Decision, để dành CMS riêng)**: `POST /login`/Controller/UI, rate limiting brute-force (dù `config('auth.login_throttle')` đã sẵn sàng khớp `RateLimiter::hit()`), JWT (`config('auth.jwt')` — dành cho `/api/v1/*` theo thiết kế Hybrid Auth gốc), register/forgot-password/user-management/permission-management UI, multi-site session (1 session = 1 site, đổi site cần login lại) — xem Technical Debt #24/#25/#26.
+**Không xử lý (Owner Decision, để dành CMS riêng)**: `POST /login`/Controller/UI, JWT (`config('auth.jwt')` — dành cho `/api/v1/*` theo thiết kế Hybrid Auth gốc), register/forgot-password/user-management/permission-management UI, multi-site session (1 session = 1 site, đổi site cần login lại) — xem Technical Debt #25/#26.
+
+**Rate Limiting (CMS-033, `v0.0.33`)** — mở rộng `AuthenticationService`, giải quyết Technical Debt #24. Constructor thêm `RateLimiter`+`Config` (6 dependency). `attempt()` gọi `tooManyAttempts(key, maxAttempts)` **ngay sau tenant-check, trước khi query DB** (chặn sớm, tránh tốn tài nguyên khi đã bị rate-limit) — key `login:{lowercase_email}` (`config('auth.login_throttle.max_attempts'/'decay_seconds')`, đã sẵn sàng từ CMS-023, lần đầu dùng thật). Sau `password_verify()`: **FAIL** → `hit(key, maxAttempts, decaySeconds)`; **SUCCESS** → `clear(key)` — gắn với kết quả `password_verify()`, không gắn với kết quả cuối `attempt()`.
+
+**Authentication Flow (cập nhật đầy đủ sau CMS-033)**:
+```
+Tenant Check (TenantManager::check(), throw LogicException neu false)
+    v
+Rate Limit (tooManyAttempts() -> true: return false, khong query DB)
+    v
+User Lookup (SELECT id, password, status FROM users WHERE email = ?)
+    v
+Password Verify (that hoac DUMMY_HASH neu user khong ton tai)
+    v
+hit() [FAIL] hoac clear() [SUCCESS]
+    v
+Status Check (status !== 'active' -> return false)
+    v
+Auth::login() + load roles/permissions -> Session::set()
+```
+
+**Lưu ý bảo mật đã ghi nhận có chủ đích (không phải bug)**: tài khoản `inactive` dùng đúng password vẫn kích hoạt `clear()` (vì `clear()` gắn với `password_verify()` thành công, xảy ra **trước** `status` check) — rate limiter không bao giờ chặn được kịch bản "biết đúng password nhưng tài khoản bị khoá", dù không dẫn tới truy cập trái phép (status check vẫn chặn ở bước sau). Hành vi này được Owner xác nhận qua Final Verification (Phase 4) và khoá lại bằng `testRateLimitClearsEvenWhenInactiveAccountUsesCorrectPassword` — tránh refactor sau này vô tình đổi thứ tự `clear()`/status check.
+
+### 3.27. Module đầu tiên — `Auth Module` (`modules/Auth/`) — v0.0.34
+
+**Lưu ý**: đây là **Module** (business layer), không phải Core Component — đặt tiếp số thứ tự mục 3 để dễ tham chiếu, nhưng khác bản chất hoàn toàn với 3.1-3.26 (những mục đó đều là `core/*.php`).
+
+**Module Layout**:
+```
+modules/
+  Auth/
+    module.json          {"key":"auth","name":"Auth Module","version":"1.0.0","dependencies":[]}
+    routes.php            $router->post('/login', [Modules\Auth\LoginController::class, 'handle']);
+    LoginController.php   namespace Modules\Auth; class LoginController
+```
+Namespace `Modules\Auth` khớp PSR-4 `"Modules\\": "modules/"` (`composer.json`, cấu hình từ CMS-001, **lần đầu dùng thật** ở CMS-034 — `modules/` trước đó hoàn toàn rỗng, chỉ `.gitkeep`).
+
+**Module Bootstrap Flow**: `Application::boot()` (không sửa) → `$moduleManager->boot($router, \array_keys($moduleManager->discover()))` bên trong `$router->group(['middleware' => [TenantResolverMiddleware::class]], ...)` (đã có từ CMS-030) → `ModuleManager::discover()` glob `modules/*/module.json` → tự động tìm thấy `Auth` (không cần đăng ký thủ công, không có bảng `site_modules` để lọc — mọi module hợp lệ tự "bật") → `boot()` `require routes.php` qua closure cô lập scope (chỉ `$router` khả kiến).
+
+**Controller Lifecycle**: `Router::dispatch()` → match route → `MiddlewarePipeline` (gồm `TenantResolverMiddleware` do route nằm trong group) → `ControllerResolver::resolve()` — `$controller = $container->get(Modules\Auth\LoginController::class)` (auto-wire qua Reflection, **không đăng ký gì trong `Application::registerCoreServices()`**) → `$controller->handle($request)`.
+
+**HTTP Flow / Login Flow**:
+```
+POST /login {email, password}
+    v
+TenantResolverMiddleware (domain khong khop -> 404, dung lai truoc Controller)
+    v
+LoginController::handle(Request)
+    v
+Validator::validate(['email'=>'required|email','password'=>'required|string'])
+    v
+FAIL -> 422 {success:false, data:null, message:'Du lieu khong hop le.', errors:{field:[...]}}
+    v
+PASS -> AuthenticationService::attempt($email, $password)
+    v
+false -> 401 {success:false, data:null, message:'Email hoac mat khau khong dung.', errors:[]}
+    v
+true  -> 200 {success:true, data:{id, email, roles, permissions}, message:'', errors:[]}
+```
+Message 401 **thống nhất cho MỌI nhánh thất bại** của `attempt()` (sai password/email không tồn tại/rate-limited/status không active) — `LoginController` không tự suy luận lý do cụ thể, đúng nguyên tắc chống user enumeration đã có từ `AuthenticationService` (CMS-031).
+
+**Response Format**: Đúng envelope `{success, data, message, errors}` đã dùng nhất quán ở mọi endpoint khác (`/health`, 404/405/500, CSRF 419, Auth 401, Authorization 403) — không có `apiSuccess()/apiError()` (đã từ chối ở CMS-016), `LoginController` tự build mảng. `data` thành công đọc qua `Auth::id()/user()['email']` + `Authorization::roles()/permissions()` — **không** API mới ở `Auth.php`/`Authorization.php`.
+
+**Security Note**:
+- **Không CSRF cho `/login`** (Owner Decision, có chủ đích, không phải thiếu sót) — chưa có endpoint nào phát hành token CSRF trước khi client submit (không GET login page, không SPA token endpoint). "Login CSRF" (kẻ tấn công ép nạn nhân đăng nhập vào tài khoản kẻ tấn công) là lớp rủi ro khác mà Synchronizer Token Pattern không trực tiếp nhắm tới — chấp nhận được ở giai đoạn Foundation này, ghi nhận Technical Debt để xem xét khi có Admin Panel UI thật.
+- **Không GET `/login`** — chưa có theme/View Admin Panel, JSON API POST-only.
+- Không log/trả password hoặc hash ở bất kỳ đâu trong response.
+- Rate limiting (CMS-033) và chống user enumeration (CMS-031) tự động áp dụng — Module không cần biết/xử lý gì thêm.
+
+**Testing**: `tests/Core/ModuleAuthIntegrationTest.php` (5 test) — dùng `ModuleManager` trỏ thẳng `modules/` **thật** (không fixture), `Router::dispatch()` thật, không qua `Application::bootstrap()` (tránh phụ thuộc config production/ghi log thật vào `storage/`).
+
+**Không sửa**: `Application.php`, `ModuleManager.php`, `Router.php`, `Container.php`, `AuthenticationService.php`, `Auth.php`, `Authorization.php`, mọi Middleware, Migration, Database, Composer, PHPUnit config.
+
+### Auth Logout Flow (CMS-035, `v0.0.35`)
+
+`modules/Auth/LogoutController.php` (mới) — `POST /logout`, dùng nguyên `Auth::logout()` đã có từ CMS-021, không sửa `Auth.php`/`Session.php`.
+
+```
+POST /logout
+    v
+TenantResolverMiddleware (group, khong doi tu CMS-030)
+    v
+LogoutController::handle(Request)
+    v
+Auth::logout()  ->  Session::destroy()
+    v
+200 JSON {success, data, message, errors}
+```
+
+**Response format**: `{success: true, data: null, message: "Dang xuat thanh cong.", errors: []}` — luôn luôn, không có nhánh lỗi khác (idempotent).
+
+**Security Notes**:
+- **Idempotent** — trả 200 dù đã đăng nhập hay chưa, đúng bản chất `Auth::logout()`/`Session::destroy()` (không throw ở bất kỳ trạng thái nào, đã xác nhận qua đọc trực tiếp `Session.php`).
+- **Không leak state** — response không phân biệt "đã đăng nhập" hay "chưa đăng nhập" trước khi gọi.
+- **Không cần `AuthMiddleware`** — dù middleware này đã tồn tại sẵn (CMS-021), áp dụng vào `/logout` sẽ ép 401 khi chưa đăng nhập, mâu thuẫn với tính idempotent đã chọn.
+- **Không cần CSRF** (Owner Decision, nhất quán `/login` CMS-034) — chưa có token-issuing flow; đồng thời `Session::destroy()` tự xoá luôn mọi `rate_limit.*`/`csrf.token` như hệ quả tự nhiên, không cần code dọn riêng.
+
+**Test Failure Analysis (ghi nhận lịch sử)**: lần chạy đầu 2 test mới ném `SessionException` vì gọi `Auth::check()/user()` ngay sau `Session::destroy()` (session đã kết thúc) trong cùng 1 "request" mô phỏng — **lỗi test assumption**, không phải bug `LogoutController`/`Auth`/`Session`. Sửa bằng cách gọi lại `Session::start()` trước khi đọc trạng thái (mô phỏng đúng request kế tiếp), **đúng pattern đã có từ `AuthTest::testLogoutClearsAuthenticationState` (CMS-021)** — không phải lỗi mới, là sự lặp lại bài học cũ.
+
+**Testing**: `tests/Core/ModuleAuthIntegrationTest.php` (+2 test, tổng 7 test trong file).
+
+**Không sửa**: `LoginController.php`, `Auth.php`, `Session.php`, `AuthenticationService.php`, `Authorization.php`, `Router.php`, `Application.php`, `ModuleManager.php`, `Container.php`, mọi Middleware, Migration, Composer, PHPUnit config.
 
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
@@ -272,7 +373,7 @@ Quản lý trạng thái "đã đăng nhập hay chưa" trong Session (`auth.use
 
 ## 5. Testing Summary
 
-**391 test, 676 assertion — PASS** (PHP 8.3.30), Verified PASS thật tính đến CMS-031. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`.
+**403 test, 718 assertion — PASS** (PHP 8.3.30, PHPUnit 10.5.64), Verified PASS thật tính đến CMS-035. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`.
 
 | Component | Số test | Chiến lược |
 |---|---|---|
@@ -301,7 +402,8 @@ Quản lý trạng thái "đã đăng nhập hay chưa" trong Session (`auth.use
 | Logger Integration (Application) | 2 (+ regression trong `ApplicationTest` cũ) | Integration (filesystem thật, `Hook`/`Container` thật qua `Application::bootstrap()`) |
 | TenantResolverMiddleware | 4 | Integration (`Database` SQLite in-memory thật, seed tay) |
 | TenantManager Integration (Application/View) | 3 (+ 5 test cũ được thêm seed) | Integration (`Database` SQLite in-memory thật qua `Application::bootstrap()`) |
-| AuthenticationService | 10 | Integration (`Database` SQLite in-memory thật, seed tay, `Session`/`Auth`/`TenantManager` thật) |
+| AuthenticationService | 15 (10 CMS-031 + 5 CMS-033 rate limiting) | Integration (`Database` SQLite in-memory thật, seed tay, `Session`/`Auth`/`TenantManager`/`RateLimiter` thật) |
+| Auth Module (`modules/Auth/`) | 7 (5 CMS-034 login + 2 CMS-035 logout) | Integration (`ModuleManager` trỏ `modules/` thật, `Router::dispatch()` thật, không fixture) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 
@@ -330,8 +432,8 @@ Quản lý trạng thái "đã đăng nhập hay chưa" trong Session (`auth.use
 | 21 | `TenantResolverMiddleware` (CMS-030) chưa kiểm tra `sites.status` (`suspended`/`maintenance`) — site không active vẫn resolve tenant thành công, request vẫn đi tiếp bình thường | Quyết định phạm vi có chủ đích (Owner Decision CMS-030) — cần 1 CMS Authorization site-level riêng khi có route Admin/Super Admin thật |
 | 22 | `TenantResolverMiddleware` (CMS-030) không normalize domain (không lowercase, không strip `:port` khỏi `Request::getHost()`) — domain có hoa/thường khác nhau hoặc kèm port sẽ không khớp `site_domains` dù về mặt logic là cùng 1 host | Chưa có bằng chứng nhu cầu thật (chưa có site nào cấu hình domain có port khác 80/443) — cần 1 CMS riêng nếu phát sinh |
 | 23 | `system_admin.domains` (đã có sẵn trong `config/tenants.php` từ trước CMS-030) chưa được `TenantResolverMiddleware` xử lý — domain Super Admin thật (nếu có) sẽ bị 404 thay vì bypass | Quyết định phạm vi có chủ đích (Owner Decision CMS-030, Q4) — hiện chưa có route `/system-admin/*` nào tồn tại nên chưa phải regression thật; cần CMS Super Admin/Authorization riêng |
-| 24 | `AuthenticationService` (CMS-031) chưa có rate limiting brute-force — dù `config('auth.login_throttle')` đã sẵn sàng khớp `RateLimiter::hit()` (Foundation từ CMS-023), `attempt()` không tự gọi | Quyết định phạm vi có chủ đích (Owner Decision CMS-031, Q4) — cần 1 CMS Security/RateLimit riêng khi có route `/login` thật |
-| 25 | `AuthenticationService` (CMS-031) chưa có `POST /login`/Controller — chỉ Foundation Service, chưa có Module nào gọi `attempt()` thật | Quyết định phạm vi có chủ đích (Owner Decision CMS-031, Q2) — cần CMS Module Admin/Auth riêng khi viết Controller đăng nhập thật |
+| ~~24~~ | ~~`AuthenticationService` (CMS-031) chưa có rate limiting brute-force~~ | **✅ RESOLVED ở CMS-033** (`v0.0.33`) — `attempt()` gọi `tooManyAttempts()`/`hit()`/`clear()` đúng `config('auth.login_throttle')`, key theo email. Lưu ý phụ phát sinh: `clear()` gắn với `password_verify()` thành công, không gắn kết quả cuối `attempt()` — tài khoản inactive dùng đúng password không bao giờ bị rate-limit (có chủ đích, đã khoá bằng test riêng) |
+| ~~25~~ | ~~`AuthenticationService` (CMS-031) chưa có `POST /login`/Controller~~ | **✅ RESOLVED ở CMS-034** (`v0.0.34`) — `modules/Auth/LoginController.php` (Module thật đầu tiên của dự án) gọi `AuthenticationService::attempt()` qua `POST /login`. Phát sinh Technical Debt mới: không CSRF cho `/login` (có chủ đích, xem mục 3.27), không GET login page (chưa có UI Admin Panel) |
 | 26 | `AuthenticationService` (CMS-031) giả định 1 session = 1 site (`TenantManager::id()` tại thời điểm login) — user thuộc nhiều site (`user_site_roles`) phải đăng nhập lại khi đổi site, không có cơ chế switch-site giữ nguyên session | Quyết định phạm vi có chủ đích (Owner Decision CMS-031, Q8) — cần CMS riêng nếu có nhu cầu "1 user quản lý nhiều site trong cùng phiên" |
 
 Từ CMS-012, dự án áp dụng quy trình chuẩn hoá 9 bước (Architecture Analysis → Design → Chờ duyệt → Implementation → Self Code Review → Self Architecture Review → Regression Review → Unit Test → Báo cáo) và nguyên tắc kiến trúc: **không tạo interface cho 1 implementation, không tạo abstraction chỉ để DRY, không tối ưu sớm, không sửa code đã ổn định chỉ vì "đẹp hơn"**.

@@ -6,6 +6,82 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.35] — CMS-035: Auth Logout Endpoint
+
+### Added
+
+- `modules/Auth/LogoutController.php` — `POST /logout`, dùng `Auth::logout()` đã có (không sửa `Auth.php`). Idempotent — luôn trả 200 dù đã đăng nhập hay chưa.
+- `modules/Auth/routes.php` — thêm route `POST /logout`.
+- `tests/Core/ModuleAuthIntegrationTest.php` mở rộng (+2 test): `testLogoutClearsAuthenticatedUser`, `testLogoutSucceedsWhenNotLoggedIn`.
+
+### Design Decisions
+
+- **Không sửa Core** — `Application.php`/`ModuleManager.php`/`Router.php`/`Container.php` không đổi.
+- **Không sửa `Auth.php`/`Session.php`** — dùng nguyên API `Auth::logout()` đã ổn định từ CMS-021.
+- **Không CSRF** — nhất quán quyết định `/login` (CMS-034), chưa có token-issuing flow.
+- **Không `AuthMiddleware`** — logout idempotent theo đúng bản chất "không thể thất bại" của `Auth::logout()`, ép 401 khi chưa đăng nhập sẽ mâu thuẫn với thiết kế gốc.
+- **JSON API only**, **logout luôn trả 200** — không phân biệt trạng thái đăng nhập trước đó.
+
+### Testing
+
+- `ModuleAuthIntegrationTest`: 7 tests / 26 assertions.
+- Full Suite: 403 tests / 718 assertions.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `ModuleAuthIntegrationTest`: 7 tests/26 assertions; toàn bộ suite: 403 tests, 718 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.34] — CMS-034: Module System Bootstrap (Auth Module)
+
+### Added
+
+- `modules/Auth/` — **Module thật đầu tiên của dự án** (`modules/` trước đó hoàn toàn rỗng, chỉ `.gitkeep`). Lần đầu dùng thật PSR-4 `"Modules\\": "modules/"` đã cấu hình từ CMS-001.
+- `modules/Auth/module.json` — `key: "auth"`, đúng schema `ModuleDescriptor`.
+- `modules/Auth/routes.php` — `POST /login`.
+- `modules/Auth/LoginController.php` — `handle(Request): Response`, authentication thông qua `AuthenticationService::attempt()` (CMS-031/033, không sửa). Validate input qua `Validator` (CMS-014). Response thành công trả `{id, email, roles, permissions}` (đọc qua `Auth`/`Authorization`, không API mới); thất bại trả message thống nhất, không phân biệt lý do (sai password/email không tồn tại/rate-limited/inactive).
+- `tests/Core/ModuleAuthIntegrationTest.php` (mới, 5 test) — integration test dùng `ModuleManager` trỏ thẳng `modules/` thật, `Router::dispatch()` thật, không mock.
+
+### Design Decisions
+
+- **Không sửa Core** — `Application.php`/`ModuleManager.php`/`Router.php`/`Container.php` không đổi 1 dòng; cơ chế discovery/boot module đã đủ dùng từ CMS-010.
+- **Không sửa `AuthenticationService.php`/`Auth.php`/`Authorization.php`** — Module chỉ gọi API public đã có.
+- **Không GET `/login`** — chưa có theme/View Admin Panel nào tồn tại, để dành khi UI thật được xây.
+- **Không CSRF cho `/login`** (Owner Decision, có chủ đích — không phải thiếu sót) — chưa có endpoint phát hành token trước khi submit; "login CSRF" là lớp rủi ro khác Synchronizer Token Pattern không nhắm tới trực tiếp.
+- **JSON API only** — nhất quán 100% với mọi endpoint khác trong dự án (`/health`, 404/405/500, CSRF 419, Auth 401, Authorization 403 đều JSON envelope `{success,data,message,errors}`).
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, `composer dump-autoload` PASS): **PASS** — `ModuleAuthIntegrationTest`: 5 tests/16 assertions; toàn bộ suite: 401 tests, 708 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
+## [0.0.33] — CMS-033: Authentication Rate Limiting
+
+### Added
+
+Authentication rate limiting:
+
+- `AuthenticationService` tích hợp `RateLimiter` (constructor injection, cùng `Config`).
+- Login throttle dùng `config('auth.login_throttle.max_attempts'/'decay_seconds')` — cấu hình đã sẵn sàng từ CMS-023, lần đầu được sử dụng thật.
+- Rate-limit key scoped theo email (`login:{lowercase_email}`) — 1 email bị khoá không ảnh hưởng email khác.
+- `RateLimiter::clear()` gọi sau khi `password_verify()` thành công — không tính là "hit" khi mật khẩu đúng.
+- `tests/Core/AuthenticationServiceTest.php` (+5 test, tổng 15 test): rate-limit cơ bản (chặn khi vượt ngưỡng, thành công dưới ngưỡng, key theo từng email, clear khi verify đúng) + 1 test khoá tường minh hành vi "clear() xảy ra dù tài khoản inactive" (đã được Owner chấp thuận qua Final Verification Phase 4).
+- `tests/Fixtures/config/auth.php` — bổ sung key `login_throttle` (thuần additive).
+
+### Design Decisions
+
+- **Không Route** — route `/login` để dành khi Module System (Phase 3) thật bắt đầu, tránh đặt business route vào Core.
+- **Không Controller** — cùng lý do trên.
+- **Không JWT** — ngoài phạm vi, thuộc `/api/v1/*` theo thiết kế Hybrid Auth gốc.
+- **Không Repository** — `AuthenticationService` tiếp tục gọi `Database`/`RateLimiter` trực tiếp, đúng tiền lệ CMS-030.
+- **Không tạo Exception mới** — rate-limit trả `bool` (`false`), nhất quán convention `Csrf::verify()`/`RateLimiter::hit()` đã có.
+- **Không sửa `Auth.php`** — ranh giới "chỉ session-state" giữ nguyên từ CMS-021.
+- **Không sửa `Authorization.php`** — ranh giới "chỉ đọc Session" giữ nguyên từ CMS-022.
+- **Không sửa `RateLimiter.php`/`Application.php`/`Router.php`/`Container.php`/Middleware/Database layer** — mở rộng đúng 1 file (`AuthenticationService.php`) + fixture test.
+- Thứ tự `hit()`/`clear()` gắn với kết quả `password_verify()`, không gắn với kết quả cuối `attempt()` — tài khoản `inactive` dùng đúng password vẫn `clear()` rate limit (hành vi có chủ đích, đã khoá bằng test riêng, xem Technical Debt).
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30): **PASS** — `AuthenticationServiceTest`: 15 tests/28 assertions; toàn bộ suite: 396 tests, 692 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 0 Deprecations, 4 Skipped (Redis) đúng thiết kế.
+
 ## [0.0.31] — CMS-031: Auth/Authorization Foundation
 
 ### Added
