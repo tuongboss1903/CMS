@@ -21,7 +21,7 @@ final class TenantResolverMiddlewareTest extends TestCase
         return new Database($config);
     }
 
-    private function seedSite(Database $database, string $domain, ?string $themeActive = null): void
+    private function seedSite(Database $database, string $domain, ?string $themeActive = null, string $status = 'active'): void
     {
         $database->statement('CREATE TABLE sites (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,8 +41,8 @@ final class TenantResolverMiddlewareTest extends TestCase
         )');
 
         $database->insert(
-            'INSERT INTO sites (name, theme_active) VALUES (?, ?)',
-            ['Site A', $themeActive]
+            'INSERT INTO sites (name, theme_active, status) VALUES (?, ?, ?)',
+            ['Site A', $themeActive, $status]
         );
         $database->insert(
             'INSERT INTO site_domains (site_id, domain) VALUES (1, ?)',
@@ -125,6 +125,106 @@ final class TenantResolverMiddlewareTest extends TestCase
             fn (Request $request): Response => Response::html('ok')
         );
 
+        self::assertFalse($tenantManager->check());
+    }
+
+    public function testAllowsActiveSiteExplicitly(): void
+    {
+        $database = $this->freshDatabase();
+        $this->seedSite($database, 'example.com', null, 'active');
+        $tenantManager = new TenantManager();
+        $middleware = new TenantResolverMiddleware($database, $tenantManager);
+
+        $called = false;
+        $response = $middleware->process(
+            new Request('GET', '/', 'example.com'),
+            function (Request $request) use (&$called): Response {
+                $called = true;
+
+                return Response::html('ok');
+            }
+        );
+
+        self::assertTrue($called);
+        self::assertSame('ok', $response->getBody());
+        self::assertTrue($tenantManager->check());
+    }
+
+    public function testBlocksMaintenanceSiteWith503(): void
+    {
+        $database = $this->freshDatabase();
+        $this->seedSite($database, 'example.com', null, 'maintenance');
+        $tenantManager = new TenantManager();
+        $middleware = new TenantResolverMiddleware($database, $tenantManager);
+
+        $called = false;
+        $response = $middleware->process(
+            new Request('GET', '/', 'example.com'),
+            function (Request $request) use (&$called): Response {
+                $called = true;
+
+                return Response::html('should-not-reach-here');
+            }
+        );
+
+        self::assertFalse($called);
+        self::assertSame(503, $response->getStatusCode());
+        self::assertSame(
+            ['success' => false, 'data' => null, 'message' => 'Site is under maintenance.', 'errors' => []],
+            \json_decode($response->getBody(), true)
+        );
+        self::assertFalse($tenantManager->check());
+    }
+
+    public function testBlocksSuspendedSiteWith403(): void
+    {
+        $database = $this->freshDatabase();
+        $this->seedSite($database, 'example.com', null, 'suspended');
+        $tenantManager = new TenantManager();
+        $middleware = new TenantResolverMiddleware($database, $tenantManager);
+
+        $called = false;
+        $response = $middleware->process(
+            new Request('GET', '/', 'example.com'),
+            function (Request $request) use (&$called): Response {
+                $called = true;
+
+                return Response::html('should-not-reach-here');
+            }
+        );
+
+        self::assertFalse($called);
+        self::assertSame(403, $response->getStatusCode());
+        self::assertSame(
+            ['success' => false, 'data' => null, 'message' => 'Site has been suspended.', 'errors' => []],
+            \json_decode($response->getBody(), true)
+        );
+        self::assertFalse($tenantManager->check());
+    }
+
+    public function testBlocksUnknownStatusValue(): void
+    {
+        $database = $this->freshDatabase();
+        $this->seedSite($database, 'example.com', null, 'some-future-status');
+        $tenantManager = new TenantManager();
+        $middleware = new TenantResolverMiddleware($database, $tenantManager);
+
+        $called = false;
+        $response = $middleware->process(
+            new Request('GET', '/', 'example.com'),
+            function (Request $request) use (&$called): Response {
+                $called = true;
+
+                return Response::html('should-not-reach-here');
+            }
+        );
+
+        self::assertFalse($called);
+        self::assertSame(403, $response->getStatusCode());
+        self::assertSame(
+            ['success' => false, 'data' => null, 'message' => 'Site is not available.', 'errors' => []],
+            \json_decode($response->getBody(), true)
+        );
         self::assertFalse($tenantManager->check());
     }
 }

@@ -1,6 +1,6 @@
 # CORE ARCHITECTURE — CMS Đa Website
 
-> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-035, tag `v0.0.1` → `v0.0.35`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
+> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-036, tag `v0.0.1` → `v0.0.36`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
 >
 > **`public/index.php` nay đã là bootstrap thật** (`Application::bootstrap(dirname(__DIR__))->run()`), không còn là smoke test — sơ đồ mục 2 dưới đây giờ mô tả đúng luồng chạy thực tế.
 
@@ -239,7 +239,11 @@ Quản lý trạng thái "đã đăng nhập hay chưa" trong Session (`auth.use
 
 **Test**: `tests/Core/Middleware/TenantResolverMiddlewareTest.php` (4 test, `Database` SQLite in-memory thật + seed tay, không mock).
 
-**Không xử lý (Owner Decision, để dành CMS riêng)**: `system_admin.domains` bypass (đã có sẵn trong `config/tenants.php`, chưa dùng), site `status` (`suspended`/`maintenance`), domain normalization (lowercase/strip port) — xem Technical Debt #21/#22/#23.
+**Không xử lý (Owner Decision, để dành CMS riêng)**: `system_admin.domains` bypass (đã có sẵn trong `config/tenants.php`, chưa dùng), domain normalization (lowercase/strip port) — xem Technical Debt #22/#23.
+
+**Site Status Policy (CMS-036, `v0.0.36`)** — giải quyết Technical Debt #21. Sau khi resolve domain→site thành công, thêm 1 khối kiểm tra: `if ($site['status'] !== 'active') { return $this->statusBlockedResponse(...); }` — dùng thẳng `$site['status']` đã có sẵn từ `SELECT sites.*`, **không thêm query SQL**. **Fail-closed tuyệt đối** — chỉ đúng chuỗi `'active'` mới được đi tiếp, không `in_array()`/whitelist, mọi giá trị khác (kể cả NULL/rỗng/giá trị lạ/tương lai) đều bị chặn. `private statusBlockedResponse(string $status): Response` dùng `match()` chọn mã HTTP/message: `'maintenance'` → 503 + `"Site is under maintenance."`; `'suspended'` → 403 + `"Site has been suspended."`; `default` (mọi giá trị khác) → 403 + `"Site is not available."`. Khi bị chặn: **không** gọi `TenantManager::setCurrent()`, **không** gọi `$next($request)` — response trả ngay (short-circuit, cùng pattern nhánh 404 domain-không-khớp). Response giữ nguyên envelope `{success, data, message, errors}`.
+
+**Đánh đổi có chủ đích**: message tiết lộ lý do cụ thể (khác nhánh domain-không-khớp vẫn giữ 404 generic) — ưu tiên khả năng vận hành/chẩn đoán hơn che giấu sự tồn tại của domain, đây là quyết định tường minh của Owner (không phải sơ suất).
 
 ### 3.26. `AuthenticationService` (`core/AuthenticationService.php`) — v0.0.31
 
@@ -373,7 +377,7 @@ Auth::logout()  ->  Session::destroy()
 
 ## 5. Testing Summary
 
-**403 test, 718 assertion — PASS** (PHP 8.3.30, PHPUnit 10.5.64), Verified PASS thật tính đến CMS-035. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`.
+**407 test, 733 assertion — PASS** (PHP 8.3.30, PHPUnit 10.5.64), Verified PASS thật tính đến CMS-036. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`.
 
 | Component | Số test | Chiến lược |
 |---|---|---|
@@ -400,7 +404,7 @@ Auth::logout()  ->  Session::destroy()
 | MiddlewarePipeline (parameterization) | 5 | Unit/Integration (Container thật, fixture middleware class-string + instance) |
 | Database Migration Phase 2 (Tenant/Auth/Role) | 11 | Integration (SQLite in-memory thật, `MigrationManager` chạy migration thật trong `database/migrations/`) |
 | Logger Integration (Application) | 2 (+ regression trong `ApplicationTest` cũ) | Integration (filesystem thật, `Hook`/`Container` thật qua `Application::bootstrap()`) |
-| TenantResolverMiddleware | 4 | Integration (`Database` SQLite in-memory thật, seed tay) |
+| TenantResolverMiddleware | 8 (4 CMS-030 domain resolution + 4 CMS-036 site status policy) | Integration (`Database` SQLite in-memory thật, seed tay) |
 | TenantManager Integration (Application/View) | 3 (+ 5 test cũ được thêm seed) | Integration (`Database` SQLite in-memory thật qua `Application::bootstrap()`) |
 | AuthenticationService | 15 (10 CMS-031 + 5 CMS-033 rate limiting) | Integration (`Database` SQLite in-memory thật, seed tay, `Session`/`Auth`/`TenantManager`/`RateLimiter` thật) |
 | Auth Module (`modules/Auth/`) | 7 (5 CMS-034 login + 2 CMS-035 logout) | Integration (`ModuleManager` trỏ `modules/` thật, `Router::dispatch()` thật, không fixture) |
@@ -429,7 +433,7 @@ Auth::logout()  ->  Session::destroy()
 | ~~18~~ | ~~`TenantManager` (CMS-025) chưa được nối vào `View`, chưa có cơ chế resolve domain→tenant thật~~ | **✅ Đã giải quyết ở CMS-030** (`v0.0.30`) — `TenantResolverMiddleware` resolve domain→tenant thật qua `sites`/`site_domains` (CMS-028), `View` đọc `theme_active` từ `TenantManager`. Còn deferred: `Cache`/`QueryBuilder::forTenant()` vẫn chưa nối dây |
 | 19 | `ThemeManager` (CMS-026) chưa được nối vào `View`/`Application` — chưa có `ThemeService` kích hoạt theme, chưa có database synchronization service đồng bộ filesystem→bảng `themes` | Quyết định phạm vi có chủ đích (Foundation trước), không phải bug — cần 1 CMS riêng khi có nhu cầu thật (Module Theme/Admin Dashboard) |
 | 20 | `roles` (CMS-028): UNIQUE `(tenant_id, name)` không ngăn được 2 role hệ thống (`tenant_id IS NULL`) trùng tên — đúng ANSI SQL semantics (`NULL ≠ NULL` trong composite UNIQUE ở cả SQLite lẫn MySQL), không phải bug migration, phát hiện qua PHPUnit thật | Xử lý ở Service layer khi có CMS Role/Auth Service thật (tự kiểm tra trùng tên trước khi insert khi `tenant_id IS NULL`) — không Trigger, nhất quán ràng buộc homepage `database-design.md` mục 6.1 |
-| 21 | `TenantResolverMiddleware` (CMS-030) chưa kiểm tra `sites.status` (`suspended`/`maintenance`) — site không active vẫn resolve tenant thành công, request vẫn đi tiếp bình thường | Quyết định phạm vi có chủ đích (Owner Decision CMS-030) — cần 1 CMS Authorization site-level riêng khi có route Admin/Super Admin thật |
+| ~~21~~ | ~~`TenantResolverMiddleware` (CMS-030) chưa kiểm tra `sites.status`~~ | **✅ RESOLVED ở CMS-036** (`v0.0.36`) — fail-closed tuyệt đối, chỉ `status === 'active'` được đi tiếp; `maintenance` → 503, `suspended` → 403, giá trị khác → 403 |
 | 22 | `TenantResolverMiddleware` (CMS-030) không normalize domain (không lowercase, không strip `:port` khỏi `Request::getHost()`) — domain có hoa/thường khác nhau hoặc kèm port sẽ không khớp `site_domains` dù về mặt logic là cùng 1 host | Chưa có bằng chứng nhu cầu thật (chưa có site nào cấu hình domain có port khác 80/443) — cần 1 CMS riêng nếu phát sinh |
 | 23 | `system_admin.domains` (đã có sẵn trong `config/tenants.php` từ trước CMS-030) chưa được `TenantResolverMiddleware` xử lý — domain Super Admin thật (nếu có) sẽ bị 404 thay vì bypass | Quyết định phạm vi có chủ đích (Owner Decision CMS-030, Q4) — hiện chưa có route `/system-admin/*` nào tồn tại nên chưa phải regression thật; cần CMS Super Admin/Authorization riêng |
 | ~~24~~ | ~~`AuthenticationService` (CMS-031) chưa có rate limiting brute-force~~ | **✅ RESOLVED ở CMS-033** (`v0.0.33`) — `attempt()` gọi `tooManyAttempts()`/`hit()`/`clear()` đúng `config('auth.login_throttle')`, key theo email. Lưu ý phụ phát sinh: `clear()` gắn với `password_verify()` thành công, không gắn kết quả cuối `attempt()` — tài khoản inactive dùng đúng password không bao giờ bị rate-limit (có chủ đích, đã khoá bằng test riêng) |

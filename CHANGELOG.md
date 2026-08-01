@@ -6,6 +6,30 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.36] — CMS-036: Site Status Policy
+
+### Added
+
+- `core/Middleware/TenantResolverMiddleware.php` — sau khi resolve domain→site thành công, chặn request nếu `sites.status !== 'active'` (fail-closed tuyệt đối, dùng thẳng `$site['status']` đã có sẵn từ `SELECT sites.*`, không thêm query SQL). `maintenance` → HTTP 503 + `"Site is under maintenance."`; `suspended` → HTTP 403 + `"Site has been suspended."`; mọi giá trị khác (NULL/rỗng/lạ/tương lai) → HTTP 403 + `"Site is not available."`. Không gọi `TenantManager::setCurrent()`, không gọi `$next()` khi bị chặn. Response giữ nguyên envelope `{success, data, message, errors}`.
+- `tests/Core/Middleware/TenantResolverMiddlewareTest.php` (+4 test): `testAllowsActiveSiteExplicitly`, `testBlocksMaintenanceSiteWith503`, `testBlocksSuspendedSiteWith403`, `testBlocksUnknownStatusValue`. `seedSite()` mở rộng thêm tham số `$status` (default `'active'`, additive).
+
+### Design Decisions
+
+- **Fail-closed tuyệt đối** — chỉ đúng `status === 'active'` mới được đi tiếp, không dùng `in_array()`/whitelist — mọi giá trị khác đều chặn, kể cả giá trị status tương lai chưa biết.
+- **Message tiết lộ lý do cụ thể** (có chủ đích) — ưu tiên khả năng vận hành/chẩn đoán hơn che giấu sự tồn tại của domain (khác nhánh domain-không-khớp, vẫn giữ 404 generic).
+- **Không thêm query SQL** — tái dùng `$site['status']` đã có sẵn từ câu query gốc.
+- **Không sửa `TenantManager.php`/`Database.php`/`Application.php`/`Router.php`/`Container.php`** — thay đổi cô lập hoàn toàn trong 1 file.
+- **Không tạo middleware/exception/helper/config mới** — logic mới nằm trong 1 `private method` nội bộ của `TenantResolverMiddleware`.
+
+### Testing
+
+- `TenantResolverMiddlewareTest`: 8 tests / 24 assertions.
+- Full Suite: 407 tests / 733 assertions.
+
+### Verified
+
+- `vendor/bin/phpunit` trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **PASS** — `TenantResolverMiddlewareTest`: 8 tests/24 assertions; toàn bộ suite: 407 tests, 733 assertions, 0 Errors, 0 Failures, 0 Warnings, 0 Risky, 4 Skipped (Redis) đúng thiết kế.
+
 ## [0.0.35] — CMS-035: Auth Logout Endpoint
 
 ### Added
