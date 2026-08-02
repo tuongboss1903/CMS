@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Core\Middleware\AnalyticsTrackingMiddleware;
+use Core\Middleware\CsrfMiddleware;
 use Core\Middleware\LocaleDetectionMiddleware;
 
 /**
@@ -31,3 +32,11 @@ $router->group(['prefix' => '/{locale}', 'middleware' => [LocaleDetectionMiddlew
     $router->get('', [\Modules\Public\HomeController::class, 'handle'], [AnalyticsTrackingMiddleware::class]);
     $router->get('/{slug}', [\Modules\Public\PublicPageController::class, 'handle'], [AnalyticsTrackingMiddleware::class]);
 });
+
+/**
+ * Phase 14 (Comment/Review System, CMS-051). Route POST dau tien cua Public module - can
+ * CsrfMiddleware (truoc gio Public chi co GET). Khong locale-aware (luon redirect ve "/{slug}"
+ * khong prefix, bat ke khach dang o "/en/{slug}" hay "/{slug}") - MVP scope da khoa o Architecture
+ * Analysis, khong lam trong Phase nay.
+ */
+$router->post('/{slug}/comments', [\Modules\Public\CommentSubmitController::class, 'handle'], [CsrfMiddleware::class]);

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\Public;
 
+use Core\Csrf;
 use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
 use Core\I18n\Translator;
+use Core\Session;
 use Core\TenantManager;
 use Core\View;
 use Modules\Settings\SiteSettingsManager;
@@ -32,12 +34,22 @@ use Modules\Settings\SiteSettingsManager;
  * 'vi' (fallback locale cua Translator) KHONG bao gio truy van page_translations - noi dung 'vi' la
  * chinh pages.title/pages.content, dam bao 100% khong regression cho cac request khong co locale
  * (locale mac dinh luon la 'vi' qua LocaleDetectionMiddleware).
+ *
+ * Phase 14 (Comment/Review System, CMS-051): fetch danh sach comment status='approved' cua page,
+ * truyen CSRF token cho form gui comment (POST /{slug}/comments, xem
+ * Modules\Public\CommentSubmitController). Bang "comments" bi goi VO DIEU KIEN (khac
+ * resolveTranslation() chi goi khi locale != 'vi') nen BAT BUOC try/catch fallback rong - cung bug
+ * pattern voi bang media/analytics_views/page_translations o Phase 11/12/13. CHỈ ap dung cho
+ * PublicPageController (GET /{slug}) - KHONG ap dung HomeController (Owner Decision pham vi Phase
+ * 14, xem plan 4 buoc: chi liet ke sua PublicPageController.php).
  */
 final class PublicPageController
 {
     public function __construct(
         private readonly BreadcrumbBuilder $breadcrumbBuilder,
+        private readonly Csrf $csrf,
         private readonly Database $database,
+        private readonly Session $session,
         private readonly SiteSettingsManager $siteSettings,
         private readonly TenantManager $tenantManager,
         private readonly View $view,
@@ -50,7 +62,7 @@ final class PublicPageController
         $tenantId = $this->tenantManager->id();
 
         $page = $this->database->selectOne(
-            'SELECT id, title, content, template FROM pages
+            'SELECT id, title, slug, content, template FROM pages
              WHERE tenant_id = ? AND slug = ? AND status = ? AND deleted_at IS NULL',
             [$tenantId, $slug, 'published']
         );
@@ -62,7 +74,7 @@ final class PublicPageController
         return $this->render($page);
     }
 
-    /** @param array{id: int|string, title: string, content: string|null, template: string|null} $page */
+    /** @param array{id: int|string, title: string, slug: string, content: string|null, template: string|null} $page */
     private function render(array $page): Response
     {
         $pageId = (int) $page['id'];
@@ -100,9 +112,34 @@ final class PublicPageController
             'favicon_url' => $this->resolveMediaUrl($tenantId, $siteSettings['favicon_id'] !== null ? (int) $siteSettings['favicon_id'] : null),
             'locale' => $locale,
             'available_locales' => $this->fetchAvailableLocales($tenantId, $pageId),
+            'page_slug' => $page['slug'],
+            'comments' => $this->fetchApprovedComments($tenantId, $pageId),
+            'comment_csrf_token' => $this->session->isStarted() ? $this->csrf->token() : null,
+            'comment_success' => $this->session->isStarted() ? $this->session->getFlash('comment_success') : null,
+            'comment_errors' => $this->session->isStarted() ? $this->session->getFlash('comment_errors', []) : [],
         ]);
 
         return Response::html($html);
+    }
+
+    /**
+     * Bang comments bi goi VO DIEU KIEN (khac resolveTranslation() chi goi khi locale != 'vi') -
+     * bat Throwable, fallback [] (cung bug pattern bang media/analytics_views/page_translations).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function fetchApprovedComments(int|string|null $tenantId, int $pageId): array
+    {
+        try {
+            return $this->database->select(
+                "SELECT guest_name, body, created_at FROM comments
+                 WHERE tenant_id = ? AND entity_type = 'page' AND entity_id = ? AND status = 'approved'
+                 ORDER BY created_at ASC",
+                [$tenantId, $pageId]
+            );
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**

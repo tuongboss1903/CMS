@@ -9,6 +9,7 @@
     <a href="/admin/media">Media</a>
     <a href="/admin/menus">Menu</a>
     <a href="/admin/seo">SEO</a>
+    <a href="/admin/comments">Comments</a>
 
     <div class="nav-group-label">He thong</div>
     <a href="/admin/settings">Cai dat chung</a>

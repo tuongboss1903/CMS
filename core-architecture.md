@@ -968,6 +968,26 @@ POST /admin/seo/pages/{id}
 
 **Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 689 tests, 1389 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
 
+### 3.50. Comment/Review System — `comments`, mới `modules/Public/CommentSubmitController.php`, mở rộng `modules/Admin/` — v0.1.4 (PHASE 14, CMS-051)
+
+**Bối cảnh**: khách Public để lại bình luận trên Page đã publish, Admin duyệt trước khi hiển thị công khai (moderation-first). MVP khoá phạm vi qua Architecture Analysis riêng: chỉ Comment văn bản (không rating/sao), không threaded-reply, khách không cần đăng nhập.
+
+**Schema `comments`**: polymorphic `entity_type`/`entity_id` nhưng MVP chỉ `'page'` khả dụng thật (đúng tiền lệ `seo_meta`, mục 3.36). `tenant_id` denormalize (cùng tiền lệ `page_translations`/`analytics_views`). `status` mặc định `'pending'` — không hiển thị công khai cho tới khi Admin `approve`. `guest_email` không hiển thị công khai (chỉ Admin thấy qua Admin UI). `ip_hash` dùng lại đúng kỹ thuật `sha256(ip . app.key)` của `AnalyticsService` (mục 3.48).
+
+**Route POST đầu tiên của Public module**: `POST /{slug}/comments` — trước Phase 14, `modules/Public/routes.php` chỉ có route GET, nên đây là lần đầu Public module cần `CsrfMiddleware`. Anti-spam qua `core/RateLimiter.php` có sẵn từ CMS-023 (Session-based, bucket `'comment:'.$tenantId`, 5 lần/10 phút) — không CAPTCHA/dependency ngoài (Zero-dependency).
+
+**Backward Compatibility qua 2 cơ chế khác nhau** (tuỳ theo query có bị gọi vô điều kiện hay không):
+1. `PublicPageController::fetchApprovedComments()` bị gọi VÔ ĐIỀU KIỆN mỗi request → bọc `try/catch (\Throwable)` fallback `[]` (đúng bug pattern lặp lại từ `media`/`analytics_views`/`page_translations`, mục 3.47/3.48/3.49).
+2. `Csrf::token()` cho Form comment CHỈ sinh khi `Session::isStarted()` — gọi vô điều kiện sẽ `throw SessionException` ở test suite cũ chưa `Session::start()` (phát hiện qua PHPUnit thật trước khi giao Owner, không phải Root Cause Analysis sau khi FAIL).
+
+**Admin Moderation**: `CommentListController` (lọc `?status=`, mặc định `'pending'` — đúng việc Admin cần làm nhất trước), `CommentApproveController`/`CommentRejectController` (đổi `status`, `rejected` là ẩn vĩnh viễn không xoá — phục vụ chống gửi lại/điều tra spam), `CommentDeleteController` (hard delete — UGC/log, không soft-delete, đúng tiền lệ `analytics_views` mục 3.48). Không Action Class/Service Layer mới — logic đủ đơn giản, chưa có JSON API pilot song song như Page Module (mục 3.44).
+
+**3 permission mới**: `comment.view`, `comment.moderate`, `comment.delete` (`bin/bootstrap.php`, đúng tiền lệ chính thức CMS-040 — mọi permission mới mở rộng `$permissionKeys`, không tạo cơ chế seed riêng).
+
+**2 vòng Root Cause Analysis từ PHPUnit thật** (chỉ ở test, không phải code production): (1) query string nhét thẳng vào URI thay vì tham số `query` riêng của `Request`; (2) `guest_name` test trùng chữ với label nút filter tab UI gây `assertStringNotContainsString` fail sai lý do; (3) `list.php` chỉ render `_token` bên trong vòng lặp từng dòng comment — tenant rỗng thì không có token để parse từ HTML, sửa bằng lấy token trực tiếp qua `Core\Csrf::token()` (Container) thay vì parse HTML, đồng bộ kỹ thuật đã dùng ở `CommentSubmissionTest.php`.
+
+**Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 715 tests, 1446 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -1029,6 +1049,9 @@ POST /admin/seo/pages/{id}
 | i18n Translator (`core/I18n/Translator.php`) | 9 | Unit thuần (fixture rieng `tests/Fixtures/lang/`, không I/O ngoài đọc file, không Database/Router) |
 | Locale Detection Middleware (`core/Middleware/LocaleDetectionMiddleware.php`) | 8 | Unit (gọi `process()` trực tiếp, Session thật không mock) |
 | Page Translation (`page_translations`, Admin + Public i18n) | 6 | Integration (`ModuleManager` trỏ `modules/` thật, boot cả `admin` lẫn `public`, `View` dùng `themes/default/` thật) |
+| Comment Submission (`modules/Public/CommentSubmitController.php`) | 9 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng fixture theme `test-theme`, Session/CSRF/RateLimiter thật) |
+| Admin Comment Moderation (`modules/Admin/Comment*Controller`) | 10 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, Session/Auth thật) |
+| Public Comment Rendering (`themes/default/views/pages/default.php`) | 7 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 

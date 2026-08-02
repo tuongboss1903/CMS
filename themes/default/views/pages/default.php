@@ -117,6 +117,58 @@ foreach ($content['blocks'] as $block) {
 <?php endif; ?>
 </div>
 <?php endif; ?>
+
+<?php if (isset($comment_csrf_token) || isset($comments)): ?>
+<div class="comments-section" style="margin-top: var(--space-6);">
+    <h2>Binh luan (<?= $this->e((string) \count($comments ?? [])) ?>)</h2>
+
+    <?php if (!empty($comment_success)): ?>
+    <div class="alert alert-success"><?= $this->e((string) $comment_success) ?></div>
+    <?php endif; ?>
+
+    <?php if (!empty($comment_errors)): ?>
+    <div class="alert alert-danger">
+    <ul>
+    <?php foreach ($comment_errors as $messages): ?>
+    <?php foreach ((array) $messages as $message): ?>
+    <li><?= $this->e((string) $message) ?></li>
+    <?php endforeach; ?>
+    <?php endforeach; ?>
+    </ul>
+    </div>
+    <?php endif; ?>
+
+    <?php foreach (($comments ?? []) as $comment): ?>
+    <div class="card" style="margin-top: var(--space-3);">
+        <strong><?= $this->e((string) $comment['guest_name']) ?></strong>
+        <span class="text-muted"> - <?= $this->e((string) $comment['created_at']) ?></span>
+        <p><?= \nl2br($this->e((string) $comment['body'])) ?></p>
+    </div>
+    <?php endforeach; ?>
+    <?php if (empty($comments)): ?>
+    <p class="empty-state">Chua co binh luan nao.</p>
+    <?php endif; ?>
+
+    <?php if (isset($comment_csrf_token)): ?>
+    <form method="POST" action="/<?= $this->e((string) ($page_slug ?? '')) ?>/comments" class="card" style="margin-top: var(--space-4);">
+        <input type="hidden" name="_token" value="<?= $this->e((string) $comment_csrf_token) ?>">
+        <div class="field">
+            <label for="guest_name">Ten cua ban</label>
+            <input type="text" id="guest_name" name="guest_name" required>
+        </div>
+        <div class="field">
+            <label for="guest_email">Email (khong hien thi cong khai)</label>
+            <input type="email" id="guest_email" name="guest_email" required>
+        </div>
+        <div class="field">
+            <label for="body">Binh luan</label>
+            <textarea id="body" name="body" rows="4" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Gui binh luan</button>
+    </form>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 </div>
 </div>
 <?php $this->endSection(); ?>
