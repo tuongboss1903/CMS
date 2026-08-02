@@ -6,6 +6,33 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.50] — CMS-043: SEO Management (Module JSON API)
+
+### Added
+
+- `modules/Seo/` — SEO Module (JSON API thuần): `ShowSeoMetaController` (`GET /seo/{entity_type}/{entity_id}`), `UpdateSeoMetaController` (`PATCH /seo/{entity_type}/{entity_id}`, upsert).
+- `database/migrations/2026_08_05_000001_create_seo_meta_table.php` — bảng `seo_meta` (`tenant_id, entity_type, entity_id, title, description, canonical, og_image_id, schema_type, schema_data`), UNIQUE `(tenant_id, entity_type, entity_id)`, FK `tenant_id → sites CASCADE`, FK `og_image_id → media ON DELETE SET NULL`.
+- Permission `seo.view/update` — mở rộng `bin/bootstrap.php` (24 → 26 permission).
+- `tests/Core/ModuleSeoIntegrationTest.php` (17 test).
+
+### Architecture Decisions
+
+- **MVP tối giản, cắt bỏ khỏi spec gốc `10-module-seo.md`**: chỉ bảng `seo_meta`, **không** `redirects`, **không** `sitemap_cache`; `entity_type` chỉ hỗ trợ thật `page` (bỏ `post`/`product` — module chưa tồn tại).
+- **Không `/sitemap.xml`, không `/robots.txt`, không route public nào** — cả 2 đều là route tĩnh 1-segment sẽ bị `GET /{slug}` (Public, CMS-044) nuốt mất nếu Module `Seo` load sau `Public` (mặc định theo thứ tự alphabet), và cách khắc phục duy nhất (thêm `"seo"` vào `modules/Public/module.json.dependencies`) đòi hỏi chạm Module đã hoàn thành — ngoài phạm vi CMS-043.
+- **Redirect (`redirects`) bị hoãn hoàn toàn** — về bản chất đòi hỏi can thiệp toàn cục vào luồng dispatch (kiểm tra trước 404), không phải CRUD đơn thuần; cần Middleware toàn cục mới hoặc sửa `modules/Public/PublicPageController.php` (đã khoá).
+- **Không Hook** (`seo.meta_updated`, lắng nghe `page.published`...) — dự án chưa có tiền lệ Module nghiệp vụ nào bắn/lắng nghe Hook thật.
+- **Không Admin UI, không Public rendering (`<head>` inject title/OG/schema)** — đúng tiền lệ Page (CMS-040)/Media (CMS-041)/Menu (CMS-042): Module JSON trước, UI/tích hợp là task riêng sau.
+- **Permission chỉ `seo.view`/`seo.update`** (không `seo.manage` như spec gốc, không `seo.create`/`seo.delete`) — `seo_meta` là upsert-theo-entity, không có hành động "tạo"/"xoá" độc lập nào trong route table đã duyệt.
+- **Upsert bằng `SELECT` rồi rẽ nhánh `INSERT`/`UPDATE`** — không `Database::transaction()` (mỗi lần gọi chỉ đúng 1 câu SQL ghi), không retry, không lock. Ghi nhận race condition lý thuyết (2 request PATCH đồng thời cùng entity chưa có `seo_meta`) là Technical Debt chấp nhận được cho thao tác Admin tần suất thấp.
+- **`og_image_id` FK `ON DELETE SET NULL`** (khả thi thật vì `media` đã tồn tại từ CMS-041, khác `menu_items.reference_id` không FK được) — xoá ảnh không xoá theo `seo_meta`, không chặn xoá ảnh vì đang làm OG image.
+- **`schema_data` lưu `TEXT`** (JSON string, Application layer tự `json_encode`/`json_decode`) — đúng Owner Decision CMS-040 đã áp dụng cho `pages.content`.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/ModuleSeoIntegrationTest.php` trên môi trường thật: **PASS** — 17 tests, 28 assertions.
+- **Fix sau PHPUnit thật**: `tests/Core/RealMigrationsTest.php::EXPECTED_ORDER` thiếu `2026_08_05_000001_create_seo_meta_table` (gây 3 failure toàn suite, thuần test-expectation chưa cập nhật, không phải lỗi migration — đúng root cause đã gặp ở CMS-040/041/042) — sửa đúng 1 dòng.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 536 tests, 1025 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## [0.0.49] — CMS-042: Menu Management (Module JSON API)
 
 ### Added

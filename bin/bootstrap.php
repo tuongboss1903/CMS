@@ -48,6 +48,7 @@ $permissionKeys = [
     'page.view', 'page.create', 'page.update', 'page.delete', 'page.publish',
     'media.view', 'media.upload', 'media.update', 'media.delete',
     'menu.view', 'menu.create', 'menu.update', 'menu.delete',
+    'seo.view', 'seo.update',
 ];
 
 try {

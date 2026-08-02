@@ -1,6 +1,6 @@
 # CORE ARCHITECTURE — CMS Đa Website
 
-> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-042, tag `v0.0.1` → `v0.0.49`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033; không có `v0.0.39` — bỏ qua khi chuyển từ CMS Foundation Completion sang Product Development, CMS-040 nối tiếp trực tiếp CMS-038; CMS-044/045/046/047 triển khai trước CMS-041/042 — tag không theo thứ tự số task, mà theo thứ tự hoàn thành thật). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Từ CMS-038, có thêm `modules/Role/`+`modules/Dashboard/`+`bin/bootstrap.php`, xem mục 3.28. Từ CMS-040, có thêm `modules/Page/` + Content Schema thật đầu tiên (`pages`), xem mục 3.29. Từ CMS-044, có thêm `modules/Public/` + `themes/default/` — CMS lần đầu render được website HTML thật (không còn thuần Headless API), xem mục 3.30. Từ CMS-045, có thêm `modules/Admin/` + `themes/default/views/admin/` — CMS lần đầu có giao diện quản trị HTML (login + dashboard) và CSRF lần đầu được gắn vào route thật, xem mục 3.31. Từ CMS-046, `modules/Admin/` mở rộng với Admin User Management UI (List/Create/Edit/Lock/Unlock/Assign Role dạng HTML), xem mục 3.32. Từ CMS-047, `modules/Admin/` mở rộng với Admin Role Management UI (List/Create/Edit/Delete/Permission Assignment dạng HTML), xem mục 3.33. Từ CMS-041, có thêm `modules/Media/` — Content Module thứ 2 (sau `pages`), lần đầu kích hoạt `sites.storage_used_bytes`, xem mục 3.34. Từ CMS-042, có thêm `modules/Menu/` — Content Module thứ 3, xem mục 3.35. **Lưu ý khoảng trống tài liệu đã biết**: `modules/User/` (CMS-037) chưa có mục riêng trong tài liệu này (Documentation Completion của CMS-037 chỉ giới hạn `TODO.md`/`CHANGELOG.md` theo yêu cầu lúc đó) — không phải sai sót của lượt cập nhật này. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
+> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-043, tag `v0.0.1` → `v0.0.50`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033; không có `v0.0.39` — bỏ qua khi chuyển từ CMS Foundation Completion sang Product Development, CMS-040 nối tiếp trực tiếp CMS-038; CMS-044/045/046/047 triển khai trước CMS-041/042/043 — tag không theo thứ tự số task, mà theo thứ tự hoàn thành thật). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Từ CMS-038, có thêm `modules/Role/`+`modules/Dashboard/`+`bin/bootstrap.php`, xem mục 3.28. Từ CMS-040, có thêm `modules/Page/` + Content Schema thật đầu tiên (`pages`), xem mục 3.29. Từ CMS-044, có thêm `modules/Public/` + `themes/default/` — CMS lần đầu render được website HTML thật (không còn thuần Headless API), xem mục 3.30. Từ CMS-045, có thêm `modules/Admin/` + `themes/default/views/admin/` — CMS lần đầu có giao diện quản trị HTML (login + dashboard) và CSRF lần đầu được gắn vào route thật, xem mục 3.31. Từ CMS-046, `modules/Admin/` mở rộng với Admin User Management UI (List/Create/Edit/Lock/Unlock/Assign Role dạng HTML), xem mục 3.32. Từ CMS-047, `modules/Admin/` mở rộng với Admin Role Management UI (List/Create/Edit/Delete/Permission Assignment dạng HTML), xem mục 3.33. Từ CMS-041, có thêm `modules/Media/` — Content Module thứ 2 (sau `pages`), lần đầu kích hoạt `sites.storage_used_bytes`, xem mục 3.34. Từ CMS-042, có thêm `modules/Menu/` — Content Module thứ 3, xem mục 3.35. Từ CMS-043, có thêm `modules/Seo/` — Content Module thứ 4, lần đầu dùng pattern upsert (SELECT rồi rẽ nhánh INSERT/UPDATE), xem mục 3.36. **Lưu ý khoảng trống tài liệu đã biết**: `modules/User/` (CMS-037) chưa có mục riêng trong tài liệu này (Documentation Completion của CMS-037 chỉ giới hạn `TODO.md`/`CHANGELOG.md` theo yêu cầu lúc đó) — không phải sai sót của lượt cập nhật này. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
 >
 > **`public/index.php` nay đã là bootstrap thật** (`Application::bootstrap(dirname(__DIR__))->run()`), không còn là smoke test — sơ đồ mục 2 dưới đây giờ mô tả đúng luồng chạy thực tế.
 
@@ -615,6 +615,48 @@ DELETE /menu-items/{id}          menu.update
 
 **Không sửa**: `core/*`, `modules/Auth/*`, `modules/User/*`, `modules/Role/*`, `modules/Page/*`, `modules/Public/*`, `modules/Admin/*`, `modules/Media/*`, `composer.json`, `phpunit.xml`, `themes/*`, migration cũ.
 
+### 3.36. SEO Module — `modules/Seo/` — v0.0.50
+
+**Database**: `database/migrations/2026_08_05_000001_create_seo_meta_table.php` — bảng `seo_meta` (`tenant_id, entity_type VARCHAR(20), entity_id, title, description, canonical, og_image_id NULL, schema_type NULL, schema_data TEXT NULL`), UNIQUE `(tenant_id, entity_type, entity_id)` (mỗi entity chỉ đúng 1 bản ghi SEO), FK `tenant_id → sites CASCADE`, FK `og_image_id → media ON DELETE SET NULL` (khả thi thật vì `media` đã tồn tại từ CMS-041 — khác `menu_items.reference_id` không FK được vì Post/Product chưa tồn tại; `SET NULL` vì xoá ảnh không nên xoá theo `seo_meta`, cũng không nên chặn xoá ảnh chỉ vì đang làm OG image). `schema_data` lưu `TEXT` (JSON string, Application layer tự `json_encode`/`json_decode`) — đúng Owner Decision CMS-040 đã áp dụng cho `pages.content`.
+
+**Routes** (JSON API phẳng, `modules/Seo/routes.php`):
+```
+GET    /seo/{entity_type}/{entity_id}    seo.view
+PATCH  /seo/{entity_type}/{entity_id}     seo.update
+```
+3-segment sau `/seo` → không va chạm `GET /{slug}` (Public, 1-segment). **Không** `/sitemap.xml`/`/robots.txt`/route public nào khác — xem "Deferred Features".
+
+**Controllers** (`Database` trực tiếp, không Service/Repository/Interface/Trait/Helper): `ShowSeoMetaController`, `UpdateSeoMetaController`. Route param `entity_type`/`entity_id` được gộp vào `$data` trước khi gọi `Validator::validate()` (tận dụng `Validator` sẵn có thay vì so sánh thủ công riêng lẻ). `entity_type` chỉ hỗ trợ thật `page` (validate `in:page`) — sai hoặc `entity_id` không trỏ tới `page` tồn tại cùng tenant → `404` (coi như entity không tồn tại, không phải lỗi input).
+
+**Upsert Strategy** (lần đầu dự án dùng pattern này — trước đó Page/Menu/Media đều Create/Update tách biệt hoàn toàn):
+```
+SELECT id FROM seo_meta WHERE tenant_id=? AND entity_type=? AND entity_id=?
+  Khong co dong nao -> INSERT (field khong gui -> NULL)
+  Da co             -> UPDATE (chi field co trong request - partial, giu nguyen field khac)
+```
+**Không `Database::transaction()`** (mỗi lần gọi chỉ đúng 1 câu SQL ghi — `INSERT` hoặc `UPDATE`, không bao giờ cả 2), **không retry, không lock**. Race condition lý thuyết giữa `SELECT` và `INSERT` (2 request PATCH đồng thời cùng entity chưa có `seo_meta`) được chấp nhận cho MVP — thao tác Admin tần suất thấp, không phải public concurrent write — ghi nhận ở "Deferred Features"/Technical Debt.
+
+**Validation**: `entity_type` (`required|in:page`), `entity_id` (`required|integer`), `title`/`description`/`canonical`/`schema_type` (`nullable|string|max:N`), `og_image_id` (`nullable|integer`, xác nhận tồn tại trong `media` cùng tenant ở Controller — không FK-only), `schema_data` (`nullable|array`). Toàn bộ dùng rule có sẵn trong `core/Validator.php` (`required/in/integer/nullable/string/max/array`, đã xác nhận `max` hoạt động qua `mb_strlen()`/`sizeOf()`) — không rule mới, không sửa `core/Validator.php`.
+
+**Permission**: chỉ `seo.view`/`seo.update` (mở rộng `bin/bootstrap.php` 24 → 26) — **không** `seo.manage` (spec gốc `10-module-seo.md`), **không** `seo.create`/`seo.delete`: `seo_meta` là upsert-theo-entity-đã-tồn-tại (page), không có hành động "tạo"/"xoá" độc lập nào trong route table.
+
+**Tenant Isolation**: `TenantManager::id()` mọi truy vấn; `entity` (page) không tồn tại/khác tenant → `404` — nhất quán nguyên tắc cross-tenant xuyên suốt dự án từ CMS-037.
+
+**Architectural Decisions**: MVP tối giản cắt bỏ khỏi spec gốc — chỉ `seo_meta`, `entity_type` chỉ `page`.
+
+**Deferred Features** (Owner Decision CMS-043, hoãn hoàn toàn — không thuộc phạm vi CRUD đơn giản):
+- **`redirects`**: đòi hỏi can thiệp toàn cục vào luồng dispatch (kiểm tra `from_path` trước khi trả 404) — không phải CRUD, cần Middleware toàn cục mới hoặc sửa `modules/Public/PublicPageController.php` (đã khoá).
+- **`sitemap_cache`, `/sitemap.xml`, `/robots.txt`**: route tĩnh 1-segment — nếu Module `Seo` load sau `Public` (mặc định alphabet: "Public" < "Seo"), `GET /{slug}` (Public, CMS-044) sẽ **nuốt mất** các route này trước khi Router chạm tới (không phải "route thắng", mà "route không bao giờ chạy được"). Cách khắc phục duy nhất — thêm `"seo"` vào `modules/Public/module.json.dependencies` — đòi hỏi chạm Module đã hoàn thành, ngoài phạm vi CMS-043.
+- **Hook** (`seo.meta_updated`, lắng nghe `page.published`...) — dự án chưa có tiền lệ Module nghiệp vụ nào bắn/lắng nghe Hook thật.
+- **Admin UI, Public rendering** (`<head>` inject title/OG/schema, Breadcrumb, SEO Score) — đúng tiền lệ Page/Media/Menu: Module JSON trước, UI/tích hợp là task riêng sau.
+- **Race condition upsert** (xem Upsert Strategy) — Technical Debt chấp nhận được, chưa xử lý.
+
+**Testing**: `tests/Core/ModuleSeoIntegrationTest.php` (17 test) — cùng pattern `ModuleMenuIntegrationTest`/`ModuleMediaIntegrationTest`.
+
+**Fix sau PHPUnit thật**: `tests/Core/RealMigrationsTest.php::EXPECTED_ORDER` thiếu `2026_08_05_000001_create_seo_meta_table` (gây 3 failure toàn suite, thuần test-expectation chưa cập nhật) — đúng root cause đã gặp ở CMS-040/041/042, sửa đúng 1 dòng.
+
+**Không sửa**: `core/*`, `modules/Auth/*`, `modules/User/*`, `modules/Role/*`, `modules/Page/*`, `modules/Menu/*`, `modules/Media/*`, `modules/Public/*`, `modules/Admin/*`, `composer.json`, `phpunit.xml`, `themes/*`, migration cũ.
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -627,7 +669,7 @@ DELETE /menu-items/{id}          menu.update
 
 ## 5. Testing Summary
 
-**519 test, 992 assertion — PASS** (PHP 8.3.30), Verified PASS thật tính đến CMS-042. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`. **Lưu ý**: bảng này chưa có dòng cho `modules/User/`/`ModuleUserIntegrationTest` (CMS-037, 7 test) — cùng khoảng trống tài liệu đã ghi ở đầu file, không phải thiếu sót của các lượt cập nhật sau đó.
+**536 test, 1025 assertion — PASS** (PHP 8.3.30), Verified PASS thật tính đến CMS-043. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`. **Lưu ý**: bảng này chưa có dòng cho `modules/User/`/`ModuleUserIntegrationTest` (CMS-037, 7 test) — cùng khoảng trống tài liệu đã ghi ở đầu file, không phải thiếu sót của các lượt cập nhật sau đó.
 
 | Component | Số test | Chiến lược |
 |---|---|---|
@@ -668,6 +710,7 @@ DELETE /menu-items/{id}          menu.update
 | Admin Role Management UI (`modules/Admin/Role*Controller`) | 14 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, CSRF qua `CsrfMiddleware` thật) |
 | Media Module (`modules/Media/`) | 13 | Integration (`ModuleManager` trỏ `modules/` thật, `Upload`/`DeleteMediaController` override storage TEMP qua `Container::singleton()`) |
 | Menu Module (`modules/Menu/`) | 20 | Integration (`ModuleManager` trỏ `modules/` thật) |
+| SEO Module (`modules/Seo/`) | 17 | Integration (`ModuleManager` trỏ `modules/` thật) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 
