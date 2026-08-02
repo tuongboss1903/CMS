@@ -66,9 +66,12 @@ final class HomeController
         $siteSettings = $this->siteSettings->get();
         $ogImageId = $seo['og_image_id'] ?? $siteSettings['default_og_image_id'] ?? null;
 
+        $content = \json_decode($page['content'] ?? 'null', true);
+        $content = $this->resolveBlockImageUrls($content, $tenantId);
+
         $html = $this->view->render($templateName, [
             'title' => $seo['title'] ?? $page['title'],
-            'content' => \json_decode($page['content'] ?? 'null', true),
+            'content' => $content,
             'seo' => $seo,
             'menu' => $this->fetchNavigation($tenantId, $pageId),
             'site_settings' => $siteSettings,
@@ -131,6 +134,27 @@ final class HomeController
         }
 
         return '/media/' . \basename((string) $media['path']);
+    }
+
+    /**
+     * Phase 11 (Visual Page Builder): resolve media_id -> URL that cho tung block type='image'
+     * TRUOC KHI dua vao View - View khong duoc phep truy van Database (dung nguyen tac kien truc
+     * da giu xuyen suot), nen phai lam o Controller. Tai su dung nguyen resolveMediaUrl() da co.
+     */
+    private function resolveBlockImageUrls(mixed $content, int|string|null $tenantId): mixed
+    {
+        if (!\is_array($content) || !isset($content['blocks']) || !\is_array($content['blocks'])) {
+            return $content;
+        }
+
+        foreach ($content['blocks'] as &$block) {
+            if (\is_array($block) && ($block['type'] ?? null) === 'image' && !empty($block['media_id'])) {
+                $block['url'] = $this->resolveMediaUrl($tenantId, (int) $block['media_id']);
+            }
+        }
+        unset($block);
+
+        return $content;
     }
 
     /**

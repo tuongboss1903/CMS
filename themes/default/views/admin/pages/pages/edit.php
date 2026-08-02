@@ -24,6 +24,7 @@
 <div class="card" style="max-width: 720px;">
 <form method="POST" action="/admin/pages/<?= $this->e((string) $page['id']) ?>" id="page-form">
     <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
+    <input type="hidden" name="editor_mode" id="editor-mode-input" value="<?= $this->e($editor_mode ?? 'quill') ?>">
     <div class="field">
         <label for="title">Tieu de</label>
         <input type="text" id="title" name="title" value="<?= $this->e($old['title'] ?? '') ?>">
@@ -47,8 +48,15 @@
     </div>
     <div class="field">
         <label>Noi dung</label>
+
+        <div id="quill-pane"<?= ($editor_mode ?? 'quill') === 'block' ? ' style="display:none;"' : '' ?>>
         <div id="editor"><?= $this->raw($old['content_html'] ?? '') ?></div>
         <input type="hidden" name="content[html]" id="content-html-input">
+        </div>
+
+        <div id="block-builder-pane"<?= ($editor_mode ?? 'quill') === 'block' ? '' : ' style="display:none;"' ?>>
+        <?php $this->include('admin.pages.pages.blocks._builder', ['images' => $images ?? [], 'old' => $old ?? []]); ?>
+        </div>
     </div>
     <div class="flex gap-2">
         <button type="submit" class="btn btn-primary">Cap nhat</button>
@@ -68,4 +76,5 @@
     });
 })();
 </script>
+<script src="/assets/js/page-builder.js"></script>
 <?php $this->endSection(); ?>
