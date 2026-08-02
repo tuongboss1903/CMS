@@ -28,6 +28,8 @@ final class RealMigrationsTest extends TestCase
         '2026_08_01_000007_create_user_site_roles_table',
         '2026_08_02_000001_create_pages_table',
         '2026_08_03_000001_create_media_table',
+        '2026_08_04_000001_create_menus_table',
+        '2026_08_04_000002_create_menu_items_table',
     ];
 
     public function testMigrateCreatesAllSevenTablesInOrder(): void

@@ -6,6 +6,33 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.49] — CMS-042: Menu Management (Module JSON API)
+
+### Added
+
+- `modules/Menu/` — Menu Module (JSON API thuần): `ListMenusController` (`GET /menus`), `CreateMenuController` (`POST /menus`), `ShowMenuController` (`GET /menus/{id}`), `UpdateMenuController` (`PATCH /menus/{id}`), `DeleteMenuController` (`DELETE /menus/{id}`), `CreateMenuItemController` (`POST /menus/{id}/items`), `UpdateMenuItemController` (`PATCH /menu-items/{id}`), `DeleteMenuItemController` (`DELETE /menu-items/{id}`).
+- `database/migrations/2026_08_04_000001_create_menus_table.php` + `2026_08_04_000002_create_menu_items_table.php` — bảng `menus` (`tenant_id, name, location_key`, UNIQUE `(tenant_id, location_key)`) và `menu_items` (`menu_id, parent_id self, label, type, reference_id, url, target, sort_order`).
+- Permission `menu.view/create/update/delete` — mở rộng `bin/bootstrap.php` (20 → 24 permission).
+- `tests/Core/ModuleMenuIntegrationTest.php` (20 test).
+
+### Architecture Decisions
+
+- **MVP tối giản, cắt bỏ khỏi spec gốc `08-module-menu.md`**: `menu_items.type` chỉ còn `page`/`custom` (bỏ `post_category`/`product_category` — Module Post/Product chưa tồn tại); không kéo-thả, không endpoint thay toàn bộ cấu trúc (`PUT` bulk-replace) — CRUD từng bản ghi; không Hook (`menu.updated`...), không Cache invalidation — chưa có consumer thật (chưa Public rendering).
+- **Không Admin UI HTML, không Public rendering, không sửa `modules/Public/*`/theme layout trong CMS-042** — đúng tiền lệ Page (CMS-040)/Media (CMS-041): Module JSON trước, UI/tích hợp là task riêng sau.
+- **Không route public nào cho Menu** — tránh rủi ro collision `GET /menus/{id}` (admin, numeric) vs khả năng tương lai `GET /menus/{location}` (public) cùng "shape" segment. Route Item dùng tiền tố riêng `/menu-items` (không lồng `/menus/{menuId}/items/{id}`) để chủ động không tạo thêm nguy cơ va chạm.
+- **Permission hạt mịn `menu.view/create/update/delete`** (không dùng `menu.manage` như spec gốc) — nhất quán convention `resource.action` toàn dự án. Thao tác trên `menu_items` dùng chung `menu.update` (không tạo `menu_item.*` riêng — Item luôn phụ thuộc Menu, không phải resource độc lập).
+- **`location_key` là chuỗi tự do** (`required|string|max:50`) — không xây cơ chế Theme khai báo location hợp lệ (chưa có bằng chứng cần, `ThemeManager`/`theme.json` không có cơ chế này).
+- **`ShowMenuController` dựng cây bằng PHP thuần** (1 query duy nhất `SELECT ... WHERE menu_id = ?`, gom theo `parent_id`) — không recursive SQL, không N+1.
+- **`DeleteMenuController`**: `Database::transaction()` bọc 2 câu `DELETE` liên quan (`menu_items` rồi `menus`) — không dựa FK CASCADE thật (SQLite test không enforce mặc định).
+- **`DeleteMenuItemController`**: BFS gom id con cháu chỉ dùng `SELECT` (không tính write), kết quả cuối chỉ 1 câu `DELETE ... WHERE id IN (...)` duy nhất — **không** bọc transaction (chỉ 1 câu ghi thì không cần).
+- **Chặn self-parent**: `parent_id` không được trùng chính `id` của item đang sửa → `422` (`UpdateMenuItemController`).
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/ModuleMenuIntegrationTest.php` trên môi trường thật: **PASS** — 20 tests, 42 assertions.
+- **Fix sau PHPUnit thật**: `tests/Core/RealMigrationsTest.php::EXPECTED_ORDER` thiếu 2 migration mới (gây 3 failure toàn suite, thuần test-expectation chưa cập nhật, không phải lỗi migration — đúng root cause đã gặp ở CMS-040/041) — sửa đúng 2 dòng.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 519 tests, 992 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## [0.0.48] — CMS-041: Media Library (Module JSON API)
 
 ### Added

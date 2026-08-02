@@ -1,6 +1,6 @@
 # CORE ARCHITECTURE — CMS Đa Website
 
-> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-041, tag `v0.0.1` → `v0.0.48`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033; không có `v0.0.39` — bỏ qua khi chuyển từ CMS Foundation Completion sang Product Development, CMS-040 nối tiếp trực tiếp CMS-038; CMS-044/045/046/047 triển khai trước CMS-041 — tag không theo thứ tự số task, mà theo thứ tự hoàn thành thật: CMS-041 hoàn thành sau CMS-047 nên mang tag `v0.0.48`). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Từ CMS-038, có thêm `modules/Role/`+`modules/Dashboard/`+`bin/bootstrap.php`, xem mục 3.28. Từ CMS-040, có thêm `modules/Page/` + Content Schema thật đầu tiên (`pages`), xem mục 3.29. Từ CMS-044, có thêm `modules/Public/` + `themes/default/` — CMS lần đầu render được website HTML thật (không còn thuần Headless API), xem mục 3.30. Từ CMS-045, có thêm `modules/Admin/` + `themes/default/views/admin/` — CMS lần đầu có giao diện quản trị HTML (login + dashboard) và CSRF lần đầu được gắn vào route thật, xem mục 3.31. Từ CMS-046, `modules/Admin/` mở rộng với Admin User Management UI (List/Create/Edit/Lock/Unlock/Assign Role dạng HTML), xem mục 3.32. Từ CMS-047, `modules/Admin/` mở rộng với Admin Role Management UI (List/Create/Edit/Delete/Permission Assignment dạng HTML), xem mục 3.33. Từ CMS-041, có thêm `modules/Media/` — Content Module thứ 2 (sau `pages`), lần đầu kích hoạt `sites.storage_used_bytes`, xem mục 3.34. **Lưu ý khoảng trống tài liệu đã biết**: `modules/User/` (CMS-037) chưa có mục riêng trong tài liệu này (Documentation Completion của CMS-037 chỉ giới hạn `TODO.md`/`CHANGELOG.md` theo yêu cầu lúc đó) — không phải sai sót của lượt cập nhật này. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
+> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-042, tag `v0.0.1` → `v0.0.49`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033; không có `v0.0.39` — bỏ qua khi chuyển từ CMS Foundation Completion sang Product Development, CMS-040 nối tiếp trực tiếp CMS-038; CMS-044/045/046/047 triển khai trước CMS-041/042 — tag không theo thứ tự số task, mà theo thứ tự hoàn thành thật). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Từ CMS-038, có thêm `modules/Role/`+`modules/Dashboard/`+`bin/bootstrap.php`, xem mục 3.28. Từ CMS-040, có thêm `modules/Page/` + Content Schema thật đầu tiên (`pages`), xem mục 3.29. Từ CMS-044, có thêm `modules/Public/` + `themes/default/` — CMS lần đầu render được website HTML thật (không còn thuần Headless API), xem mục 3.30. Từ CMS-045, có thêm `modules/Admin/` + `themes/default/views/admin/` — CMS lần đầu có giao diện quản trị HTML (login + dashboard) và CSRF lần đầu được gắn vào route thật, xem mục 3.31. Từ CMS-046, `modules/Admin/` mở rộng với Admin User Management UI (List/Create/Edit/Lock/Unlock/Assign Role dạng HTML), xem mục 3.32. Từ CMS-047, `modules/Admin/` mở rộng với Admin Role Management UI (List/Create/Edit/Delete/Permission Assignment dạng HTML), xem mục 3.33. Từ CMS-041, có thêm `modules/Media/` — Content Module thứ 2 (sau `pages`), lần đầu kích hoạt `sites.storage_used_bytes`, xem mục 3.34. Từ CMS-042, có thêm `modules/Menu/` — Content Module thứ 3, xem mục 3.35. **Lưu ý khoảng trống tài liệu đã biết**: `modules/User/` (CMS-037) chưa có mục riêng trong tài liệu này (Documentation Completion của CMS-037 chỉ giới hạn `TODO.md`/`CHANGELOG.md` theo yêu cầu lúc đó) — không phải sai sót của lượt cập nhật này. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
 >
 > **`public/index.php` nay đã là bootstrap thật** (`Application::bootstrap(dirname(__DIR__))->run()`), không còn là smoke test — sơ đồ mục 2 dưới đây giờ mô tả đúng luồng chạy thực tế.
 
@@ -578,6 +578,43 @@ Cả 2 luồng dùng đúng 1 `Database::transaction()` bọc 2 câu SQL liên q
 
 **Không sửa**: `core/*`, `modules/Auth/*`, `modules/User/*`, `modules/Role/*`, `modules/Page/*`, `modules/Public/*`, `modules/Admin/*`, `composer.json`, `phpunit.xml`, migration cũ.
 
+### 3.35. Menu Module — `modules/Menu/` — v0.0.49
+
+**Database**: `database/migrations/2026_08_04_000001_create_menus_table.php` (`menus`: `tenant_id, name, location_key`, UNIQUE `(tenant_id, location_key)`, FK `tenant_id → sites CASCADE`) + `2026_08_04_000002_create_menu_items_table.php` (`menu_items`: `menu_id, parent_id self NULL, label, type VARCHAR(20), reference_id NULL, url NULL, target, sort_order`, FK `menu_id → menus CASCADE`, `parent_id → menu_items self CASCADE`, index `(menu_id, sort_order)`). `reference_id` không FK cứng (polymorphic, chỉ có ý nghĩa khi `type=page`, đúng lý do `database-design.md` đã tự nêu cho bảng polymorphic).
+
+**Routes** (JSON API phẳng, `modules/Menu/routes.php`):
+```
+GET    /menus              menu.view
+POST   /menus                menu.create
+GET    /menus/{id}            menu.view
+PATCH  /menus/{id}             menu.update
+DELETE /menus/{id}              menu.delete
+POST   /menus/{id}/items      menu.update
+PATCH  /menu-items/{id}         menu.update
+DELETE /menu-items/{id}          menu.update
+```
+**Tiền tố `/menu-items` tách biệt hoàn toàn `/menus`** — chủ động né rủi ro collision phát hiện ở Architecture Analysis: `GET /menus/{id}` (admin, numeric) và khả năng tương lai `GET /menus/{location}` (public, string) sẽ compile ra **cùng 1 regex** dù khác tên tham số, không phát hiện được lúc đăng ký (`Route::signature()` so sánh chuỗi literal, không so regex) — route public cho Menu **chưa tồn tại trong CMS-042**, để lại thiết kế cho task tương lai.
+
+**Controllers** (`Database` trực tiếp, không Service/Repository/Interface/Helper/Trait, đúng Controller Contract 1 `handle()`): `ListMenusController`, `CreateMenuController`, `ShowMenuController`, `UpdateMenuController`, `DeleteMenuController`, `CreateMenuItemController`, `UpdateMenuItemController`, `DeleteMenuItemController`.
+
+**Dựng cây (tree)** — `ShowMenuController`: 1 câu `SELECT ... WHERE menu_id = ?` duy nhất, gom kết quả theo `parent_id` bằng PHP thuần rồi đệ quy gắn `children` — **không recursive SQL, không N+1**. Lần đầu dự án cần logic dựng cây phân cấp (trước đó `pages.parent_id` tồn tại nhưng chưa Controller nào dựng cây từ đó).
+
+**Transaction**:
+- `DeleteMenuController`: `Database::transaction()` bọc 2 câu `DELETE` liên quan (`menu_items` rồi `menus`) — không dựa FK CASCADE thật (SQLite test không enforce mặc định, đã xác nhận nhiều lần từ CMS-030).
+- `DeleteMenuItemController`: BFS gom id con cháu **chỉ dùng `SELECT`** (không tính là write), kết quả cuối cùng chỉ 1 câu `DELETE ... WHERE id IN (...)` duy nhất — **không transaction** (đúng nguyên tắc "transaction khi có ≥2 câu SQL ghi liên quan", ở đây chỉ có 1 câu ghi dù xoá nhiều dòng).
+
+**Validation nghiệp vụ trong Controller** (không rule Validator mới, không sửa `core/Validator.php`): `type=page` bắt buộc `reference_id` trỏ tới `page` tồn tại cùng tenant; `type=custom` bắt buộc `url`; `parent_id` phải thuộc cùng `menu_id`; **chặn self-parent** (`parent_id === chính id item đang sửa` → `422`, `UpdateMenuItemController`).
+
+**Permission**: `menu.view/create/update/delete` (mở rộng `bin/bootstrap.php` 20 → 24) — hạt mịn theo convention `resource.action`, **không** dùng `menu.manage` như spec gốc `08-module-menu.md`. Thao tác trên `menu_items` dùng chung `menu.update` (không tách `menu_item.*` — Item luôn phụ thuộc Menu, không phải resource độc lập).
+
+**Phạm vi cắt bỏ khỏi spec gốc** (Owner Decision CMS-042): `menu_items.type` chỉ `page`/`custom` (bỏ `post_category`/`product_category` — Module Post/Product chưa tồn tại); **không** kéo-thả, **không** endpoint thay toàn bộ cấu trúc (`PUT` bulk-replace) — CRUD từng bản ghi; **không** Hook (`menu.updated`...) — `core/Hook.php` tồn tại nhưng chưa Module nghiệp vụ nào từng bắn hook thật; **không** Cache invalidation — chưa có consumer thật (chưa Public rendering); **không** Admin UI HTML, **không** Public rendering, **không** sửa `modules/Public/*`/theme layout — đúng tiền lệ Page (CMS-040)/Media (CMS-041): Module JSON trước, UI/tích hợp là task riêng sau; **không** cơ chế Theme khai báo `location_key` hợp lệ (`ThemeManager`/`theme.json` không có cơ chế này) — `location_key` là chuỗi tự do (`required|string|max:50`).
+
+**Fix sau PHPUnit thật**: `tests/Core/RealMigrationsTest.php::EXPECTED_ORDER` thiếu 2 migration mới (gây 3 failure toàn suite, thuần test-expectation chưa cập nhật, không phải lỗi migration) — đúng root cause đã gặp ở CMS-040/041, sửa đúng 2 dòng.
+
+**Testing**: `tests/Core/ModuleMenuIntegrationTest.php` (20 test) — cùng pattern `ModulePageIntegrationTest`/`ModuleMediaIntegrationTest` (`ModuleManager` trỏ `modules/` thật).
+
+**Không sửa**: `core/*`, `modules/Auth/*`, `modules/User/*`, `modules/Role/*`, `modules/Page/*`, `modules/Public/*`, `modules/Admin/*`, `modules/Media/*`, `composer.json`, `phpunit.xml`, `themes/*`, migration cũ.
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -590,7 +627,7 @@ Cả 2 luồng dùng đúng 1 `Database::transaction()` bọc 2 câu SQL liên q
 
 ## 5. Testing Summary
 
-**499 test, 940 assertion — PASS** (PHP 8.3.30), Verified PASS thật tính đến CMS-041. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`. **Lưu ý**: bảng này chưa có dòng cho `modules/User/`/`ModuleUserIntegrationTest` (CMS-037, 7 test) — cùng khoảng trống tài liệu đã ghi ở đầu file, không phải thiếu sót của các lượt cập nhật sau đó.
+**519 test, 992 assertion — PASS** (PHP 8.3.30), Verified PASS thật tính đến CMS-042. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`. **Lưu ý**: bảng này chưa có dòng cho `modules/User/`/`ModuleUserIntegrationTest` (CMS-037, 7 test) — cùng khoảng trống tài liệu đã ghi ở đầu file, không phải thiếu sót của các lượt cập nhật sau đó.
 
 | Component | Số test | Chiến lược |
 |---|---|---|
@@ -630,6 +667,7 @@ Cả 2 luồng dùng đúng 1 `Database::transaction()` bọc 2 câu SQL liên q
 | Admin User Management UI (`modules/Admin/User*Controller`) | 12 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, CSRF qua `CsrfMiddleware` thật) |
 | Admin Role Management UI (`modules/Admin/Role*Controller`) | 14 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, CSRF qua `CsrfMiddleware` thật) |
 | Media Module (`modules/Media/`) | 13 | Integration (`ModuleManager` trỏ `modules/` thật, `Upload`/`DeleteMediaController` override storage TEMP qua `Container::singleton()`) |
+| Menu Module (`modules/Menu/`) | 20 | Integration (`ModuleManager` trỏ `modules/` thật) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 
