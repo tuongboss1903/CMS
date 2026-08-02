@@ -2,6 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= $this->e($title ?? '') ?></title>
 <?php if (isset($seo) && $seo !== null): ?>
 <?php if (!empty($seo['description'])): ?>
@@ -21,32 +22,42 @@
     )) ?></script>
 <?php endif; ?>
 <?php endif; ?>
+    <link rel="stylesheet" href="/assets/css/variables.css">
+    <link rel="stylesheet" href="/assets/css/base.css">
+    <link rel="stylesheet" href="/assets/css/components.css">
+    <link rel="stylesheet" href="/assets/css/public.css">
 </head>
-<body>
-<header>
+<body class="site-public">
+<header class="site-header">
+    <div class="container">
+        <a href="/" class="site-logo"><?php if (!empty($site_settings['site_name'])): ?><?= $this->e($site_settings['site_name']) ?><?php else: ?>CMS<span class="dot">.</span>Demo<?php endif; ?></a>
 <?php if (!empty($menu)): ?>
-<nav>
-    <ul>
-    <?php foreach ($menu as $item): ?>
-        <li<?= $item['active'] ? ' class="active"' : '' ?>>
-            <a href="<?= $this->e($item['url']) ?>"<?= $item['target'] !== '_self' ? ' target="' . $this->e($item['target']) . '"' : '' ?>><?= $this->e($item['label']) ?></a>
-<?php if (!empty($item['children'])): ?>
+        <button type="button" class="nav-toggle" data-nav-toggle aria-label="Toggle menu">&#9776;</button>
+        <nav class="site-nav">
             <ul>
+            <?php foreach ($menu as $item): ?>
+                <li<?= $item['active'] ? ' class="active"' : '' ?>>
+                    <a href="<?= $this->e($item['url']) ?>"<?= $item['target'] !== '_self' ? ' target="' . $this->e($item['target']) . '"' : '' ?>><?= $this->e($item['label']) ?></a>
+<?php if (!empty($item['children'])): ?>
+                    <ul>
 <?php foreach ($item['children'] as $child): ?>
-                <li<?= $child['active'] ? ' class="active"' : '' ?>>
-                    <a href="<?= $this->e($child['url']) ?>"<?= $child['target'] !== '_self' ? ' target="' . $this->e($child['target']) . '"' : '' ?>><?= $this->e($child['label']) ?></a>
-                </li>
+                        <li<?= $child['active'] ? ' class="active"' : '' ?>>
+                            <a href="<?= $this->e($child['url']) ?>"<?= $child['target'] !== '_self' ? ' target="' . $this->e($child['target']) . '"' : '' ?>><?= $this->e($child['label']) ?></a>
+                        </li>
 <?php endforeach; ?>
+                    </ul>
+<?php endif; ?>
+                </li>
+            <?php endforeach; ?>
             </ul>
+        </nav>
 <?php endif; ?>
-        </li>
-    <?php endforeach; ?>
-    </ul>
-</nav>
-<?php endif; ?>
+    </div>
 </header>
 <?= $this->raw($this->yield('content')) ?>
-<footer>
+<footer class="site-footer">
+    <div class="container">&copy; <?= date('Y') ?> CMS Demo. Xay dung tren CMS da website tu code.</div>
 </footer>
+<script src="/assets/js/app.js"></script>
 </body>
 </html>

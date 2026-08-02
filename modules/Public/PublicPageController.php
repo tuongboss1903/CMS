@@ -9,6 +9,7 @@ use Core\Http\Request;
 use Core\Http\Response;
 use Core\TenantManager;
 use Core\View;
+use Modules\Settings\SiteSettingsManager;
 
 /**
  * GET /{slug} - render page cong khai theo slug cua tenant hien tai. Khong Authorization::can()
@@ -28,6 +29,7 @@ final class PublicPageController
 {
     public function __construct(
         private readonly Database $database,
+        private readonly SiteSettingsManager $siteSettings,
         private readonly TenantManager $tenantManager,
         private readonly View $view,
     ) {
@@ -72,6 +74,7 @@ final class PublicPageController
             'content' => \json_decode($page['content'] ?? 'null', true),
             'seo' => $seo,
             'menu' => $this->fetchNavigation($tenantId, $pageId),
+            'site_settings' => $this->siteSettings->get(),
         ]);
 
         return Response::html($html);
@@ -80,7 +83,10 @@ final class PublicPageController
     private function render404(): Response
     {
         if ($this->view->exists('pages.404')) {
-            return Response::html($this->view->render('pages.404', ['title' => '404 Not Found']), 404);
+            return Response::html($this->view->render('pages.404', [
+                'title' => '404 Not Found',
+                'site_settings' => $this->siteSettings->get(),
+            ]), 404);
         }
 
         return Response::html('404 Not Found', 404);

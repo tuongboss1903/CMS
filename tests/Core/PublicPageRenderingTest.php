@@ -50,7 +50,7 @@ final class PublicPageRenderingTest extends TestCase
         $this->migrate();
 
         $moduleManager = new ModuleManager(self::REAL_MODULES_PATH);
-        $moduleManager->boot($this->router, ['auth', 'user', 'role', 'dashboard', 'page', 'public']);
+        $moduleManager->boot($this->router, ['auth', 'user', 'role', 'dashboard', 'page', 'settings', 'public']);
     }
 
     private function migrate(): void
@@ -98,8 +98,22 @@ final class PublicPageRenderingTest extends TestCase
             description VARCHAR(500) NULL,
             canonical VARCHAR(500) NULL,
             og_image_id BIGINT NULL,
+            og_title VARCHAR(255) NULL,
+            og_description VARCHAR(500) NULL,
+            is_index BOOLEAN NOT NULL DEFAULT 1,
+            is_follow BOOLEAN NOT NULL DEFAULT 1,
             schema_type VARCHAR(50) NULL,
             schema_data TEXT NULL
+        )');
+        $this->database->statement('CREATE TABLE site_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id BIGINT NOT NULL,
+            site_name VARCHAR(150) NULL,
+            site_tagline VARCHAR(255) NULL,
+            default_meta_description VARCHAR(500) NULL,
+            default_og_image_id BIGINT NULL,
+            favicon_id BIGINT NULL,
+            robots_txt_custom TEXT NULL
         )');
     }
 

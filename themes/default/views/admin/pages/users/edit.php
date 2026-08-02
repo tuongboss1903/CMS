@@ -2,22 +2,31 @@
 <?php $this->section('content'); ?>
 <h1>Sua User</h1>
 <?php if (!empty($errors)): ?>
-<ul class="errors">
+<div class="alert alert-danger">
+<ul>
 <?php foreach ($errors as $messages): ?>
 <?php foreach ($messages as $message): ?>
 <li><?= $this->e($message) ?></li>
 <?php endforeach; ?>
 <?php endforeach; ?>
 </ul>
+</div>
 <?php endif; ?>
+<div class="card" style="max-width: 480px;">
 <form method="POST" action="/admin/users/<?= $this->e((string) $user['id']) ?>">
     <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
-    <label>Ten
-        <input type="text" name="name" value="<?= $this->e($old['name'] ?? '') ?>">
-    </label>
-    <label>Email
-        <input type="email" name="email" value="<?= $this->e($old['email'] ?? '') ?>">
-    </label>
-    <button type="submit">Cap nhat</button>
+    <div class="field">
+        <label for="name">Ten</label>
+        <input type="text" id="name" name="name" value="<?= $this->e($old['name'] ?? '') ?>">
+    </div>
+    <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" value="<?= $this->e($old['email'] ?? '') ?>">
+    </div>
+    <div class="flex gap-2">
+        <button type="submit" class="btn btn-primary">Cap nhat</button>
+        <a href="/admin/users" class="btn btn-secondary">Huy</a>
+    </div>
 </form>
+</div>
 <?php $this->endSection(); ?>

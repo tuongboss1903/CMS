@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require __DIR__ . '/load_env.php';
 require __DIR__ . '/../vendor/autoload.php';
 
 use Core\Config;
@@ -49,6 +50,7 @@ $permissionKeys = [
     'media.view', 'media.upload', 'media.update', 'media.delete',
     'menu.view', 'menu.create', 'menu.update', 'menu.delete',
     'seo.view', 'seo.update',
+    'settings.view', 'settings.update',
 ];
 
 try {

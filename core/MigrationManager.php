@@ -58,7 +58,7 @@ final class MigrationManager
         foreach ($pending as $name) {
             $migration = $this->loadMigration($discovered[$name]);
 
-            $this->database->transaction(function (Database $db) use ($migration, $name, $batch): void {
+            $this->runInTransactionIfSupported(function (Database $db) use ($migration, $name, $batch): void {
                 ($migration['up'])($db);
                 $this->recordMigration($name, $batch);
             });
@@ -102,7 +102,7 @@ final class MigrationManager
 
             $migration = $this->loadMigration($discovered[$name]);
 
-            $this->database->transaction(function (Database $db) use ($migration, $name): void {
+            $this->runInTransactionIfSupported(function (Database $db) use ($migration, $name): void {
                 ($migration['down'])($db);
                 $this->deleteMigrationRecord($name);
             });
@@ -206,6 +206,25 @@ final class MigrationManager
     private function deleteMigrationRecord(string $name): void
     {
         $this->database->delete('DELETE FROM migrations WHERE migration = ?', [$name]);
+    }
+
+    /**
+     * MySQL/MariaDB tu dong COMMIT ngam ngay khi chay DDL (CREATE/ALTER/DROP TABLE) - lam lech
+     * Database::$transactionLevel voi trang thai PDO that, khien commit() that bai (khong con
+     * transaction de commit) roi rollback() trong catch cung that bai (level da ve 0). SQLite
+     * KHONG co hanh vi nay - DDL van tham gia transaction binh thuong, van bao ve duoc atomicity.
+     * Vi vay chi boc Database::transaction() that cho SQLite; MySQL/MariaDB chay truc tiep khong
+     * bao transaction (khong mat gi vi DDL o do von da khong transactional).
+     */
+    private function runInTransactionIfSupported(Closure $step): void
+    {
+        if ($this->driver === 'sqlite') {
+            $this->database->transaction($step);
+
+            return;
+        }
+
+        $step($this->database);
     }
 
     private function ensureMigrationsTable(): void

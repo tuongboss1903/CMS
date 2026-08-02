@@ -105,6 +105,10 @@ final class AdminSeoManagementUiTest extends TestCase
             description VARCHAR(500) NULL,
             canonical VARCHAR(500) NULL,
             og_image_id BIGINT NULL,
+            og_title VARCHAR(255) NULL,
+            og_description VARCHAR(500) NULL,
+            is_index BOOLEAN NOT NULL DEFAULT 1,
+            is_follow BOOLEAN NOT NULL DEFAULT 1,
             schema_type VARCHAR(50) NULL,
             schema_data TEXT NULL
         )');
@@ -277,6 +281,58 @@ final class AdminSeoManagementUiTest extends TestCase
         self::assertNotNull($row);
         self::assertSame('New SEO Title', $row['title']);
         self::assertSame('Desc', $row['description']);
+    }
+
+    public function testUpdateSavesOgTitleOgDescriptionAndCheckedIndexFollow(): void
+    {
+        $siteId = $this->seedSite();
+        $userId = $this->seedUser();
+        $pageId = $this->seedPage($siteId);
+        $this->actingAs($siteId, $userId, ['seo.view', 'seo.update']);
+
+        $editPage = $this->router->dispatch(new Request('GET', "/admin/seo/pages/{$pageId}", 'example.com'));
+        $token = $this->extractCsrfToken($editPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/admin/seo/pages/{$pageId}",
+            'example.com',
+            [],
+            ['og_title' => 'OG Title', 'og_description' => 'OG Desc', 'is_index' => '1', 'is_follow' => '1', '_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $row = $this->database->selectOne('SELECT og_title, og_description, is_index, is_follow FROM seo_meta WHERE tenant_id = ? AND entity_type = ? AND entity_id = ?', [$siteId, 'page', $pageId]);
+        self::assertSame('OG Title', $row['og_title']);
+        self::assertSame('OG Desc', $row['og_description']);
+        self::assertSame(1, (int) $row['is_index']);
+        self::assertSame(1, (int) $row['is_follow']);
+    }
+
+    public function testUpdateWithUncheckedIndexFollowSavesAsFalse(): void
+    {
+        $siteId = $this->seedSite();
+        $userId = $this->seedUser();
+        $pageId = $this->seedPage($siteId);
+        $this->actingAs($siteId, $userId, ['seo.view', 'seo.update']);
+
+        $editPage = $this->router->dispatch(new Request('GET', "/admin/seo/pages/{$pageId}", 'example.com'));
+        $token = $this->extractCsrfToken($editPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/admin/seo/pages/{$pageId}",
+            'example.com',
+            [],
+            ['title' => 'X', '_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $row = $this->database->selectOne('SELECT is_index, is_follow FROM seo_meta WHERE tenant_id = ? AND entity_type = ? AND entity_id = ?', [$siteId, 'page', $pageId]);
+        self::assertSame(0, (int) $row['is_index']);
+        self::assertSame(0, (int) $row['is_follow']);
     }
 
     // ---- Update: upsert (update existing) ----

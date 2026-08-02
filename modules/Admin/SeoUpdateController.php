@@ -70,11 +70,23 @@ final class SeoUpdateController
             $data['og_image_id'] = null;
         }
 
+        if (!isset($data['is_index'])) {
+            $data['is_index'] = 0;
+        }
+
+        if (!isset($data['is_follow'])) {
+            $data['is_follow'] = 0;
+        }
+
         $result = $this->validator->validate($data, [
             'title' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:500',
             'canonical' => 'nullable|string|max:500',
             'og_image_id' => 'nullable|integer',
+            'og_title' => 'nullable|string|max:255',
+            'og_description' => 'nullable|string|max:500',
+            'is_index' => 'nullable|boolean',
+            'is_follow' => 'nullable|boolean',
             'schema_type' => 'nullable|string|max:50',
             'schema_data' => 'nullable|array',
         ]);
@@ -85,9 +97,15 @@ final class SeoUpdateController
 
         $fields = [];
 
-        foreach (['title', 'description', 'canonical', 'schema_type'] as $field) {
+        foreach (['title', 'description', 'canonical', 'og_title', 'og_description', 'schema_type'] as $field) {
             if (\array_key_exists($field, $data)) {
                 $fields[$field] = $data[$field] !== null ? (string) $data[$field] : null;
+            }
+        }
+
+        foreach (['is_index', 'is_follow'] as $field) {
+            if (\array_key_exists($field, $data) && $data[$field] !== null) {
+                $fields[$field] = \in_array($data[$field], [true, 1, '1'], true) ? 1 : 0;
             }
         }
 
@@ -120,8 +138,8 @@ final class SeoUpdateController
 
         if ($existing === null) {
             $this->database->insert(
-                'INSERT INTO seo_meta (tenant_id, entity_type, entity_id, title, description, canonical, og_image_id, schema_type, schema_data)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO seo_meta (tenant_id, entity_type, entity_id, title, description, canonical, og_image_id, og_title, og_description, is_index, is_follow, schema_type, schema_data)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $siteId,
                     'page',
@@ -130,6 +148,10 @@ final class SeoUpdateController
                     $fields['description'] ?? null,
                     $fields['canonical'] ?? null,
                     $fields['og_image_id'] ?? null,
+                    $fields['og_title'] ?? null,
+                    $fields['og_description'] ?? null,
+                    $fields['is_index'] ?? 1,
+                    $fields['is_follow'] ?? 1,
                     $fields['schema_type'] ?? null,
                     $fields['schema_data'] ?? null,
                 ]

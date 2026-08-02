@@ -88,6 +88,10 @@ final class ModuleSeoIntegrationTest extends TestCase
             description VARCHAR(500) NULL,
             canonical VARCHAR(500) NULL,
             og_image_id BIGINT NULL,
+            og_title VARCHAR(255) NULL,
+            og_description VARCHAR(500) NULL,
+            is_index BOOLEAN NOT NULL DEFAULT 1,
+            is_follow BOOLEAN NOT NULL DEFAULT 1,
             schema_type VARCHAR(50) NULL,
             schema_data TEXT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -277,6 +281,54 @@ final class ModuleSeoIntegrationTest extends TestCase
             [$siteId, 'page', $pageId]
         );
         self::assertSame(1, (int) $count['c']);
+    }
+
+    public function testPatchCreatesMetaWithDefaultIndexFollowTrue(): void
+    {
+        $siteId = $this->seedSite();
+        $pageId = $this->seedPage($siteId);
+        $this->actingAs($siteId, ['seo.update']);
+
+        $response = $this->router->dispatch(new Request(
+            'PATCH',
+            "/seo/page/{$pageId}",
+            'example.com',
+            [],
+            ['title' => 'X']
+        ));
+
+        self::assertSame(200, $response->getStatusCode());
+        $row = $this->database->selectOne(
+            'SELECT is_index, is_follow FROM seo_meta WHERE tenant_id = ? AND entity_type = ? AND entity_id = ?',
+            [$siteId, 'page', $pageId]
+        );
+        self::assertSame(1, (int) $row['is_index']);
+        self::assertSame(1, (int) $row['is_follow']);
+    }
+
+    public function testPatchUpdatesOgTitleOgDescriptionAndIndexFollow(): void
+    {
+        $siteId = $this->seedSite();
+        $pageId = $this->seedPage($siteId);
+        $this->actingAs($siteId, ['seo.update']);
+
+        $response = $this->router->dispatch(new Request(
+            'PATCH',
+            "/seo/page/{$pageId}",
+            'example.com',
+            [],
+            ['og_title' => 'OG Title', 'og_description' => 'OG Desc', 'is_index' => false, 'is_follow' => false]
+        ));
+
+        self::assertSame(200, $response->getStatusCode());
+        $row = $this->database->selectOne(
+            'SELECT og_title, og_description, is_index, is_follow FROM seo_meta WHERE tenant_id = ? AND entity_type = ? AND entity_id = ?',
+            [$siteId, 'page', $pageId]
+        );
+        self::assertSame('OG Title', $row['og_title']);
+        self::assertSame('OG Desc', $row['og_description']);
+        self::assertSame(0, (int) $row['is_index']);
+        self::assertSame(0, (int) $row['is_follow']);
     }
 
     public function testPatchInvalidEntityTypeReturns404(): void

@@ -21,6 +21,7 @@ $router->get('/admin/menus', [\Modules\Admin\MenuListController::class, 'handle'
 $router->get('/admin/menus/{id}', [\Modules\Admin\MenuShowController::class, 'handle']);
 $router->get('/admin/seo', [\Modules\Admin\SeoListController::class, 'handle']);
 $router->get('/admin/seo/pages/{id}', [\Modules\Admin\SeoShowEditController::class, 'handle']);
+$router->get('/admin/settings', [\Modules\Admin\SettingShowEditController::class, 'handle']);
 
 $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], function (\Core\Router $router): void {
     $router->post('/admin/login', [\Modules\Admin\LoginController::class, 'handle']);
@@ -49,4 +50,5 @@ $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], funct
     $router->post('/admin/menu-items/{id}', [\Modules\Admin\MenuItemUpdateController::class, 'handle']);
     $router->post('/admin/menu-items/{id}/delete', [\Modules\Admin\MenuItemDeleteController::class, 'handle']);
     $router->post('/admin/seo/pages/{id}', [\Modules\Admin\SeoUpdateController::class, 'handle']);
+    $router->post('/admin/settings', [\Modules\Admin\SettingUpdateController::class, 'handle']);
 });

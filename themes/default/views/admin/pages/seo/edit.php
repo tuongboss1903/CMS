@@ -30,6 +30,24 @@
         </select>
     </div>
     <div class="field">
+        <label for="og_title">OG Title</label>
+        <input type="text" id="og_title" name="og_title" value="<?= $this->e((string) ($meta['og_title'] ?? '')) ?>">
+    </div>
+    <div class="field">
+        <label for="og_description">OG Description</label>
+        <textarea id="og_description" name="og_description" rows="2"><?= $this->e((string) ($meta['og_description'] ?? '')) ?></textarea>
+    </div>
+    <div class="field flex gap-3" style="align-items:center;">
+        <label class="mb-0" style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" name="is_index" value="1" <?= ($meta === null || (int) ($meta['is_index'] ?? 1) === 1) ? 'checked' : '' ?>>
+            Cho phep index (search engine)
+        </label>
+        <label class="mb-0" style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" name="is_follow" value="1" <?= ($meta === null || (int) ($meta['is_follow'] ?? 1) === 1) ? 'checked' : '' ?>>
+            Cho phep follow link
+        </label>
+    </div>
+    <div class="field">
         <label for="schema_type">Schema Type</label>
         <input type="text" id="schema_type" name="schema_type" value="<?= $this->e((string) ($meta['schema_type'] ?? '')) ?>" placeholder="Article, WebPage, ...">
     </div>

@@ -9,6 +9,7 @@ use Core\Cache\FileCacheDriver;
 use Core\Cache\RedisCacheDriver;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\Middleware\StartSessionMiddleware;
 use Core\Middleware\TenantResolverMiddleware;
 use Throwable;
 
@@ -83,7 +84,7 @@ final class Application
         $moduleManager = $this->container->get(ModuleManager::class);
         $router = $this->container->get(Router::class);
 
-        $router->group(['middleware' => [TenantResolverMiddleware::class]], function (Router $router) use ($moduleManager): void {
+        $router->group(['middleware' => [StartSessionMiddleware::class, TenantResolverMiddleware::class]], function (Router $router) use ($moduleManager): void {
             $moduleManager->boot($router, \array_keys($moduleManager->discover()));
         });
 

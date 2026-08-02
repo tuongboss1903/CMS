@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require __DIR__ . '/load_env.php';
 require __DIR__ . '/../vendor/autoload.php';
 
 use Core\Config;
