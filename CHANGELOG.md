@@ -6,6 +6,29 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.1.3] — 2026-08-11 — CMS-050: Multi-language Support (i18n) & Localization MVP (PHASE 13)
+
+### Added
+
+- **`page_translations`** (migration `2026_08_11_000001_create_page_translations_table.php`): `tenant_id`, `page_id` (FK `pages` CASCADE), `locale`, `title`, `slug`, `content` (TEXT, nullable), `created_at`, `updated_at`. `CONSTRAINT unq_page_locale UNIQUE (page_id, locale)`, `CONSTRAINT unq_tenant_locale_slug UNIQUE (tenant_id, locale, slug)`, index `(tenant_id, locale)`. **Translation Table Pattern** — chọn sau 1 vòng Architecture Review riêng so sánh với JSON Column Pattern (thắng ở cả 5/5 tiêu chí: Index/Query, mở rộng locale, độ phức tạp code, backward compatibility, DX bảo trì).
+- **`core/I18n/Translator.php`**: dịch tĩnh UI text từ `resources/lang/{locale}.php`, fallback locale (`vi`), interpolation `:placeholder`. Có 1 static holder cô lập (`globalInstance()`/`setGlobalInstance()`) — ngoại lệ có chủ đích duy nhất phục vụ helper toàn cục `__()` (View template không có Dependency Injection), cùng triết lý cô lập global access như `Session` đã áp dụng cho `$_SESSION`.
+- **`__()` helper** (`core/helpers.php`, nạp qua `composer.json` → `autoload.files` — file định nghĩa global function DUY NHẤT của dự án).
+- **`core/Middleware/LocaleDetectionMiddleware.php`**: thứ tự ưu tiên route param `{locale}` → query `?lang=` → Session (`locale.current`) → Cookie → `config('app.locale')`. Gắn vào `/`, `/{slug}` (fallback không-prefix) và nhóm route mới `/{locale}`, `/{locale}/{slug}`.
+- **Public rendering đa ngôn ngữ** (`modules/Public/HomeController.php`, `PublicPageController.php`): tra `page_translations` theo `(tenant_id, page_id, locale)`, tự động fallback nội dung gốc `pages` khi thiếu bản dịch hoặc locale mặc định `vi` (locale `vi` không bao giờ đụng `page_translations` — đảm bảo 100% backward compatible).
+- **Admin UI**: Tab chuyển đổi "Tiếng Việt (gốc)/English" trong `create.php`/`edit.php` (bọc quanh khối Nội dung hiện có, không đổi logic Quill/Block Builder Phase 11 bên trong). `PageCreateController`/`PageUpdateController` lưu/upsert `page_translations`; `PageShowEditController` fetch bản dịch hiện có để pre-fill.
+- 23 test mới: `tests/Core/I18nTranslatorTest.php` (9), `tests/Core/LocaleMiddlewareTest.php` (8), `tests/Core/PageTranslationTest.php` (6).
+
+### Architecture Decisions
+
+- **Translation Table Pattern, không JSON Column** — nhất quán với Owner Decision CMS-040 (`pages.content` là `TEXT` thuần, tránh phụ thuộc khả năng JSON column khác nhau giữa SQLite/MySQL); `core/QueryBuilder.php` vốn không có bất kỳ hỗ trợ JSON-query nào.
+- **`{slug}` trong URL luôn là slug gốc (tiếng Việt)**, không đổi theo locale — tra bản dịch theo `page_id` đã xác định, không theo slug riêng từng locale, tránh 2 hệ thống slug song song.
+- **Router match Route trước, chạy Middleware sau** (xác minh trực tiếp `core/Router.php`) — `LocaleDetectionMiddleware` không thể tự "cắt prefix URL", phải đăng ký thêm 1 nhóm route `/{locale}/...` để `{locale}` trở thành route param thật.
+- **Rủi ro khớp Route 2-segment** (mở rộng Technical Debt 1-segment đã chấp nhận ở CMS-044): `/{locale}/{slug}` về cấu trúc có thể khớp `/admin/pages` — an toàn ở thứ tự nạp module hiện tại (`admin` nạp trước `public`) nhưng là thứ tự ngẫu nhiên theo tên thư mục, không phải bất biến hệ thống đảm bảo.
+
+### Verification
+
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **689 tests, 1389 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression.
+
 ## [0.1.2] — 2026-08-03 — CMS-049: Advanced Analytics Dashboard (PHASE 12)
 
 ### Added

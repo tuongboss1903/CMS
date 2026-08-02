@@ -7,6 +7,7 @@ namespace Modules\Public;
 use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\I18n\Translator;
 use Core\TenantManager;
 use Core\View;
 use Modules\Settings\SiteSettingsManager;
@@ -24,6 +25,13 @@ use Modules\Settings\SiteSettingsManager;
  * co ban ghi seo_meta - Option A, khong tu sinh mac dinh) va Navigation Menu (location_key='header',
  * an han <nav> neu chua co Menu - Owner Decision). Trung lap logic voi HomeController.php co chu
  * dich (Option A, khong tao abstraction moi).
+ *
+ * Phase 13 (i18n, CMS-050): {slug} trong URL LUON la slug GOC (tieng Viet, luu trong pages.slug) -
+ * khong doi theo locale (Owner Decision, xem resolveTranslation() - tra cuu ban dich theo page_id
+ * da xac dinh duoc, KHONG theo slug rieng cua tung locale, tranh 2 he thong slug song song). Locale
+ * 'vi' (fallback locale cua Translator) KHONG bao gio truy van page_translations - noi dung 'vi' la
+ * chinh pages.title/pages.content, dam bao 100% khong regression cho cac request khong co locale
+ * (locale mac dinh luon la 'vi' qua LocaleDetectionMiddleware).
  */
 final class PublicPageController
 {
@@ -72,11 +80,17 @@ final class PublicPageController
         $siteSettings = $this->siteSettings->get();
         $ogImageId = $seo['og_image_id'] ?? $siteSettings['default_og_image_id'] ?? null;
 
-        $content = \json_decode($page['content'] ?? 'null', true);
+        $locale = Translator::globalInstance()->getLocale();
+        $translation = $this->resolveTranslation($tenantId, $pageId, $locale);
+
+        $title = $translation['title'] ?? $page['title'];
+        $rawContent = $translation !== null ? $translation['content'] : $page['content'];
+
+        $content = \json_decode($rawContent ?? 'null', true);
         $content = $this->resolveBlockImageUrls($content, $tenantId);
 
         $html = $this->view->render($templateName, [
-            'title' => $seo['title'] ?? $page['title'],
+            'title' => $seo['title'] ?? $title,
             'content' => $content,
             'seo' => $seo,
             'menu' => $this->fetchNavigation($tenantId, $pageId),
@@ -84,9 +98,53 @@ final class PublicPageController
             'breadcrumb' => $this->breadcrumbBuilder->build($tenantId, $pageId),
             'og_image_url' => $this->resolveMediaUrl($tenantId, $ogImageId !== null ? (int) $ogImageId : null),
             'favicon_url' => $this->resolveMediaUrl($tenantId, $siteSettings['favicon_id'] !== null ? (int) $siteSettings['favicon_id'] : null),
+            'locale' => $locale,
+            'available_locales' => $this->fetchAvailableLocales($tenantId, $pageId),
         ]);
 
         return Response::html($html);
+    }
+
+    /**
+     * Phase 13 (i18n, CMS-050): locale 'vi' KHONG bao gio cham page_translations (dam bao 100%
+     * backward compatible - moi request khong co tin hieu locale nao deu mac dinh 'vi' qua
+     * LocaleDetectionMiddleware, tuc la KHONG co bang page_translations van hoat dong binh thuong).
+     *
+     * @return array{title: string, content: string|null}|null
+     */
+    private function resolveTranslation(int|string|null $tenantId, int $pageId, string $locale): ?array
+    {
+        if ($locale === 'vi') {
+            return null;
+        }
+
+        return $this->database->selectOne(
+            'SELECT title, content FROM page_translations WHERE tenant_id = ? AND page_id = ? AND locale = ?',
+            [$tenantId, $pageId, $locale]
+        );
+    }
+
+    /**
+     * Bang page_translations chua chac ton tai o moi fixture test cu (cung bug pattern voi bang
+     * media/analytics_views o Phase 11/12) - bat Throwable, fallback ['vi'] (locale goc luon co san).
+     *
+     * @return list<string>
+     */
+    private function fetchAvailableLocales(int|string|null $tenantId, int $pageId): array
+    {
+        try {
+            $rows = $this->database->select(
+                'SELECT DISTINCT locale FROM page_translations WHERE tenant_id = ? AND page_id = ?',
+                [$tenantId, $pageId]
+            );
+        } catch (\Throwable) {
+            return ['vi'];
+        }
+
+        return \array_values(\array_unique([
+            'vi',
+            ...\array_map(static fn (array $row): string => (string) $row['locale'], $rows),
+        ]));
     }
 
     private function render404(): Response

@@ -15,7 +15,10 @@
             "Core\\": "core/",
             "App\\": "app/",
             "Modules\\": "modules/"
-        }
+        },
+        "files": [
+            "core/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

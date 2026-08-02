@@ -52,6 +52,7 @@ final class PageShowCreateController
             'editor_mode' => 'quill',
             'errors' => [],
             'old' => ['title' => '', 'slug' => '', 'content_html' => '', 'template' => '', 'parent_id' => '', 'blocks' => []],
+            'translations' => [],
             'csrf_token' => $this->csrf->token(),
         ]);
 

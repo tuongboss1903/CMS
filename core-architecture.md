@@ -940,6 +940,34 @@ POST /admin/seo/pages/{id}
 
 **Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 666 tests, 1341 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
 
+### 3.49. Multi-language Support (i18n) — Translation Table Pattern — `core/I18n/`, `page_translations`, mở rộng `modules/Admin/`, `modules/Public/` — v0.1.3 (PHASE 13, CMS-050)
+
+**Bối cảnh**: dịch nội dung Page theo locale (`vi`/`en` cho MVP), UI tĩnh dịch qua `__()`. Quyết định kiến trúc chốt qua 1 vòng Architecture Review riêng (trước Implementation) so sánh **Translation Table Pattern** (bảng `page_translations` riêng) với **JSON Column Pattern** (`{"vi": ..., "en": ...}` trong `pages.content`) theo 5 tiêu chí — Translation Table thắng cả 5/5:
+
+1. **Hiệu năng Query/Index**: `WHERE page_id=? AND locale=?` dùng thẳng UNIQUE index; JSON Column phải kéo cả blob về PHP decode, không tận dụng index nào.
+2. **Mở rộng locale thứ 3/4**: thêm dòng (Translation Table) vs đọc-sửa-toàn-blob-ghi-lại (JSON, rủi ro race-condition cao hơn).
+3. **Độ phức tạp code Database wrapper tự viết**: Translation Table dùng nguyên `Database::select/insert/update` có sẵn (0 dòng Core mới); JSON Column cần rẽ nhánh SQL đặc thù driver (`json_extract` SQLite vs `JSON_EXTRACT` MySQL) — tái lập đúng vấn đề CMS-028 đã tránh.
+4. **Backward Compatibility**: Translation Table là bảng hoàn toàn mới, không đổi 1 cột nào của `pages` — 666 test cũ không cần sửa gì. JSON Column sẽ phá vỡ trực tiếp quy ước `content['html']`/`content['blocks']` của Visual Page Builder (mục 3.47).
+5. **Developer Experience**: `SELECT * FROM page_translations WHERE page_id=?` debug được ngay; JSON Column không có ràng buộc DB nào ngăn lỗi chính tả locale key.
+
+**Schema `page_translations`** (`database/migrations/2026_08_11_000001_create_page_translations_table.php`): `tenant_id` (denormalize — không suy qua JOIN, cùng tiền lệ `seo_meta`/`media`), `page_id` (FK `pages` CASCADE), `locale`, `title`, `slug`, `content` (TEXT nullable, cùng quy ước JSON-tự-encode như `pages.content` — Owner Decision CMS-040). `CONSTRAINT unq_page_locale UNIQUE (page_id, locale)` (1 bản dịch/locale/page), `CONSTRAINT unq_tenant_locale_slug UNIQUE (tenant_id, locale, slug)` (URL không trùng trong cùng tenant+locale), index `(tenant_id, locale)`.
+
+**`core/I18n/Translator.php`**: `translate()` tra locale hiện tại → fallback locale (`vi`) → trả nguyên key nếu không có ở đâu cả. Interpolation `:placeholder` qua `strtr()`. Có **1 static holder cô lập** (`globalInstance()`/`setGlobalInstance()`) — ngoại lệ có chủ đích DUY NHẤT ngoài `Session` (mục 4) được phép truy cập global, vì View template (`.php` render qua `include`) không có Dependency Injection nhưng cần gọi `__()` như 1 hàm toàn cục. `core/helpers.php` (nạp qua `composer.json` → `autoload.files`) là file định nghĩa global function DUY NHẤT của dự án.
+
+**`core/Middleware/LocaleDetectionMiddleware.php`**: thứ tự ưu tiên route param `{locale}` → query `?lang=` → Session (`locale.current` — đã có sẵn trong quy ước namespace `Session`, xem mục 3.6) → Cookie → `config('app.locale')`. Set `Translator` global + ghi lại Session/Cookie để "dính" lựa chọn.
+
+**Giới hạn kiến trúc thật đã xác minh qua `core/Router.php`**: `Router::dispatch()` MATCH ROUTE TRƯỚC (dùng URI gốc) rồi mới chạy Middleware Pipeline của route đã khớp — middleware không thể "cắt prefix URL rồi định tuyến lại". Giải quyết bằng đăng ký THÊM 1 nhóm route `/{locale}/...` (`modules/Public/routes.php`, `$router->group(['prefix' => '/{locale}'], ...)`) song song 2 route không-prefix hiện có (`/`, `/{slug}` — fallback qua query/session/cookie/default), để `{locale}` trở thành route param thật do `Router::match()` bắt được.
+
+**Rủi ro khớp Route 2-segment** (mở rộng Technical Debt 1-segment đã chấp nhận ở CMS-044, mục 3.30): `/{locale}/{slug}` về cấu trúc có thể khớp `/admin/pages`, `/admin/login`... (`Router::match()` trả về route khớp ĐẦU TIÊN theo thứ tự đăng ký). An toàn ở cấu hình hiện tại vì module `admin` được `ModuleManager` nạp trước `public` (thứ tự alphabet thư mục, `admin` không phụ thuộc `public`), nhưng đây là thứ tự **ngẫu nhiên** theo tên thư mục `modules/`, không phải bất biến hệ thống đảm bảo.
+
+**Public rendering** (`HomeController`/`PublicPageController`): `{slug}` trong URL luôn là slug GỐC (tiếng Việt) — tra bản dịch theo `(tenant_id, page_id, locale)` đã xác định qua `pages`, không theo slug riêng từng locale (tránh 2 hệ thống slug song song). Locale `'vi'` KHÔNG BAO GIỜ đụng `page_translations` (return sớm) — đảm bảo 100% backward compatible vì locale mặc định luôn là `'vi'` khi không có tín hiệu nào. `fetchAvailableLocales()` bọc `try/catch` (cùng bug pattern bảng `media`/`analytics_views` ở mục 3.47/3.48) vì bị gọi vô điều kiện.
+
+**Admin UI**: Tab "Tiếng Việt (gốc)/English" trong `create.php`/`edit.php`, bọc quanh khối Nội dung hiện có bằng div `#locale-pane-vi`/`#locale-pane-en` + JS toggle inline nhỏ — không đổi `id`/logic Quill/Block Builder Phase 11 bên trong. `PageCreateController`/`PageUpdateController::saveTranslations()` insert/upsert theo `(page_id, locale)`. `PageShowEditController::fetchTranslations()` bọc `try/catch` (cùng lý do bảo vệ fixture test cũ).
+
+**Permissions**: không permission mới (dùng lại `page.create`/`page.update`). **Multi-tenant Isolation**: mọi query `page_translations` đều lọc `tenant_id = ?`, đã có test riêng xác nhận (`PageTranslationTest::testTranslationDataIsIsolatedPerTenant`).
+
+**Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 689 tests, 1389 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -998,6 +1026,9 @@ POST /admin/seo/pages/{id}
 | Public Page Builder Rendering (`modules/Public/*`, block render) | 6 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật — khác `PublicPageRenderingTest.php` dùng fixture theme) |
 | Analytics Tracking (`AnalyticsTrackingMiddleware`, `AnalyticsService`) | 5 | Integration (`ModuleManager` trỏ `modules/` thật, `Router::dispatch()` thật, fixture theme `test-theme`) |
 | Admin Analytics UI (`modules/Admin/DashboardController` - Analytics) | 5 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, Session/Auth thật) |
+| i18n Translator (`core/I18n/Translator.php`) | 9 | Unit thuần (fixture rieng `tests/Fixtures/lang/`, không I/O ngoài đọc file, không Database/Router) |
+| Locale Detection Middleware (`core/Middleware/LocaleDetectionMiddleware.php`) | 8 | Unit (gọi `process()` trực tiếp, Session thật không mock) |
+| Page Translation (`page_translations`, Admin + Public i18n) | 6 | Integration (`ModuleManager` trỏ `modules/` thật, boot cả `admin` lẫn `public`, `View` dùng `themes/default/` thật) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 

@@ -7,6 +7,7 @@ namespace Modules\Public;
 use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\I18n\Translator;
 use Core\TenantManager;
 use Core\View;
 use Modules\Settings\SiteSettingsManager;
@@ -19,6 +20,9 @@ use Modules\Settings\SiteSettingsManager;
  * co ban ghi seo_meta - Option A, khong tu sinh mac dinh) va Navigation Menu (location_key='header',
  * an han <nav> neu chua co Menu - Owner Decision). Trung lap logic voi PublicPageController.php co
  * chu dich (Option A, khong tao abstraction moi).
+ *
+ * Phase 13 (i18n, CMS-050): xem docblock PublicPageController.php ve resolveTranslation()/
+ * fetchAvailableLocales() - trung lap co chu dich, cung logic i18n.
  */
 final class HomeController
 {
@@ -66,11 +70,17 @@ final class HomeController
         $siteSettings = $this->siteSettings->get();
         $ogImageId = $seo['og_image_id'] ?? $siteSettings['default_og_image_id'] ?? null;
 
-        $content = \json_decode($page['content'] ?? 'null', true);
+        $locale = Translator::globalInstance()->getLocale();
+        $translation = $this->resolveTranslation($tenantId, $pageId, $locale);
+
+        $title = $translation['title'] ?? $page['title'];
+        $rawContent = $translation !== null ? $translation['content'] : $page['content'];
+
+        $content = \json_decode($rawContent ?? 'null', true);
         $content = $this->resolveBlockImageUrls($content, $tenantId);
 
         $html = $this->view->render($templateName, [
-            'title' => $seo['title'] ?? $page['title'],
+            'title' => $seo['title'] ?? $title,
             'content' => $content,
             'seo' => $seo,
             'menu' => $this->fetchNavigation($tenantId, $pageId),
@@ -78,9 +88,46 @@ final class HomeController
             'breadcrumb' => $this->breadcrumbBuilder->build($tenantId, $pageId),
             'og_image_url' => $this->resolveMediaUrl($tenantId, $ogImageId !== null ? (int) $ogImageId : null),
             'favicon_url' => $this->resolveMediaUrl($tenantId, $siteSettings['favicon_id'] !== null ? (int) $siteSettings['favicon_id'] : null),
+            'locale' => $locale,
+            'available_locales' => $this->fetchAvailableLocales($tenantId, $pageId),
         ]);
 
         return Response::html($html);
+    }
+
+    /** @return array{title: string, content: string|null}|null */
+    private function resolveTranslation(int|string|null $tenantId, int $pageId, string $locale): ?array
+    {
+        if ($locale === 'vi') {
+            return null;
+        }
+
+        return $this->database->selectOne(
+            'SELECT title, content FROM page_translations WHERE tenant_id = ? AND page_id = ? AND locale = ?',
+            [$tenantId, $pageId, $locale]
+        );
+    }
+
+    /**
+     * Bang page_translations chua chac ton tai o moi fixture test cu - bat Throwable, fallback ['vi'].
+     *
+     * @return list<string>
+     */
+    private function fetchAvailableLocales(int|string|null $tenantId, int $pageId): array
+    {
+        try {
+            $rows = $this->database->select(
+                'SELECT DISTINCT locale FROM page_translations WHERE tenant_id = ? AND page_id = ?',
+                [$tenantId, $pageId]
+            );
+        } catch (\Throwable) {
+            return ['vi'];
+        }
+
+        return \array_values(\array_unique([
+            'vi',
+            ...\array_map(static fn (array $row): string => (string) $row['locale'], $rows),
+        ]));
     }
 
     private function render404(): Response
