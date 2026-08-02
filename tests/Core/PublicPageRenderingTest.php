@@ -72,6 +72,35 @@ final class PublicPageRenderingTest extends TestCase
             deleted_at TIMESTAMP NULL
         )');
         $this->database->statement('CREATE UNIQUE INDEX uq_pages_tenant_slug ON pages (tenant_id, slug)');
+        $this->database->statement('CREATE TABLE menus (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id BIGINT NOT NULL,
+            name VARCHAR(150) NOT NULL,
+            location_key VARCHAR(50) NOT NULL
+        )');
+        $this->database->statement('CREATE TABLE menu_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            menu_id BIGINT NOT NULL,
+            parent_id BIGINT NULL,
+            label VARCHAR(150) NOT NULL,
+            type VARCHAR(20) NOT NULL,
+            reference_id BIGINT NULL,
+            url VARCHAR(500) NULL,
+            target VARCHAR(20) NOT NULL DEFAULT \'_self\',
+            sort_order INT NOT NULL DEFAULT 0
+        )');
+        $this->database->statement('CREATE TABLE seo_meta (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id BIGINT NOT NULL,
+            entity_type VARCHAR(20) NOT NULL,
+            entity_id BIGINT NOT NULL,
+            title VARCHAR(255) NULL,
+            description VARCHAR(500) NULL,
+            canonical VARCHAR(500) NULL,
+            og_image_id BIGINT NULL,
+            schema_type VARCHAR(50) NULL,
+            schema_data TEXT NULL
+        )');
     }
 
     /** @param array<string, mixed> $overrides */

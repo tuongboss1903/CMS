@@ -6,6 +6,33 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.51] — Public Website Polish
+
+### Added
+
+- 404 themed page (`themes/default/views/pages/404.php`) — `HomeController`/`PublicPageController` render qua theme khi `View::exists('pages.404')`, fallback text thuần nếu theme không có view này.
+- Header/Footer khung tĩnh trong `themes/default/views/layouts/main.php`.
+- SEO meta injection vào `<head>` (`<meta description>`, `<link canonical>`, `<meta og:title>`, `<meta og:description>`) từ bảng `seo_meta` (CMS-043) — chỉ render khi có bản ghi.
+- JSON-LD (`<script type="application/ld+json">`) từ `seo_meta.schema_data`.
+- Navigation Menu render (`<nav>`, 2 cấp cha/con) từ `menus`/`menu_items` (CMS-042), location cố định `'header'`.
+- Active menu — đánh dấu `class="active"` cho menu item `type=page` trỏ tới page đang xem.
+
+### Architecture Decisions
+
+- **Không `og:image`** — chưa có route phục vụ file Media qua HTTP, tránh tạo URL chết.
+- **Fallback khi `seo_meta` chưa tồn tại (Option A)**: giữ nguyên hành vi cũ (`<title>` = `pages.title`), không tự sinh description/OG/JSON-LD mặc định.
+- **Ẩn hẳn `<nav>`** khi tenant chưa tạo Menu cho `location_key='header'` (không hiển thị khung rỗng).
+- **Trùng lặp logic có chủ đích** giữa `HomeController`/`PublicPageController` (query SEO/Menu, dựng cây) — không tạo Service/Trait/Helper dùng chung, đúng tiền lệ toàn dự án.
+- **Dựng cây Menu bằng PHP thuần** (1 query `menu_items` + 1 query `IN (...)` lấy slug các page tham chiếu, không N+1) — copy logic từ `Modules\Menu\ShowMenuController::buildTree()`, không tái sử dụng chéo Module.
+- **JSON-LD dùng `json_encode(..., JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP|JSON_UNESCAPED_UNICODE)`**, không dùng `$this->e()` (sai ngữ cảnh HTML-escape cho JSON) — chặn `</script>` breakout injection.
+- **Hoãn hoàn toàn**: Breadcrumb, Media URL (serve file qua HTTP), Search, `/sitemap.xml`, `/robots.txt`, Redirect support, Asset optimization — đều ngoài phạm vi "polish" (cần thiết kế route/route collision riêng hoặc feature mới hoàn toàn, đã phân tích ở PHASE 1/2).
+- **Không sửa Core, không Service/Repository/Interface/Trait/Middleware/Event/Hook/Cache mới**.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/PublicPageRenderingTest.php` trên môi trường thật: **PASS** — 8 tests, 14 assertions (không đổi số lượng — chỉ bổ sung fixture bảng `menus`/`menu_items`/`seo_meta` vào `migrate()`, không thêm/bớt test method).
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 536 tests, 1025 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## [0.0.50] — CMS-043: SEO Management (Module JSON API)
 
 ### Added
