@@ -1,0 +1,1 @@
+LAYOUT-START|<?= $this->yield('content') ?>|LAYOUT-END

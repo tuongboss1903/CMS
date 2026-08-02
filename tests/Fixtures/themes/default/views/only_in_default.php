@@ -1,0 +1,1 @@
+Only in default theme

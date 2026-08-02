@@ -1,0 +1,8 @@
+{
+    "key": "nohooks",
+    "name": "No Hooks Plugin",
+    "version": "1.0.0",
+    "author": "Test Author",
+    "description": "Plugin hop le nhung khong co file Hooks.php, dung de test xu ly phong thu.",
+    "dependencies": []
+}

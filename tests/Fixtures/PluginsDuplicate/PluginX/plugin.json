@@ -1,0 +1,8 @@
+{
+    "key": "dup",
+    "name": "Plugin X",
+    "version": "1.0.0",
+    "author": "Test Author",
+    "description": "Ban dau cua key trung lap.",
+    "dependencies": []
+}

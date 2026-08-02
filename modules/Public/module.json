@@ -1,0 +1,1 @@
+{"key":"public","name":"Public Website","version":"1.0.0","dependencies":["auth","user","role","dashboard","page","settings","media"]}

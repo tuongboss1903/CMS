@@ -1,0 +1,8 @@
+{
+    "key": "pluginA",
+    "name": "Plugin A",
+    "version": "1.0.0",
+    "author": "Test Author",
+    "description": "Plugin khong co dependency, dung de test discover/boot co ban.",
+    "dependencies": []
+}

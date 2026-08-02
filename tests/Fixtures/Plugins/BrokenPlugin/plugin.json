@@ -1,0 +1,8 @@
+{
+    "key": "broken",
+    "name": "Broken Plugin",
+    "version": "1.0.0",
+    "author": "Test Author",
+    "description": "Plugin co Hooks.php nem loi, dung de test co lap loi trong boot().",
+    "dependencies": []
+}

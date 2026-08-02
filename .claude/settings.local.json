@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(\\(Get-Content d:\\\\CMS\\\\TODO.md | Measure-Object -Line\\).Lines)"
+    ]
+  }
+}
