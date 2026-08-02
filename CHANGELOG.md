@@ -6,6 +6,31 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.55] — SEO Meta Settings Admin UI (hoàn tất PHASE 3)
+
+### Added
+
+- `modules/Admin/{SeoListController,SeoShowEditController,SeoUpdateController}.php` — 3 Controller Admin UI cho SEO Meta theo từng Page, copy logic upsert từ `Modules\Seo\UpdateSeoMetaController` y hệt.
+- `themes/default/views/admin/pages/seo/{list,edit}.php` — List Page (badge Đã/Chưa cấu hình SEO) + form sửa (title/description/canonical/OG image/schema type/schema data).
+- Mở khóa "SEO" trong sidebar — **badge "Soon" cuối cùng đã được gỡ, hoàn tất toàn bộ PHASE 3** (Pages/Media/Menu/SEO Admin UI).
+- `tests/Core/AdminSeoManagementUiTest.php` — 16 test case.
+
+### Architecture Decisions
+
+- **Phạm vi được thu hẹp qua `AskUserQuestion`**: yêu cầu ban đầu nhắc tới "Global SEO Settings" (Site Title format, Robots.txt/Sitemap toggle) — xác nhận **không tồn tại** trong `modules/Seo/*` hay schema DB hiện tại (chỉ có SEO Meta theo từng Page). Owner chọn giữ đúng phạm vi hiện có, không mở bảng/Controller mới cho Global Settings — ghi nhận là đề xuất riêng cho Phase sau, không lẫn vào phạm vi này.
+- **`schema_data` qua form HTML**: JSON API gốc nhận `array` (JSON body), không có cách nhập mảng lồng nhau qua form text truyền thống — thêm field mới `schema_data_json` (textarea JSON thô), Controller `json_decode` trước khi áp dụng logic upsert gốc; JSON không hợp lệ → silent-redirect, không lưu.
+- **`entity_type` cố định `'page'`** trong Controller Admin (khác JSON API nhận qua route param) — Admin UI chỉ phục vụ Page, đúng phạm vi đã duyệt.
+- **Không sửa `modules/Seo/*` (JSON API), `core/*`, `bin/bootstrap.php`** (permission `seo.view/seo.update` đã có sẵn từ CMS-043), không migration mới.
+
+### Fixed
+
+- **Tự phát hiện trong lúc code**: cùng bug pattern `Validator`'s `nullable` không bỏ qua chuỗi rỗng `''` đã gặp ở Menu Builder — `<select>` OG Image "-- Không có --" gửi `og_image_id=''`, luôn bị từ chối trước khi chạm logic. Sửa bằng chuẩn hóa `''` → `null` trước `validate()`.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/AdminSeoManagementUiTest.php` trên môi trường thật: **PASS** — 16 tests, 32 assertions.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 592 tests, 1144 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## [0.0.54] — Menu Builder Admin UI
 
 ### Added

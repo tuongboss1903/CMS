@@ -19,6 +19,8 @@ $router->get('/admin/media', [\Modules\Admin\MediaListController::class, 'handle
 $router->get('/admin/media/{id}/file', [\Modules\Admin\MediaFileController::class, 'handle']);
 $router->get('/admin/menus', [\Modules\Admin\MenuListController::class, 'handle']);
 $router->get('/admin/menus/{id}', [\Modules\Admin\MenuShowController::class, 'handle']);
+$router->get('/admin/seo', [\Modules\Admin\SeoListController::class, 'handle']);
+$router->get('/admin/seo/pages/{id}', [\Modules\Admin\SeoShowEditController::class, 'handle']);
 
 $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], function (\Core\Router $router): void {
     $router->post('/admin/login', [\Modules\Admin\LoginController::class, 'handle']);
@@ -46,4 +48,5 @@ $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], funct
     $router->post('/admin/menus/{id}/items', [\Modules\Admin\MenuItemCreateController::class, 'handle']);
     $router->post('/admin/menu-items/{id}', [\Modules\Admin\MenuItemUpdateController::class, 'handle']);
     $router->post('/admin/menu-items/{id}/delete', [\Modules\Admin\MenuItemDeleteController::class, 'handle']);
+    $router->post('/admin/seo/pages/{id}', [\Modules\Admin\SeoUpdateController::class, 'handle']);
 });

@@ -8,5 +8,5 @@
     <a href="/admin/pages">Pages</a>
     <a href="/admin/media">Media</a>
     <a href="/admin/menus">Menu</a>
-    <span class="nav-disabled">SEO <span class="soon-tag">Soon</span></span>
+    <a href="/admin/seo">SEO</a>
 </nav>
