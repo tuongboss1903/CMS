@@ -6,6 +6,42 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.58] — 2026-08-02 — Release Preparation & Technical Debt Clearance (PHASE 6)
+
+### Added
+
+- **CI/CD**: `.github/workflows/phpunit.yml` — GitHub Actions, matrix PHP 8.2 + 8.3 (`pdo_sqlite`, `mbstring`), chạy trên push/PR vào `main`/`develop`. Không thêm PHP 8.1 dù `composer.json` cho phép `>=8.1` — chưa từng verify thật.
+- **`DEPLOYMENT.md`**: hướng dẫn triển khai Production — Yêu cầu hệ thống, Web Server Single Domain Multi-tenancy (Nginx/Apache), Multi-tenancy DNS, Environment Variables (bảng đối chiếu bắt buộc đổi so với `.env.example` demo), File Storage Permissions, Database Migration an toàn, Cronjobs (xác nhận chưa có tác vụ định kỳ nào), Checklist Go-Live.
+- **Pilot Action Class Pattern** (`modules/Page/Actions/{PageActionException,PageNotFoundException,PageValidationException,CreatePageAction,UpdatePageAction,DeletePageAction,PublishPageAction,SetHomepageAction}.php`): tách business logic (validate + DB) khỏi tầng Response — thí điểm trên Module `Page`, giải quyết trùng lặp Admin↔JSON API đã lặp lại ≥7 lần từ CMS-045.
+
+### Changed
+
+- Refactor 10 Controller Module `Page` (5 JSON API + 5 Admin UI) inject Action qua Constructor Injection, giữ nguyên tầng Response (JSON vs HTML/redirect).
+- `.gitignore`: bổ sung `/storage/app/media/*` (giữ `.gitkeep`) — phát hiện thư mục upload thật chưa từng được gitignore đúng cách.
+
+### Fixed
+
+- **Đính chính tài liệu cũ sai** trong `core-architecture.md` (mục Role Model, gần CMS-037): từng ghi "migration không có cột `is_system`" — sai, đọc lại migration thật (`2026_08_01_000004_create_roles_table.php:19`) xác nhận cột **tồn tại**, chỉ không Controller nào dùng.
+- 1 lỗi gõ nhầm tự phát hiện trong lúc refactor: `PageSetHomepageController.php` (Admin) — sai status code `403 Forbidden` thành `404`, sửa lại đúng trước khi giao test.
+- 1 vi phạm convention tự phát hiện: 2 Exception mới (`PageNotFoundException`/`PageValidationException`) ban đầu extend thẳng `\RuntimeException` — bổ sung base `PageActionException` cho khớp convention `Core\Database\{DatabaseException,QueryException}`.
+
+### Documentation & Maintenance
+
+- Đánh dấu chính thức `roles.is_system` deprecated (giữ nguyên cột, không `DROP COLUMN` — Owner Decision).
+- Đánh dấu trạng thái Standby chính thức cho `core/Cache.php`/`core/Hook.php` (không Module nào dùng qua toàn bộ vòng đời dự án).
+- Đóng dứt điểm nợ tài liệu tồn đọng từ v0.0.51 (Local Demo Foundation, 2 Critical Bug Fix, UI Kit Tech Green/Dark) trong `TODO.md`.
+
+### Architecture Decisions
+
+- **Chỉ pilot 1 nghiệp vụ (`Page`), chưa nhân rộng** ra 24 cặp Controller Admin↔JSON còn lại — quyết định nhân rộng hoãn tới khi Owner đánh giá kết quả pilot thật.
+- **2 discrepancy hành vi nhỏ giữa JSON/Admin gốc đã hợp nhất** (xác nhận an toàn qua đọc trực tiếp test suite trước khi hợp nhất — không test nào assert vào 2 nhánh này): xử lý `template`/`parent_id` rỗng khi Create (theo hướng Admin, chặt hơn); cấu trúc `errors` cho lỗi slug trùng/parent không hợp lệ (theo hướng Admin, đầy đủ hơn — JSON API giờ trả thông tin lỗi chi tiết hơn trước).
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/ModulePageIntegrationTest.php` trên môi trường thật: **PASS** — 17 tests, 27 assertions.
+- `vendor/bin/phpunit tests/Core/AdminPageManagementUiTest.php` trên môi trường thật: **PASS** — 11 tests, 24 assertions.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 636 tests, 1247 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế) — **không regression** sau khi refactor 10 Controller đã chạy production.
+
 ## [0.0.57] — 2026-08-02 — Public Engine Polish & Public Media Delivery (PHASE 5)
 
 ### Added
