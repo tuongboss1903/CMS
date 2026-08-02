@@ -9,6 +9,7 @@ use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
 use Core\Mail\Mailer;
+use Core\Security\AuditLogger;
 use Core\TenantManager;
 
 /**
@@ -17,10 +18,13 @@ use Core\TenantManager;
  *
  * Phase 15 (CMS-052): xem docblock CommentApproveController.php - cung logic JOIN + gui mail,
  * trung lap co chu dich.
+ *
+ * Phase 16 (CMS-053): ghi "comment.rejected".
  */
 final class CommentRejectController
 {
     public function __construct(
+        private readonly AuditLogger $auditLogger,
         private readonly Authorization $authorization,
         private readonly Database $database,
         private readonly Mailer $mailer,
@@ -63,6 +67,8 @@ final class CommentRejectController
                 'page_title' => $comment['page_title'],
             ]
         );
+
+        $this->auditLogger->log($request, 'comment.rejected', 'comment', $commentId, ['status' => 'pending'], ['status' => 'rejected']);
 
         return Response::redirect('/admin/comments');
     }

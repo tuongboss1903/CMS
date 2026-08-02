@@ -9,6 +9,7 @@ use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
 use Core\Mail\Mailer;
+use Core\Security\AuditLogger;
 use Core\TenantManager;
 
 /**
@@ -17,10 +18,13 @@ use Core\TenantManager;
  * Phase 15 (CMS-052): JOIN pages de lay guest_name/guest_email/page_title/page_slug, gui email
  * qua Mailer sau khi doi status. Mailer::send() tu than da silent-fail (khong throw), nen khong
  * can boc try/catch o day.
+ *
+ * Phase 16 (CMS-053): ghi "comment.approved".
  */
 final class CommentApproveController
 {
     public function __construct(
+        private readonly AuditLogger $auditLogger,
         private readonly Authorization $authorization,
         private readonly Database $database,
         private readonly Mailer $mailer,
@@ -64,6 +68,8 @@ final class CommentApproveController
                 'page_url' => '/' . $comment['page_slug'],
             ]
         );
+
+        $this->auditLogger->log($request, 'comment.approved', 'comment', $commentId, ['status' => 'pending'], ['status' => 'approved']);
 
         return Response::redirect('/admin/comments');
     }

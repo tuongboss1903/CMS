@@ -10,6 +10,7 @@ use Core\Csrf;
 use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\Security\AuditLogger;
 use Core\TenantManager;
 use Core\View;
 use Modules\Page\Actions\CreatePageAction;
@@ -42,6 +43,7 @@ final class PageCreateController
     private const TRANSLATABLE_LOCALES = ['en'];
 
     public function __construct(
+        private readonly AuditLogger $auditLogger,
         private readonly Authorization $authorization,
         private readonly Auth $auth,
         private readonly Csrf $csrf,
@@ -77,6 +79,11 @@ final class PageCreateController
         }
 
         $this->saveTranslations($created['id'], $this->tenantManager->id(), $data);
+
+        $this->auditLogger->log($request, 'page.created', 'page', $created['id'], null, [
+            'title' => $created['title'],
+            'slug' => $created['slug'],
+        ]);
 
         return Response::redirect('/admin/pages');
     }

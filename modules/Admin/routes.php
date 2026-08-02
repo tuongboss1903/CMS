@@ -23,6 +23,8 @@ $router->get('/admin/seo', [\Modules\Admin\SeoListController::class, 'handle']);
 $router->get('/admin/seo/pages/{id}', [\Modules\Admin\SeoShowEditController::class, 'handle']);
 $router->get('/admin/settings', [\Modules\Admin\SettingShowEditController::class, 'handle']);
 $router->get('/admin/comments', [\Modules\Admin\CommentListController::class, 'handle']);
+$router->get('/admin/audit-logs', [\Modules\Admin\AuditLogController::class, 'handle']);
+$router->get('/admin/system-settings', [\Modules\Admin\SystemSettingListController::class, 'handle']);
 
 $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], function (\Core\Router $router): void {
     $router->post('/admin/login', [\Modules\Admin\LoginController::class, 'handle']);
@@ -55,4 +57,6 @@ $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], funct
     $router->post('/admin/comments/{id}/approve', [\Modules\Admin\CommentApproveController::class, 'handle']);
     $router->post('/admin/comments/{id}/reject', [\Modules\Admin\CommentRejectController::class, 'handle']);
     $router->post('/admin/comments/{id}/delete', [\Modules\Admin\CommentDeleteController::class, 'handle']);
+    $router->post('/admin/system-settings', [\Modules\Admin\SystemSettingSaveController::class, 'handle']);
+    $router->post('/admin/system-settings/{id}/delete', [\Modules\Admin\SystemSettingDeleteController::class, 'handle']);
 });

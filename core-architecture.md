@@ -1008,6 +1008,50 @@ POST /admin/seo/pages/{id}
 
 **Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 736 tests, 1499 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
 
+### 3.52. Security & Audit Log System — `core/Security/AuditLogger.php`, `audit_logs`, `modules/Admin/AuditLogController.php` — v0.1.6 (PHASE 16, CMS-053)
+
+**Bối cảnh**: theo dõi/truy vết thao tác Admin (đăng nhập, CRUD Page, duyệt Comment, đổi Settings) cho hệ thống Multi-tenant — trụ cột bảo mật cuối cùng trước khi bước vào giai đoạn UI/UX Overhaul (Phase 18).
+
+**`AuditLogger` là Service inject qua constructor, KHÔNG static facade** — dự án chỉ chấp nhận đúng 2 ngoại lệ static/global có chủ đích trước đó (`Session` cô lập `$_SESSION`, `Translator::globalInstance()` phục vụ `__()`). Thêm 1 static facade thứ 3 sẽ phá vỡ nguyên tắc "Không static/global mutable state" (mục 4) mà không có lý do bắt buộc — Controller luôn có `Request` sẵn trong `handle(Request $request)` để truyền vào.
+
+**`log(Request $request, ...)` nhận `Request` tường minh** — đã xác minh `Request` KHÔNG nằm trong Container (chỉ tạo 1 lần ở `Application::run()`, truyền qua tham số dispatch), nên không thể tự "bắt" `ip_address`/`user_agent` từ đâu đó toàn cục.
+
+**`audit_logs`**: `tenant_id`/`user_id` **nullable** — khác biệt so với mọi bảng trước (sự kiện `auth.login_failed` với email không tồn tại xảy ra trước khi xác định được user). `old_values`/`new_values` lưu TEXT (JSON tự encode, Owner Decision CMS-040, không cột JSON native). FK `ON DELETE SET NULL` (không CASCADE) — giữ lại log kể cả khi tenant/user bị xoá, đúng tinh thần compliance của Audit Trail.
+
+**`AuditLogController`**: phân trang thủ công **đầu tiên của dự án** (LIMIT/OFFSET tính tay, chưa có helper Paginator chung — MVP, "không tạo abstraction khi chỉ có 1 nơi dùng"). Cách ly tenant **tuyệt đối, không ngoại lệ SuperAdmin** — cơ chế Super Admin xem xuyên-tenant chưa được xây dựng ở bất kỳ đâu trong dự án (`config/tenants.php` chỉ khai báo `route_prefix` dự kiến, Technical Debt đã ghi nhận từ CMS-030, mục 6 hạng mục 23).
+
+**3 điều chỉnh so với đặc tả gốc Owner đưa ra** (trình bày ở Architecture Analysis trước khi code): (1) instance method thay vì static; (2) bỏ event "đổi mật khẩu" — tính năng này chưa tồn tại ở bất kỳ đâu qua 15 Phase trước (`UserUpdateController` chỉ sửa `name`/`email`), không tự tạo tính năng mới ngoài phạm vi; (3) không có ngoại lệ SuperAdmin.
+
+**Tích hợp**: `LoginController`/`LogoutController` (`auth.login_success`/`auth.login_failed`/`auth.logout`), `PageCreateController`/`PageUpdateController` (diff `old_values`/`new_values`)/`PageDeleteController`, `CommentApproveController`/`CommentRejectController`, `SettingUpdateController` (diff toàn bộ settings qua `SiteSettingsManager::get()` trước/sau `set()`).
+
+**Zero-regression tự nhiên** (khác Phase 12/15 cần đăng ký Container/sửa test cũ): `AuditLogger` là class cụ thể hoàn toàn (không interface như `MailerDriver` — mục 3.51), Container tự auto-wire được ở MỌI test cũ mà không cần đăng ký tường minh; kết hợp silent-fail nội bộ (`try/catch` bọc toàn bộ `log()`), không có test suite nào trong 736 test trước đó cần sửa.
+
+**Permissions**: `audit_log.view` (mới, `bin/bootstrap.php`).
+
+**Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 752 tests, 1538 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
+### 3.53. System Settings & General Configurations — `Modules\Settings\SettingManager.php`, `settings` — v0.1.7 (PHASE 17, CMS-054)
+
+**Bối cảnh**: lớp key-value tổng quát cho cấu hình động (Mail Driver override, Moderation Rules, Maintenance Mode...) — bổ sung cho `SiteSettingsManager` (cột cố định, mục 3.42), không thay thế. Bước đệm cuối trước UI/UX Overhaul (Phase 18).
+
+**2 xung đột kỹ thuật đã xác minh và sửa trước khi code** (khác đặc tả gốc Owner đưa ra):
+1. **Bảng đổi tên `settings`** — `site_settings` đã tồn tại (Phase 4, cột cố định), tạo lại cùng tên sẽ lỗi SQL.
+2. **Route đổi thành `/admin/system-settings`** — `GET`/`POST /admin/settings` đã đăng ký từ Phase 4; đăng ký trùng URL khiến `Router` ném `DuplicateRouteException` **ngay lúc boot ứng dụng** (không riêng Phase 17 — toàn bộ app sập).
+
+**`SettingManager` đặt tại `Modules\Settings\`, không phải `core/`** — nhất quán tiền lệ `SiteSettingsManager` (mục 3.42): khái niệm nghiệp vụ biết "tenant", khác `Cache`/`Database` là framework thuần.
+
+**Cache-aware qua `Core\Cache` có sẵn** (không tự viết cơ chế cache riêng): `get()` đọc Cache trước, chỉ chạm DB khi cache-miss; `set()`/`forget()` tự invalidate đúng 1 cache key liên quan (`setting:{tenant_id}:{key}`), không `flush()` toàn bộ Cache.
+
+**Mã hoá AES-256-CBC qua `ext-openssl`** (extension chuẩn của PHP core, không phải Composer package — "Zero-dependency" trong dự án luôn nghĩa là "không thư viện ngoài composer cho Core", không phải "không PHP extension chuẩn", đúng như `Database` đã dùng PDO từ đầu). Khoá mã hoá derive từ `app.key`. Giá trị `is_encrypted` **không bao giờ giải mã hiển thị** ở màn hình danh sách Admin (luôn `********`), kể cả khi Admin có quyền `settings.manage`.
+
+**`UNIQUE (tenant_id, key)` với `tenant_id` nullable** — cùng hành vi đã ghi nhận ở bảng `roles` (CMS-028): `NULL ≠ NULL` trong composite UNIQUE (ANSI SQL, cả SQLite lẫn MySQL), nhiều setting cấp hệ thống (`tenant_id NULL`) có thể trùng `key` mà không bị chặn — chấp nhận được, không phải lỗi migration.
+
+**Lặp lại đúng bài học `MailerDriver` (Phase 15, mục 3.51)**: `SettingManager` phụ thuộc `Core\Cache` → `Core\Cache\CacheDriver` là interface, Container không tự auto-wire — `tests/Core/AdminSettingTest.php` phải đăng ký tường minh `FileCacheDriver`. Lần này tự phát hiện và sửa **trước khi giao Owner chạy PHPUnit**, không phải sau khi FAIL.
+
+**Permissions**: `settings.manage` (mới, tách biệt hoàn toàn `settings.view`/`settings.update` đã có — 2 hệ thống Settings độc lập, không dùng chung permission).
+
+**Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 772 tests, 1586 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -1075,6 +1119,10 @@ POST /admin/seo/pages/{id}
 | Mailer (`Core\Mail\*`) | 8 | Unit + Integration (`LogMailerDriver`/`ArrayMailerDriver` thật, `View` dùng `themes/default/` thật render template email thật, `SmtpMailerDriver` test kết nối thất bại có kiểm soát) |
 | Notification Service (`modules/Admin/NotificationService.php`) | 7 | Integration (`Database` SQLite in-memory thật, `ArrayMailerDriver`, cách ly Multi-tenant) |
 | Comment Notification Integration (Phase 14 + Phase 15 nối liền) | 6 | Integration (`ModuleManager` trỏ `modules/` thật, boot cả `admin` lẫn `public`, `View` dùng `themes/default/` thật) |
+| Audit Logger (`core/Security/AuditLogger.php`) | 8 | Integration (`Database` SQLite in-memory thật, `Request` dựng tay, cách ly Multi-tenant) |
+| Admin Audit Log Viewer (`modules/Admin/AuditLogController.php`) | 9 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, lọc/phân trang) |
+| Setting Manager (`Modules\Settings\SettingManager.php`) | 10 | Integration (`Database` SQLite in-memory thật, `Core\Cache` với `FileCacheDriver` thật — không mock) |
+| Admin System Settings (`modules/Admin/SystemSetting*Controller.php`) | 11 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, `CacheDriver` đăng ký tường minh) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 
