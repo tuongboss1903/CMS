@@ -521,11 +521,17 @@ Thay thế hoàn toàn kế hoạch cũ (Middleware cụ thể / `public/index.p
   - [x] `STAGING_CHECKLIST.md` (moi) — checklist thao tac Web Server Setup (+tao `public/.htaccess` cho Apache), SSL/HTTPS Multi-Domain (certbot SAN, khong Wildcard), Data Initialization (chuoi lenh dung thu tu phu thuoc), Permissions & Environment — tham chieu nguoc `DEPLOYMENT.md`, khong lap lai noi dung
   - [x] Khong sua bat ky file PHP nao — chi 2 tai lieu Markdown moi, khong migration
   - [x] **Verified** — `vendor/bin/phpunit` PASS tren moi truong that — toan bo suite: 641 tests, 1264 assertions, 0 Errors/Failures, 4 Skipped dung thiet ke (Redis), khong regression (dung nhu du kien vi khong dung code PHP) → **Phase 8 COMPLETED — tag `v0.1.0-beta`**
-- [ ] **Phase 9: Production Go-Live & Monitoring (Milestone du kien)** — [PLANNED]
-  - [ ] Trien khai thuc te len ha tang Production that (theo `DEPLOYMENT.md` + `STAGING_CHECKLIST.md` da co)
-  - [ ] Giam sat/Log thuc te (chua co Architecture Analysis — can xac dinh cong cu/muc do chi tiet truoc khi thiet ke)
-  - [ ] Thu thap phan hoi tu buoi Demo/Beta that, uu tien xu ly theo phan hoi thuc te
-  - [ ] Can Architecture Analysis rieng truoc khi Implementation (chua duyet Final Design)
+- [x] **Phase 9: Production Go-Live & Monitoring (Milestone `v0.1.0`) — [DONE]**
+  - [x] Architecture Analysis + Final Design (Owner Approval 100%) — phat hien quan trong: `GET /health` **da ton tai that** tu Core Foundation (`core/Application.php`, ngoai `TenantResolverMiddleware`), khong phai xay moi; 3 fork chot deu theo huong "thuan tai lieu": (1) A1 giu nguyen `/health` liveness, khong nang cap Readiness Check; (2) B1 chi khuyen nghi Nginx `limit_req` theo IP, khong wiring `RateLimiter` (Session-based, khong chan duoc script khong gui cookie) vao `LoginController`; (3) chi tai lieu huong dan `mysqldump` thu cong, khong viet `bin/backup.php`
+  - [x] `PRODUCTION_MONITORING.md` (moi) — 4 muc: Health Check & Uptime Monitoring (UptimeRobot/Pingdom/systemd/Docker), Log Rotation (`/etc/logrotate.d/cms` day du directive), Backup & Disaster Recovery (`mysqldump`/`tar` + CronJob `0 2 * * *`), Security Hardening (Nginx `limit_req_zone` chong brute-force `/admin/login`, HTTP Security Headers kem luu y CSP phai whitelist `cdn.quilljs.com`, phan tich minh bach gioi han that cua `RateLimiter`)
+  - [x] Khong sua bat ky file PHP nao — chi 1 tai lieu Markdown moi, khong migration
+  - [x] **Verified** — `vendor/bin/phpunit` PASS tren moi truong that — 641 tests, 1264 assertions, 0 Errors/Failures, 4 Skipped dung thiet ke (Redis), khong regression (dung nhu du kien) → **Phase 9 COMPLETED — tag `v0.1.0`**
+- [x] **Phase 10: Final Release Verification, Merge to Main & Launch Handoff — [DONE]**
+  - [x] `HANDOFF_NOTES.md` (moi) — System Executive Summary, Key Assets & Entry Points, Quick Start 3 lenh (kem luu y minh bach: can hoan tat chuan bi ha tang truoc, khong phai toan bo quy trinh rut gon con 3 lenh), Post-Launch Maintenance Roadmap (Redis Cache Driver that, Async Queue, i18n, nhan rong Action Class Pattern, Plugin/Hook kich hoat, Media Thumbnail, Rate Limiting IP-based, Analytics)
+  - [x] **Phat hien va tao moi `README.md`** — chua tung ton tai trong toan bo du an tu truoc toi gio, du Owner yeu cau "cap nhat neu can" (khong phai chi cap nhat, phai tao moi hoan toan) — lien ket toi toan bo tai lieu du an
+  - [x] Huong dan Git Merge/Push Tag/Don nhanh feature — chi huong dan, KHONG tu thuc thi (dung nguyen tac "Git guidance only, never auto-commit/push/tag" da giu xuyen suot du an)
+  - [x] Khong sua bat ky file PHP nao — chi tai lieu Markdown, khong migration
+  - [x] **Verified** — `vendor/bin/phpunit` can Owner xac nhan lai lan cuoi truoc khi merge vao `main`
 - [ ] Event / Queue — chưa đánh số CMS; Event có nghi vấn trùng lặp với `Hook` (xem `core-architecture.md` mục 6), Queue để sau khi Foundation hoàn tất (Owner Decision CMS-025)
 - [ ] ThemeManager Integration / Content Schema Migration tiếp tục / Database query logging / `PluginManager::getFailures()` logging / Domain normalization / Super Admin domain bypass / `AuthorizationMiddleware` tham số hoá thật / CSRF cho `/login`+`/logout` / `roles` UNIQUE fix (#20) / Module/Plugin theo Site (#9) / Multi-site session (#26) — chưa đánh số CMS, để dành sau khi có nhu cầu thật
 
