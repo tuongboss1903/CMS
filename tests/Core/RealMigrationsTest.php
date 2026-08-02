@@ -34,6 +34,7 @@ final class RealMigrationsTest extends TestCase
         '2026_08_08_000001_alter_seo_meta_add_og_robots_fields',
         '2026_08_09_000001_create_site_settings_table',
         '2026_08_10_000001_create_analytics_views_table',
+        '2026_08_11_000001_create_page_translations_table',
     ];
 
     public function testMigrateCreatesAllSevenTablesInOrder(): void

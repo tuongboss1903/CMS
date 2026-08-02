@@ -26,11 +26,20 @@ use Modules\Page\Actions\PageValidationException;
  * $data['content'] = ['blocks' => [...]] TRUOC KHI goi Action (Action khong doi, van chi nhan
  * $data['content'] la 1 array bat ky - dung phat hien kien truc o Architecture Analysis: schema
  * content la JSON tu do, khong can sua Action/JSON API cho quy uoc moi nay).
+ *
+ * Phase 13 (i18n, CMS-050): sau khi CreatePageAction tao page goc (locale 'vi') thanh cong, luu
+ * them ban dich cac locale khac (hien tai chi 'en') tu $data['translations'][locale] neu Admin co
+ * nhap - bo qua locale nao khong nhap du (title/slug rong). KHONG qua Action Class (Action chi biet
+ * ve bang "pages", page_translations la khai niem rieng cua Phase 13) - Controller tu thao tac
+ * Database truc tiep, dung tien le "trung lap co chu dich" da giu xuyen suot du an.
  */
 final class PageCreateController
 {
     /** @var list<string> */
     private const VALID_BLOCK_TYPES = ['heading', 'paragraph', 'image', 'hero', 'feature_grid', 'cta'];
+
+    /** @var list<string> Locale co the dich (locale goc 'vi' luu truc tiep trong pages, khong o day). */
+    private const TRANSLATABLE_LOCALES = ['en'];
 
     public function __construct(
         private readonly Authorization $authorization,
@@ -62,12 +71,38 @@ final class PageCreateController
         }
 
         try {
-            $this->action->execute($data, $this->auth->id());
+            $created = $this->action->execute($data, $this->auth->id());
         } catch (PageValidationException $exception) {
             return $this->renderWithErrors($exception->errors(), $data);
         }
 
+        $this->saveTranslations($created['id'], $this->tenantManager->id(), $data);
+
         return Response::redirect('/admin/pages');
+    }
+
+    /** @param array<string, mixed> $data */
+    private function saveTranslations(int $pageId, int|string|null $tenantId, array $data): void
+    {
+        $translations = \is_array($data['translations'] ?? null) ? $data['translations'] : [];
+
+        foreach (self::TRANSLATABLE_LOCALES as $locale) {
+            $input = $translations[$locale] ?? null;
+
+            if (!\is_array($input) || empty($input['title']) || empty($input['slug'])) {
+                continue;
+            }
+
+            $content = isset($input['content']) && $input['content'] !== ''
+                ? \json_encode(['html' => (string) $input['content']], JSON_UNESCAPED_UNICODE)
+                : null;
+
+            $this->database->insert(
+                'INSERT INTO page_translations (tenant_id, page_id, locale, title, slug, content)
+                 VALUES (?, ?, ?, ?, ?, ?)',
+                [$tenantId, $pageId, $locale, (string) $input['title'], (string) $input['slug'], $content]
+            );
+        }
     }
 
     /**
@@ -142,6 +177,7 @@ final class PageCreateController
                 'parent_id' => (string) ($data['parent_id'] ?? ''),
                 'blocks' => $data['content']['blocks'] ?? [],
             ],
+            'translations' => \is_array($data['translations'] ?? null) ? $data['translations'] : [],
             'csrf_token' => $this->csrf->token(),
         ]);
 

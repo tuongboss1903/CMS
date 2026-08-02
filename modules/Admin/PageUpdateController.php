@@ -22,11 +22,18 @@ use Modules\Page\Actions\UpdatePageAction;
  *
  * Phase 11 (Visual Page Builder): them nhanh xu ly khi editor_mode='block' - cung logic
  * decode/validate voi PageCreateController (trung lap co chu dich, dung tien le du an).
+ *
+ * Phase 13 (i18n, CMS-050): upsert page_translations tu $data['translations'][locale] sau khi
+ * UpdatePageAction thanh cong - cung logic saveTranslations() voi PageCreateController (trung lap
+ * co chu dich), khac o cho phai UPDATE neu ban dich locale do da ton tai (thay vi luon INSERT).
  */
 final class PageUpdateController
 {
     /** @var list<string> */
     private const VALID_BLOCK_TYPES = ['heading', 'paragraph', 'image', 'hero', 'feature_grid', 'cta'];
+
+    /** @var list<string> Locale co the dich (locale goc 'vi' luu truc tiep trong pages, khong o day). */
+    private const TRANSLATABLE_LOCALES = ['en'];
 
     public function __construct(
         private readonly Authorization $authorization,
@@ -65,7 +72,45 @@ final class PageUpdateController
             return $this->renderWithErrors($pageId, $exception->errors(), $data);
         }
 
+        $this->saveTranslations($pageId, $this->tenantManager->id(), $data);
+
         return Response::redirect('/admin/pages');
+    }
+
+    /** @param array<string, mixed> $data */
+    private function saveTranslations(int $pageId, int|string|null $tenantId, array $data): void
+    {
+        $translations = \is_array($data['translations'] ?? null) ? $data['translations'] : [];
+
+        foreach (self::TRANSLATABLE_LOCALES as $locale) {
+            $input = $translations[$locale] ?? null;
+
+            if (!\is_array($input) || empty($input['title']) || empty($input['slug'])) {
+                continue;
+            }
+
+            $content = isset($input['content']) && $input['content'] !== ''
+                ? \json_encode(['html' => (string) $input['content']], JSON_UNESCAPED_UNICODE)
+                : null;
+
+            $existing = $this->database->selectOne(
+                'SELECT id FROM page_translations WHERE page_id = ? AND locale = ?',
+                [$pageId, $locale]
+            );
+
+            if ($existing === null) {
+                $this->database->insert(
+                    'INSERT INTO page_translations (tenant_id, page_id, locale, title, slug, content)
+                     VALUES (?, ?, ?, ?, ?, ?)',
+                    [$tenantId, $pageId, $locale, (string) $input['title'], (string) $input['slug'], $content]
+                );
+            } else {
+                $this->database->update(
+                    'UPDATE page_translations SET title = ?, slug = ?, content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                    [(string) $input['title'], (string) $input['slug'], $content, (int) $existing['id']]
+                );
+            }
+        }
     }
 
     /** @return list<array<string, mixed>>|null */
@@ -135,6 +180,7 @@ final class PageUpdateController
                 'parent_id' => (string) ($data['parent_id'] ?? ''),
                 'blocks' => $data['content']['blocks'] ?? [],
             ],
+            'translations' => \is_array($data['translations'] ?? null) ? $data['translations'] : [],
             'csrf_token' => $this->csrf->token(),
         ]);
 
