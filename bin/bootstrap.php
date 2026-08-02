@@ -52,6 +52,8 @@ $permissionKeys = [
     'seo.view', 'seo.update',
     'settings.view', 'settings.update',
     'comment.view', 'comment.moderate', 'comment.delete',
+    'audit_log.view',
+    'settings.manage',
 ];
 
 try {

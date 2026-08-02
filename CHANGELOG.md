@@ -6,6 +6,51 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.1.7] — 2026-08-15 — CMS-054: System Settings & General Configurations (PHASE 17)
+
+### Added
+
+- **`settings`** (migration `2026_08_15_000001_create_settings_table.php`): bảng key-value **tổng quát**, bổ sung cho `site_settings` (cột cố định, Phase 4) — `tenant_id` nullable (setting cấp hệ thống), `setting_group`, `key`, `value` (TEXT), `is_encrypted`. `UNIQUE (tenant_id, key)`, index `(tenant_id, setting_group)`.
+- **`Modules\Settings\SettingManager.php`**: `get(key, default)`/`set(key, value, group, encrypted)`/`getGroup(group)`/`forget(key)`, **Cache-aware** qua `Core\Cache` có sẵn (đọc cache trước, chỉ chạm DB khi cache-miss; `set()`/`forget()` tự invalidate đúng 1 key). Mã hoá AES-256-CBC qua `ext-openssl` (có sẵn trong PHP core, không thêm dependency Composer) cho giá trị nhạy cảm (`is_encrypted=true`), khoá derive từ `app.key`.
+- **Admin UI** (`GET/POST /admin/system-settings`, `POST /admin/system-settings/{id}/delete`, permission `settings.manage` mới): danh sách setting gom nhóm theo `setting_group`, giá trị `is_encrypted` **luôn hiện `********`** ở màn hình danh sách (không bao giờ giải mã hiển thị, kể cả khi có quyền).
+- 21 test mới: `tests/Core/SettingManagerTest.php` (10), `tests/Core/AdminSettingTest.php` (11).
+
+### Architecture Decisions (2 xung đột kỹ thuật tự phát hiện trước khi code, khác đặc tả gốc)
+
+1. **Đổi tên bảng thành `settings`** — đặc tả gốc đề xuất `site_settings`, nhưng tên này **đã dùng** cho bảng cột-cố-định từ Phase 4 (`2026_08_09_000001_create_site_settings_table.php`); tạo lại cùng tên sẽ lỗi SQL "table already exists".
+2. **Đổi route thành `/admin/system-settings`** — `GET`/`POST /admin/settings` **đã đăng ký** từ Phase 4 (`SettingShowEditController`/`SettingUpdateController`); đăng ký lại cùng URL sẽ khiến `Router` ném `DuplicateRouteException` ngay lúc boot ứng dụng, làm sập toàn bộ app chứ không riêng Phase 17.
+3. **`SettingManager` đặt tại `Modules\Settings\`, không phải `core/`** — nhất quán tiền lệ `SiteSettingsManager`: đây là khái niệm nghiệp vụ (biết "tenant"), khác thành phần framework thuần như `Cache`/`Database`.
+4. **`SettingManager` phụ thuộc `Core\Cache` → `Core\Cache\CacheDriver` là interface** — Container không tự auto-wire được (đúng bài học `MailerDriver` ở Phase 15); `tests/Core/AdminSettingTest.php` phải đăng ký tường minh `FileCacheDriver` trước khi giao (tự phát hiện trước khi chạy PHPUnit thật, không phải sau khi FAIL).
+
+### Verification
+
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **772 tests, 1586 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression.
+
+## [0.1.6] — 2026-08-14 — CMS-053: Security & Audit Log System (PHASE 16)
+
+### Added
+
+- **`audit_logs`** (migration `2026_08_14_000001_create_audit_logs_table.php`): `tenant_id`/`user_id` **nullable** (khác mọi bảng trước — sự kiện `auth.login_failed` với email không tồn tại có thể xảy ra trước khi xác định được user), `event`, `auditable_type`/`auditable_id` (polymorphic), `old_values`/`new_values` (TEXT, JSON tự encode — Owner Decision CMS-040), `ip_address`, `user_agent`. FK `ON DELETE SET NULL` (giữ lại log ngay cả khi tenant/user bị xoá — đúng tinh thần compliance). Index `(tenant_id, created_at)`, `(tenant_id, event)`, `(tenant_id, user_id)`.
+- **`core/Security/AuditLogger.php`**: Service inject qua constructor (`Database`, `Session`, `TenantManager`) — **không phải static facade**. `log(Request $request, string $event, ...)` nhận `Request` tường minh (không nằm trong Container, chỉ truyền qua `handle(Request $request)` của Controller). Silent-fail tuyệt đối qua `try/catch` nội bộ.
+- **`modules/Admin/AuditLogController.php`** (`GET /admin/audit-logs`, permission `audit_log.view` mới): lọc theo `event`/`date_from`/`date_to`, **phân trang thủ công đầu tiên của dự án** (20 dòng/trang, chưa có helper Paginator chung — MVP tối giản).
+- Tích hợp ghi log vào 8 Controller: `LoginController` (`auth.login_success`/`auth.login_failed`), `LogoutController` (`auth.logout`), `PageCreateController`/`PageUpdateController` (có diff `old_values`/`new_values`)/`PageDeleteController`, `CommentApproveController`/`CommentRejectController`, `SettingUpdateController` (diff toàn bộ settings).
+- 17 test mới: `tests/Core/AuditLoggerTest.php` (8), `tests/Core/AdminAuditLogTest.php` (9).
+
+### Fixed (tự phát hiện qua PHPUnit thật)
+
+- 2 test tự viết dùng `assertStringNotContainsString()` kiểm tra toàn bộ `$response->getBody()` — dropdown lọc `<select name="event">` trong `list.php` **luôn liệt kê mọi event khác nhau của tenant** (đúng UX, không phải bug), khiến assertion đụng nhầm `<option>` trong dropdown thay vì dữ liệu bảng thật. Sửa bằng assertion nhắm chính xác `<span class="badge...">` (chỉ xuất hiện ở dòng dữ liệu) — cùng loại lỗi "assertion đụng UI chrome" đã gặp ở Phase 14.
+
+### Architecture Decisions (3 điều chỉnh so với đặc tả gốc, đã trình bày ở Architecture Analysis)
+
+- **`AuditLogger::log()` là instance method, không static** — dự án chỉ chấp nhận đúng 2 ngoại lệ static/global có chủ đích (`Session`, `Translator::globalInstance()`); thêm 1 static facade thứ 3 sẽ phá vỡ nguyên tắc "Không static/global mutable state" đã giữ từ CMS-002.
+- **Bỏ event "đổi mật khẩu"** — tính năng đổi mật khẩu chưa tồn tại ở bất kỳ đâu trong 15 Phase trước (`UserUpdateController` chỉ sửa `name`/`email`); không tự tạo tính năng mới ngoài phạm vi Audit Log.
+- **Không có ngoại lệ SuperAdmin xem xuyên-tenant** — cơ chế Super Admin chưa được xây dựng ở bất kỳ đâu (`config/tenants.php` chỉ khai báo `route_prefix` dự kiến, chưa có Route/Controller/Authorization nào dùng, Technical Debt đã ghi nhận từ CMS-030). `AuditLogController` cách ly tenant tuyệt đối, không ngoại lệ, đúng 100% mọi Controller Admin khác.
+- **Zero-regression tự nhiên** (khác Phase 12-15 không cần sửa test cũ): `AuditLogger` là class cụ thể hoàn toàn (không interface như `MailerDriver`), Container tự auto-wire được ở mọi test cũ mà không cần đăng ký tường minh; kết hợp silent-fail nội bộ, không có test suite nào trong 736 test trước đó cần sửa.
+
+### Verification
+
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **752 tests, 1538 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression.
+
 ## [0.1.5] — 2026-08-13 — CMS-052: Notification & Email System (PHASE 15)
 
 ### Added

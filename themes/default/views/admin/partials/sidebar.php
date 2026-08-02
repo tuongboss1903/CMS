@@ -13,4 +13,6 @@
 
     <div class="nav-group-label">He thong</div>
     <a href="/admin/settings">Cai dat chung</a>
+    <a href="/admin/system-settings">System Settings</a>
+    <a href="/admin/audit-logs">Audit Log</a>
 </nav>

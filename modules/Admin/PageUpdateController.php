@@ -9,6 +9,7 @@ use Core\Csrf;
 use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\Security\AuditLogger;
 use Core\TenantManager;
 use Core\View;
 use Modules\Page\Actions\PageNotFoundException;
@@ -36,6 +37,7 @@ final class PageUpdateController
     private const TRANSLATABLE_LOCALES = ['en'];
 
     public function __construct(
+        private readonly AuditLogger $auditLogger,
         private readonly Authorization $authorization,
         private readonly Csrf $csrf,
         private readonly Database $database,
@@ -64,6 +66,8 @@ final class PageUpdateController
             $data['content'] = ['blocks' => $blocks];
         }
 
+        $before = $this->database->selectOne('SELECT title, slug, status FROM pages WHERE id = ?', [$pageId]);
+
         try {
             $this->action->execute($pageId, $data);
         } catch (PageNotFoundException) {
@@ -73,6 +77,9 @@ final class PageUpdateController
         }
 
         $this->saveTranslations($pageId, $this->tenantManager->id(), $data);
+
+        $after = $this->database->selectOne('SELECT title, slug, status FROM pages WHERE id = ?', [$pageId]);
+        $this->auditLogger->log($request, 'page.updated', 'page', $pageId, $before, $after);
 
         return Response::redirect('/admin/pages');
     }

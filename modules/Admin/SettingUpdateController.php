@@ -8,14 +8,22 @@ use Core\Authorization;
 use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\Security\AuditLogger;
 use Core\TenantManager;
 use Core\Validator;
 use Modules\Settings\SiteSettingsManager;
 
-/** POST /admin/settings - upsert qua SiteSettingsManager::set(). */
+/**
+ * POST /admin/settings - upsert qua SiteSettingsManager::set().
+ *
+ * Phase 16 (CMS-053): ghi "settings.updated" voi old/new la snapshot SiteSettingsManager::get()
+ * truoc/sau set() - don gian hon tu ghep tung field thay doi, chap nhan duoc vi settings chi co
+ * 1 dong/tenant (khong can diff tung field rieng le nhu Page).
+ */
 final class SettingUpdateController
 {
     public function __construct(
+        private readonly AuditLogger $auditLogger,
         private readonly Authorization $authorization,
         private readonly Database $database,
         private readonly SiteSettingsManager $settings,
@@ -80,7 +88,11 @@ final class SettingUpdateController
             }
         }
 
+        $before = $this->settings->get();
         $this->settings->set($fields);
+        $after = $this->settings->get();
+
+        $this->auditLogger->log($request, 'settings.updated', 'site_settings', (int) $siteId, $before, $after);
 
         return Response::redirect('/admin/settings');
     }
