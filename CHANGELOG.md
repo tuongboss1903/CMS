@@ -6,6 +6,96 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.54] — Menu Builder Admin UI
+
+### Added
+
+- `modules/Admin/{MenuListController,MenuCreateController,MenuShowController,MenuUpdateController,MenuDeleteController}.php` — 5 Controller CRUD Menu, copy logic từ `Modules\Menu\*Controller`.
+- `modules/Admin/{MenuItemCreateController,MenuItemUpdateController,MenuItemDeleteController}.php` — 3 Controller CRUD Menu Item, copy logic từ `Modules\Menu\*ItemController` (kèm BFS xóa nhánh con cháu).
+- `themes/default/views/admin/pages/menus/{list,show}.php` — List Menu (form Create inline) + Show (cây `menu_items` lồng nhau, form Add Item, kéo-thả HTML5 `draggable` thuần).
+- Kéo-thả cấu trúc menu: `public/assets/js/app.js` bổ sung handler `dragstart/dragover/drop`, gọi `fetch()` POST `/admin/menu-items/{id}` kèm header `X-Requested-With: XMLHttpRequest` để đổi `parent_id` không cần reload trang — **lần đầu dự án dùng AJAX trong Admin UI** (mọi màn hình trước đó đều full-page form POST).
+- `public/assets/css/components.css` — `.menu-tree/.menu-tree-item/.is-dragging/.is-drop-target/.drag-handle`.
+- Mở khóa link "Menu" trong `admin/partials/sidebar.php`.
+- `tests/Core/AdminMenuManagementUiTest.php` — 18 test case.
+
+### Architecture Decisions
+
+- **`MenuItemUpdateController` phục vụ 2 use case** (Edit form thường → HTML redirect; Drag-drop AJAX → JSON) qua `Request::ajax()` có sẵn từ CMS-015 — không tạo Controller/route thứ 2 trùng logic.
+- **Đơn giản hóa kéo-thả có chủ đích**: thả item vào 1 item khác chỉ đổi `parent_id` (reparent), reload trang để cập nhật cây — không tính lại `sort_order` chi tiết giữa các anh em cùng cấp. Đủ đúng nghĩa "kéo-thả cấu trúc" theo yêu cầu Owner, tránh mở rộng phạm vi thành bulk-reorder engine.
+- **Silent-redirect khi lỗi** (Create/Update Menu, Create Menu Item) — không có trang riêng render lỗi (form inline trên `list.php`/`show.php`), cùng mẫu Media/Page.
+- **Không sửa `modules/Menu/*` (JSON API), `core/*`, `bin/bootstrap.php`** (permission `menu.view/create/update/delete` đã có sẵn từ CMS-042).
+
+### Fixed
+
+- **Tự phát hiện trong lúc code**: bản nháp đầu của `show.php` khai báo `function flatten()`/`function renderNodes()` ở top-level file view — vì `View::renderTemplate()` dùng `include` (không `include_once`), sẽ Fatal "Cannot redeclare function" khi view render lần 2 trong cùng tiến trình PHP. Sửa bằng closure cục bộ (`$flatten`, `$renderNode`) trước khi giao Owner test.
+- **Tự phát hiện trong lúc code**: `Validator`'s `nullable` chỉ bỏ qua khi giá trị `=== null` (không bỏ qua `''`) — cả `<select>` "Cấp gốc" và drag-drop "thả về gốc" đều gửi `parent_id=''`, sẽ luôn bị `filter_var('', FILTER_VALIDATE_INT)` từ chối. Sửa bằng chuẩn hóa `''` → `null` trước validate trong `MenuItemCreateController`/`MenuItemUpdateController`.
+- `testUpdateMenuCrossTenantReturns404`, `testUpdateMenuItemCrossTenantReturns404` FAIL ban đầu (419 thay vì 404) — cùng nguyên nhân đã gặp ở Pages Admin UI: `CsrfMiddleware` chặn trước khi Controller kịp kiểm tra tenant ownership. Sửa: lấy token hợp lệ qua `Core\Csrf::token()` trực tiếp trong 2 test.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/AdminMenuManagementUiTest.php` trên môi trường thật: **PASS** — 18 tests, 37 assertions.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 576 tests, 1112 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
+## [0.0.53] — Media Manager Admin UI
+
+### Added
+
+- `modules/Admin/{MediaListController,MediaFileController,MediaUploadController,MediaUpdateController,MediaDeleteController}.php` — 5 Controller HTML quản lý Media, copy logic từ `Modules\Media\*Controller` (JSON API), không sửa file gốc.
+- `MediaFileController` (**route mới, chưa có tiền lệ**): `GET /admin/media/{id}/file` — phục vụ byte file từ `storage/app/media` cho preview trong Admin Grid (chỉ dùng nội bộ Admin, gated `media.view`; Public site vẫn chưa có Media URL — quyết định hoãn từ Public Website Polish không đổi).
+- `themes/default/views/admin/pages/media/list.php` — Grid ảnh/file, inline edit form (alt/title/caption), Upload Modal (drag-drop qua vanilla JS, progressive enhancement — form vẫn submit thường nếu JS tắt).
+- Mở khóa link "Media" trong `admin/partials/sidebar.php`.
+- `public/assets/css/components.css` — `.media-grid/.media-card/.modal-overlay/.modal/.media-dropzone` (tái dùng token màu/spacing hệ thống, không style mới ngoài hệ thống).
+- `public/assets/js/app.js` — handler `data-modal-open/close`, drag-drop file vào input ẩn.
+- `tests/Core/AdminMediaManagementUiTest.php` — 11 test case, `storagePath` override qua `Container::singleton()` với thư mục TEMP riêng (không ghi file thật vào `storage/app/media` của repo).
+
+### Architecture Decisions
+
+- **Route serve file mới** (`GET /admin/media/{id}/file`) — quyết định qua `AskUserQuestion` (Owner chọn "Thêm route serve file mới" thay vì Grid chỉ hiển thị icon/filename). Không đụng `core/Http/Response.php` — `MediaFileController` tự dựng `new Response($bytes, 200, ['Content-Type' => $mimeType])` (constructor đã public, đủ dùng).
+- **Silent-redirect khi lỗi** (Upload sai mime/size, Update validate fail) — không có trang riêng để render lại lỗi (Modal/inline form trên chính `list.php`, không phải trang Create/Edit độc lập như Page), cùng mẫu `PagePublishController`.
+- **Không sửa `modules/Media/*` (JSON API), `core/*`, `bin/bootstrap.php`** (permission `media.view/upload/update/delete` đã có sẵn từ CMS-041).
+- **Trùng lặp logic có chủ đích** giữa `modules/Admin/Media*Controller.php` và `modules/Media/*Controller.php` — không tạo Service/Repository dùng chung, đúng tiền lệ CMS-046/047/Pages Admin UI.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/AdminMediaManagementUiTest.php` trên môi trường thật: **PASS** — 11 tests, 26 assertions.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 558 tests, 1075 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
+## [0.0.52] — Pages Management Admin UI
+
+### Added
+
+- `modules/Admin/{PageListController,PageShowCreateController,PageCreateController,PageShowEditController,PageUpdateController,PageDeleteController,PagePublishController,PageSetHomepageController}.php` — 8 Controller HTML quản lý Page, copy logic từ `Modules\Page\*Controller` (JSON API), không sửa file gốc.
+- 3 GET + 5 POST route mới trong `modules/Admin/routes.php` (route ghi bọc `CsrfMiddleware`).
+- `themes/default/views/admin/pages/pages/{list,create,edit}.php` — List (toggle Publish/Unpublish, Đặt trang chủ, Delete), Create/Edit tích hợp Rich Text Editor **Quill.js** (CDN, không thêm Composer/npm dependency).
+- 2 yield point mới `head_extra`/`scripts_extra` trong `admin/layouts/main.php` (thuần bổ sung, chỉ Page Create/Edit dùng để nạp Quill.js CDN).
+- Mở khóa link "Pages" trong `admin/partials/sidebar.php` (bỏ badge "Soon").
+- `tests/Core/AdminPageManagementUiTest.php` — 11 test case.
+
+### Changed
+
+- Quy ước `pages.content` (tầng Application/View, không phải schema DB) đổi từ `{"text": "..."}` sang `{"html": "..."}` cho page tạo/sửa qua Admin UI Rich Text — `modules/Page/*` (JSON API) không đổi (Validator chỉ kiểm `content` là `array`).
+- `themes/default/views/pages/default.php` (Public site) — render content theo 4 nhánh fallback: `content['html']` (raw HTML) → `content['text']` (escaped, tương thích ngược dữ liệu cũ từ `bin/seed_demo.php`) → mảng generic (JSON dump) → scalar/null.
+
+### Architecture Decisions
+
+- **Rich Text = Quill.js qua CDN** — quyết định qua `AskUserQuestion` (2 vòng: có/không thêm thư viện; chọn thư viện + đổi schema content) vì yêu cầu "Rich Text thật" xung đột với chính sách zero-dependency gốc; Quill CDN là phương án dung hòa (frontend-only, không Composer/npm).
+- **XSS trust model chấp nhận có chủ đích**: Public site render `content['html']` bằng `$this->raw()` không sanitize — chỉ Admin có quyền `page.create`/`page.update` mới tạo được nội dung này (cùng mô hình tin cậy WordPress).
+- **Không sửa `modules/Page/*`, `core/*`, `bin/bootstrap.php`** (permission `page.view/create/update/delete/publish` đã có sẵn từ CMS-040) — đúng phạm vi đã khóa.
+- **Trùng lặp logic có chủ đích** giữa `modules/Admin/Page*Controller.php` và `modules/Page/*Controller.php` — không tạo Service/Repository dùng chung, đúng tiền lệ CMS-046/047.
+
+### Fixed
+
+- `tests/Core/AdminPageManagementUiTest.php::testCreatePageMissingPermissionReturns403Html` — FAIL ban đầu (419 thay vì 403) do request test thiếu CSRF token hợp lệ, bị `CsrfMiddleware` chặn trước khi chạm logic permission (đúng thiết kế pipeline, không phải bug). Sửa: lấy token hợp lệ qua `Core\Csrf::token()` trực tiếp trong test.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/AdminPageManagementUiTest.php` trên môi trường thật: **PASS** — 11 tests, 24 assertions.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 547 tests, 1049 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
+### Ghi chú nợ tài liệu
+
+Các hạng mục sau đã triển khai và được Owner xác nhận hoạt động qua screenshot thật, nhưng **chưa có Documentation Completion riêng** (nằm ngoài phạm vi cập nhật lần này — sẽ bổ sung khi Owner yêu cầu): Local Demo Foundation (`bin/load_env.php`, `bin/create_database.php`, `bin/seed_demo.php`, `SETUP_LOCAL.md`), 2 Critical Bug Fix môi trường thật (`MigrationManager::runInTransactionIfSupported()`, `core/Middleware/StartSessionMiddleware.php`), UI Kit Tech Green/Dark (`public/assets/css/*`, `public/assets/js/app.js`).
+
 ## [0.0.51] — Public Website Polish
 
 ### Added

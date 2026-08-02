@@ -1,6 +1,6 @@
 # CORE ARCHITECTURE — CMS Đa Website
 
-> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-043 + Public Website Polish, tag `v0.0.1` → `v0.0.51`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033; không có `v0.0.39` — bỏ qua khi chuyển từ CMS Foundation Completion sang Product Development, CMS-040 nối tiếp trực tiếp CMS-038; CMS-044/045/046/047 triển khai trước CMS-041/042/043 — tag không theo thứ tự số task, mà theo thứ tự hoàn thành thật). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Từ CMS-038, có thêm `modules/Role/`+`modules/Dashboard/`+`bin/bootstrap.php`, xem mục 3.28. Từ CMS-040, có thêm `modules/Page/` + Content Schema thật đầu tiên (`pages`), xem mục 3.29. Từ CMS-044, có thêm `modules/Public/` + `themes/default/` — CMS lần đầu render được website HTML thật (không còn thuần Headless API), xem mục 3.30. Từ CMS-045, có thêm `modules/Admin/` + `themes/default/views/admin/` — CMS lần đầu có giao diện quản trị HTML (login + dashboard) và CSRF lần đầu được gắn vào route thật, xem mục 3.31. Từ CMS-046, `modules/Admin/` mở rộng với Admin User Management UI (List/Create/Edit/Lock/Unlock/Assign Role dạng HTML), xem mục 3.32. Từ CMS-047, `modules/Admin/` mở rộng với Admin Role Management UI (List/Create/Edit/Delete/Permission Assignment dạng HTML), xem mục 3.33. Từ CMS-041, có thêm `modules/Media/` — Content Module thứ 2 (sau `pages`), lần đầu kích hoạt `sites.storage_used_bytes`, xem mục 3.34. Từ CMS-042, có thêm `modules/Menu/` — Content Module thứ 3, xem mục 3.35. Từ CMS-043, có thêm `modules/Seo/` — Content Module thứ 4, lần đầu dùng pattern upsert (SELECT rồi rẽ nhánh INSERT/UPDATE), xem mục 3.36. Từ Public Website Polish, `modules/Public/*` lần đầu render Navigation Menu + SEO meta + JSON-LD + 404 themed page (trước đó chỉ render `pages` thuần), xem mục 3.37. **Lưu ý khoảng trống tài liệu đã biết**: `modules/User/` (CMS-037) chưa có mục riêng trong tài liệu này (Documentation Completion của CMS-037 chỉ giới hạn `TODO.md`/`CHANGELOG.md` theo yêu cầu lúc đó) — không phải sai sót của lượt cập nhật này. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
+> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-043 + Public Website Polish + Pages Management Admin UI + Media Manager Admin UI + Menu Builder Admin UI, tag `v0.0.1` → `v0.0.54`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033; không có `v0.0.39` — bỏ qua khi chuyển từ CMS Foundation Completion sang Product Development, CMS-040 nối tiếp trực tiếp CMS-038; CMS-044/045/046/047 triển khai trước CMS-041/042/043 — tag không theo thứ tự số task, mà theo thứ tự hoàn thành thật). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Từ CMS-038, có thêm `modules/Role/`+`modules/Dashboard/`+`bin/bootstrap.php`, xem mục 3.28. Từ CMS-040, có thêm `modules/Page/` + Content Schema thật đầu tiên (`pages`), xem mục 3.29. Từ CMS-044, có thêm `modules/Public/` + `themes/default/` — CMS lần đầu render được website HTML thật (không còn thuần Headless API), xem mục 3.30. Từ CMS-045, có thêm `modules/Admin/` + `themes/default/views/admin/` — CMS lần đầu có giao diện quản trị HTML (login + dashboard) và CSRF lần đầu được gắn vào route thật, xem mục 3.31. Từ CMS-046, `modules/Admin/` mở rộng với Admin User Management UI (List/Create/Edit/Lock/Unlock/Assign Role dạng HTML), xem mục 3.32. Từ CMS-047, `modules/Admin/` mở rộng với Admin Role Management UI (List/Create/Edit/Delete/Permission Assignment dạng HTML), xem mục 3.33. Từ CMS-041, có thêm `modules/Media/` — Content Module thứ 2 (sau `pages`), lần đầu kích hoạt `sites.storage_used_bytes`, xem mục 3.34. Từ CMS-042, có thêm `modules/Menu/` — Content Module thứ 3, xem mục 3.35. Từ CMS-043, có thêm `modules/Seo/` — Content Module thứ 4, lần đầu dùng pattern upsert (SELECT rồi rẽ nhánh INSERT/UPDATE), xem mục 3.36. Từ Public Website Polish, `modules/Public/*` lần đầu render Navigation Menu + SEO meta + JSON-LD + 404 themed page (trước đó chỉ render `pages` thuần), xem mục 3.37. Từ Pages Management Admin UI, `modules/Admin/` mở rộng với Admin Page Management UI (List/Create/Edit/Delete/Publish/Set Homepage dạng HTML, Rich Text qua Quill.js CDN), xem mục 3.38. Từ Media Manager Admin UI, `modules/Admin/` mở rộng với Admin Media Management UI (Grid/Upload Modal/Edit metadata/Delete dạng HTML, route serve file mới `GET /admin/media/{id}/file`), xem mục 3.39. Từ Menu Builder Admin UI, `modules/Admin/` mở rộng với Admin Menu Builder UI (CRUD Menu/Menu Item dạng HTML, kéo-thả cấu trúc qua AJAX — lần đầu dự án dùng `fetch()` trong Admin UI), xem mục 3.40. **Lưu ý khoảng trống tài liệu đã biết**: giữa v0.0.51 và v0.0.52 còn 3 hạng mục đã triển khai thật nhưng chưa có mục riêng — Local Demo Foundation, 2 Critical Bug Fix môi trường thật, UI Kit Tech Green/Dark (chi tiết xem ghi chú đầu mục 3.38). `modules/User/` (CMS-037) chưa có mục riêng trong tài liệu này (Documentation Completion của CMS-037 chỉ giới hạn `TODO.md`/`CHANGELOG.md` theo yêu cầu lúc đó) — không phải sai sót của lượt cập nhật này. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
 >
 > **`public/index.php` nay đã là bootstrap thật** (`Application::bootstrap(dirname(__DIR__))->run()`), không còn là smoke test — sơ đồ mục 2 dưới đây giờ mô tả đúng luồng chạy thực tế.
 
@@ -682,6 +682,99 @@ SELECT id FROM seo_meta WHERE tenant_id=? AND entity_type=? AND entity_id=?
 **Testing**: `tests/Core/PublicPageRenderingTest.php` (8 test, không đổi số lượng) — `migrate()` bổ sung bảng `menus`/`menu_items`/`seo_meta` (bắt buộc vì Controller giờ luôn query 3 bảng này ở mọi request thành công).
 
 **Không sửa**: `core/*`, `modules/Auth/*`, `modules/User/*`, `modules/Role/*`, `modules/Page/*`, `modules/Menu/*`, `modules/Media/*`, `modules/Seo/*`, `modules/Admin/*`, `composer.json`, `phpunit.xml`, `database/*`.
+
+### 3.38. Pages Management Admin UI — mở rộng `modules/Admin/` — v0.0.52
+
+> **Lưu ý**: giữa v0.0.51 và mục này còn 3 hạng mục đã triển khai thật (Owner xác nhận qua screenshot) nhưng chưa có mục riêng trong tài liệu này — Local Demo Foundation (`bin/load_env.php`/`bin/create_database.php`/`bin/seed_demo.php`/`SETUP_LOCAL.md`), 2 Critical Bug Fix (`MigrationManager::runInTransactionIfSupported()` cho MySQL/MariaDB DDL implicit-commit, `core/Middleware/StartSessionMiddleware.php` cho Session chưa từng được start trong pipeline thật), và UI Kit Tech Green/Dark (`public/assets/css/*`, `public/assets/js/app.js`). Nợ tài liệu này được ghi nhận, sẽ bổ sung khi Owner yêu cầu riêng.
+
+**Architecture**: `modules/Admin/` (đã có từ CMS-045) mở rộng thêm 8 Controller HTML quản lý Page — **không thay đổi `modules/Page/*` (API JSON)**, không tạo Module `Admin\Page` riêng, không Service/Repository Layer, đúng tiền lệ Admin User/Role Management UI (mục 3.32/3.33).
+
+**Controllers** (`modules/Admin/Page*Controller.php`, mỗi Controller đúng 1 `handle()`, `Database` trực tiếp, copy logic từ `Modules\Page\*Controller` tương ứng — không sửa file gốc): `PageListController`, `PageShowCreateController`, `PageCreateController`, `PageShowEditController`, `PageUpdateController`, `PageDeleteController`, `PagePublishController`, `PageSetHomepageController`.
+
+**Routes** (mở rộng `modules/Admin/routes.php`, route ghi bọc `CsrfMiddleware` group đã có từ CMS-045):
+```
+GET  /admin/pages
+GET  /admin/pages/create
+POST /admin/pages
+GET  /admin/pages/{id}/edit
+POST /admin/pages/{id}
+POST /admin/pages/{id}/delete
+POST /admin/pages/{id}/publish
+POST /admin/pages/{id}/homepage
+```
+Không có route `GET /admin/pages/{id}` (bare) — tránh va chạm shape với `/admin/pages/create` (3-segment tĩnh), đúng tiền lệ Menu/User/Role.
+
+**Rich Text Editor — Quill.js qua CDN**: quyết định qua `AskUserQuestion` (2 vòng Owner Approval) vì yêu cầu Rich Text thật xung đột với chính sách zero-dependency PHP gốc của dự án. Quill.js (`https://cdn.quilljs.com/1.3.7/`) nạp qua 2 yield point mới `head_extra`/`scripts_extra` bổ sung vào `admin/layouts/main.php` (thuần cộng thêm, các view Admin khác không định nghĩa section này vẫn hoạt động bình thường với default rỗng) — chỉ Page Create/Edit dùng, không tải toàn cục. Không thêm Composer/npm dependency (frontend-only, CDN-based).
+
+**Content Schema Convention thay đổi** (tầng Application/View, không phải DB schema): `pages.content` (TEXT, JSON) đổi quy ước từ `{"text": "..."}` sang `{"html": "..."}` cho page tạo/sửa qua Admin UI. `modules/Page/*` (JSON API) **không đổi** — `Validator` chỉ kiểm `'content' => 'nullable|array'`, không quan tâm key bên trong.
+
+**Public Rendering** (`themes/default/views/pages/default.php`) — 4 nhánh fallback hỗ trợ đồng thời page mới (Quill) và page cũ (`bin/seed_demo.php`): `content['html']` (raw HTML qua `$this->raw()`) → `content['text']` (escaped) → mảng generic (`json_encode` pretty-dump) → scalar/null.
+
+**XSS Trust Model** (Owner Decision, chấp nhận có chủ đích): render `content['html']` không sanitize trên Public site — chỉ Admin có quyền `page.create`/`page.update` (gated qua `Authorization::can()`) mới tạo được nội dung này, cùng mô hình tin cậy WordPress.
+
+**Permissions**: tái sử dụng nguyên `page.view/create/update/delete/publish` đã có từ CMS-040 (`bin/bootstrap.php`) — không thêm permission mới.
+
+**Fix sau PHPUnit thật**: `testCreatePageMissingPermissionReturns403Html` FAIL ban đầu (419 thay vì 403) — `CsrfMiddleware` chạy trước Controller trong pipeline, request test thiếu `_token` hợp lệ bị chặn ở tầng CSRF trước khi chạm logic permission (đúng thiết kế, không phải bug). Sửa: lấy token hợp lệ qua `Core\Csrf::token()` trực tiếp trong test.
+
+**Technical Debt ghi nhận**: `modules/Admin/Page*Controller.php` trùng lặp logic với `modules/Page/*` (JSON) — cùng loại Technical Debt đã ghi nhận ở mục 3.32/3.33 cho User/Role.
+
+### 3.39. Media Manager Admin UI — mở rộng `modules/Admin/` — v0.0.53
+
+**Architecture**: `modules/Admin/` mở rộng thêm 5 Controller HTML quản lý Media — **không thay đổi `modules/Media/*` (API JSON)**, không Service/Repository Layer, đúng tiền lệ Pages/User/Role Admin UI (mục 3.32/3.33/3.38).
+
+**Controllers** (`modules/Admin/Media*Controller.php`, mỗi Controller đúng 1 `handle()`, `Database` trực tiếp, copy logic từ `Modules\Media\*Controller` tương ứng): `MediaListController`, `MediaFileController` (**mới, chưa có tiền lệ**), `MediaUploadController`, `MediaUpdateController`, `MediaDeleteController`.
+
+**Routes** (mở rộng `modules/Admin/routes.php`, route ghi bọc `CsrfMiddleware` group đã có từ CMS-045):
+```
+GET  /admin/media
+GET  /admin/media/{id}/file
+POST /admin/media
+POST /admin/media/{id}
+POST /admin/media/{id}/delete
+```
+
+**`MediaFileController` — route serve file mới** (`GET /admin/media/{id}/file`): quyết định qua `AskUserQuestion` (Owner chọn thêm route thay vì Grid chỉ hiển thị icon/filename không preview). Đọc file từ `storage/app/media/{path}`, trả `new Response($bytes, 200, ['Content-Type' => $mimeType])` — dùng thẳng constructor `Response` (đã public từ CMS-006), **không sửa `core/Http/Response.php`**. Chỉ phục vụ nội bộ Admin (gated `media.view`) — **không phải route Public**, quyết định hoãn Media URL từ Public Website Polish (mục 3.37) không đổi.
+
+**Upload/Update lỗi → silent-redirect** (khác Page: không có trang Create/Edit riêng, Upload/Edit đều là Modal/inline form ngay trên `list.php`) — cùng mẫu `PagePublishController` (mục 3.38).
+
+**`$storagePath`**: giữ nguyên convention từ CMS-041 — constructor default trỏ `storage/app/media` thật, test override qua `Container::singleton()` với thư mục TEMP riêng (`tests/Core/AdminMediaManagementUiTest.php`, cùng pattern `ModuleMediaIntegrationTest`).
+
+**Permissions**: tái sử dụng nguyên `media.view/upload/update/delete` đã có từ CMS-041 (`bin/bootstrap.php`) — không thêm permission mới.
+
+**Technical Debt ghi nhận**: `modules/Admin/Media*Controller.php` trùng lặp logic với `modules/Media/*` (JSON) — cùng loại Technical Debt đã ghi nhận ở mục 3.32/3.33/3.38.
+
+### 3.40. Menu Builder Admin UI — mở rộng `modules/Admin/` — v0.0.54
+
+**Architecture**: `modules/Admin/` mở rộng thêm 5 Controller CRUD Menu + 3 Controller CRUD Menu Item — **không thay đổi `modules/Menu/*` (API JSON)**, đúng tiền lệ Pages/Media Admin UI (mục 3.38/3.39).
+
+**Controllers**: `MenuListController`, `MenuCreateController`, `MenuShowController` (copy `buildTree()`/`attachChildren()` y hệt `Modules\Menu\ShowMenuController`), `MenuUpdateController`, `MenuDeleteController`, `MenuItemCreateController`, `MenuItemUpdateController`, `MenuItemDeleteController` (BFS gom id con cháu, 1 câu `DELETE ... WHERE id IN (...)`, không transaction — đúng lý do gốc từ CMS-042).
+
+**Routes** (mở rộng `modules/Admin/routes.php`):
+```
+GET  /admin/menus
+GET  /admin/menus/{id}
+POST /admin/menus
+POST /admin/menus/{id}
+POST /admin/menus/{id}/delete
+POST /admin/menus/{id}/items
+POST /admin/menu-items/{id}
+POST /admin/menu-items/{id}/delete
+```
+Giữ nguyên tách tiền tố `/admin/menu-items/*` khỏi `/admin/menus/*` — đúng lý do phòng collision đã phân tích từ CMS-042 gốc.
+
+**Kéo-thả cấu trúc = AJAX đầu tiên trong Admin UI**: quyết định qua `AskUserQuestion` (Owner chọn "Kéo-thả thật + AJAX" thay vì form đổi số thứ tự truyền thống). `MenuItemUpdateController` phục vụ **2 use case cùng 1 route**: form Edit thường (label/type/url/target) → `Response::redirect()`; drag-drop qua `fetch()` (chỉ `parent_id`) → `Response::json()`. Phân biệt qua `Request::ajax()` (có sẵn từ CMS-015, đọc header `X-Requested-With`) — không tạo Controller/route thứ 2 trùng logic. JS (`public/assets/js/app.js`) dùng HTML5 `draggable` thuần (không thư viện ngoài), `dragstart/dragover/drop` tính `parent_id` mới rồi gọi `fetch()` kèm `_token` + header `X-Requested-With: XMLHttpRequest`, reload trang khi thành công.
+
+**Đơn giản hóa có chủ đích**: thả item vào 1 item khác chỉ đổi `parent_id` (reparent) — không tính lại `sort_order` chi tiết giữa các anh em cùng cấp. Đủ đúng nghĩa "kéo-thả cấu trúc", tránh mở rộng phạm vi thành bulk-reorder engine chưa có yêu cầu thật.
+
+**2 lỗi tự phát hiện và sửa trong lúc code** (trước khi giao Owner test):
+1. Bản nháp đầu `show.php` khai báo `function flatten()`/`function renderNodes()` ở top-level file view — `View::renderTemplate()` dùng `include` (không `include_once`), Fatal "Cannot redeclare function" khi view render lần 2 trong cùng tiến trình PHP (chắc chắn xảy ra qua nhiều test PHPUnit). Sửa bằng closure cục bộ (`$flatten`, `$renderNode` — tự bind `$this` vì định nghĩa trong scope method của `View`).
+2. `Validator`'s `nullable` chỉ bỏ qua khi giá trị `=== null` (không bỏ qua `''`) — `<select>` "Cấp gốc" và drag-drop "thả về gốc" đều gửi `parent_id=''`, luôn bị `filter_var('', FILTER_VALIDATE_INT)` từ chối. Sửa bằng chuẩn hóa `''` → `null` trước validate trong `MenuItemCreateController`/`MenuItemUpdateController`.
+
+**Fix sau PHPUnit thật**: `testUpdateMenuCrossTenantReturns404`, `testUpdateMenuItemCrossTenantReturns404` FAIL ban đầu (419 thay vì 404) — cùng nguyên nhân đã gặp ở Pages Admin UI (mục 3.38): `CsrfMiddleware` chặn trước khi Controller kịp kiểm tra tenant ownership. Sửa: lấy token hợp lệ qua `Core\Csrf::token()` trực tiếp trong 2 test.
+
+**Permissions**: tái sử dụng nguyên `menu.view/create/update/delete` đã có từ CMS-042 (`bin/bootstrap.php`) — không thêm permission mới.
+
+**Technical Debt ghi nhận**: (1) `modules/Admin/Menu*Controller.php`/`MenuItem*Controller.php` trùng lặp logic với `modules/Menu/*` (JSON) — cùng loại Technical Debt đã ghi nhận ở mục 3.38/3.39; (2) drag-drop chưa hỗ trợ sắp xếp `sort_order` chi tiết giữa anh em cùng cấp.
 
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 

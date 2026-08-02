@@ -12,6 +12,13 @@ $router->get('/admin/roles', [\Modules\Admin\RoleListController::class, 'handle'
 $router->get('/admin/roles/create', [\Modules\Admin\RoleShowCreateController::class, 'handle']);
 $router->get('/admin/roles/{id}/edit', [\Modules\Admin\RoleShowEditController::class, 'handle']);
 $router->get('/admin/roles/{id}/permissions', [\Modules\Admin\RoleShowPermissionsController::class, 'handle']);
+$router->get('/admin/pages', [\Modules\Admin\PageListController::class, 'handle']);
+$router->get('/admin/pages/create', [\Modules\Admin\PageShowCreateController::class, 'handle']);
+$router->get('/admin/pages/{id}/edit', [\Modules\Admin\PageShowEditController::class, 'handle']);
+$router->get('/admin/media', [\Modules\Admin\MediaListController::class, 'handle']);
+$router->get('/admin/media/{id}/file', [\Modules\Admin\MediaFileController::class, 'handle']);
+$router->get('/admin/menus', [\Modules\Admin\MenuListController::class, 'handle']);
+$router->get('/admin/menus/{id}', [\Modules\Admin\MenuShowController::class, 'handle']);
 
 $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], function (\Core\Router $router): void {
     $router->post('/admin/login', [\Modules\Admin\LoginController::class, 'handle']);
@@ -25,4 +32,18 @@ $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], funct
     $router->post('/admin/roles/{id}', [\Modules\Admin\RoleUpdateController::class, 'handle']);
     $router->post('/admin/roles/{id}/delete', [\Modules\Admin\RoleDeleteController::class, 'handle']);
     $router->post('/admin/roles/{id}/permissions', [\Modules\Admin\RoleAssignPermissionsController::class, 'handle']);
+    $router->post('/admin/pages', [\Modules\Admin\PageCreateController::class, 'handle']);
+    $router->post('/admin/pages/{id}', [\Modules\Admin\PageUpdateController::class, 'handle']);
+    $router->post('/admin/pages/{id}/delete', [\Modules\Admin\PageDeleteController::class, 'handle']);
+    $router->post('/admin/pages/{id}/publish', [\Modules\Admin\PagePublishController::class, 'handle']);
+    $router->post('/admin/pages/{id}/homepage', [\Modules\Admin\PageSetHomepageController::class, 'handle']);
+    $router->post('/admin/media', [\Modules\Admin\MediaUploadController::class, 'handle']);
+    $router->post('/admin/media/{id}', [\Modules\Admin\MediaUpdateController::class, 'handle']);
+    $router->post('/admin/media/{id}/delete', [\Modules\Admin\MediaDeleteController::class, 'handle']);
+    $router->post('/admin/menus', [\Modules\Admin\MenuCreateController::class, 'handle']);
+    $router->post('/admin/menus/{id}', [\Modules\Admin\MenuUpdateController::class, 'handle']);
+    $router->post('/admin/menus/{id}/delete', [\Modules\Admin\MenuDeleteController::class, 'handle']);
+    $router->post('/admin/menus/{id}/items', [\Modules\Admin\MenuItemCreateController::class, 'handle']);
+    $router->post('/admin/menu-items/{id}', [\Modules\Admin\MenuItemUpdateController::class, 'handle']);
+    $router->post('/admin/menu-items/{id}/delete', [\Modules\Admin\MenuItemDeleteController::class, 'handle']);
 });
