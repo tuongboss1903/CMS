@@ -6,6 +6,33 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.1.2] — 2026-08-03 — CMS-049: Advanced Analytics Dashboard (PHASE 12)
+
+### Added
+
+- **`analytics_views`** (migration `2026_08_10_000001_create_analytics_views_table.php`): `tenant_id`, `page_id` (nullable, FK `pages(id)` `ON DELETE SET NULL`), `path`, `ip_hash`, `user_agent`, `referrer`, `created_at`. Index kép `(tenant_id, created_at)` và `(tenant_id, path)`.
+- **`modules/Analytics/AnalyticsService.php`** (Service Layer, cùng mô hình `SiteSettingsManager` — PHASE 4): `track()` ghi 1 lượt xem (resolve `page_id` theo slug/homepage, hash IP bằng `sha256` + `app.key` làm salt — không lưu IP thô); `totalViews()`/`uniqueVisitors()`/`topPages()`/`topReferrers()`/`dailyViews()` đọc thống kê theo chu kỳ `24h`/`7d`/`30d`, **mọi câu query đều lọc `tenant_id = ?`** (Multi-tenancy Isolation). Không tạo `module.json`/`routes.php` riêng — class không có HTTP endpoint, chỉ autoload PSR-4 + Container auto-wiring.
+- **`core/Middleware/AnalyticsTrackingMiddleware.php`**: gắn vào 2 route `/` và `/{slug}` trong `modules/Public/routes.php` (route `/search` không gắn). Chạy như "After" middleware — chỉ ghi log khi Response status `200` (bỏ qua 404/lỗi). **Silent-fail tuyệt đối**: bọc toàn bộ `track()` trong `try/catch (\Throwable)`, không bao giờ làm gián đoạn Response thật của khách.
+- **Admin Dashboard nâng cấp** (`modules/Admin/DashboardController.php`, `themes/default/views/admin/pages/dashboard.php`): 2 stat card mới (Tổng lượt xem/Khách truy cập độc nhất trong 7 ngày), bảng Top Pages, biểu đồ cột SVG thuần 7 ngày gần nhất (Zero External JS Chart Library — không dùng Chart.js/D3 hay bất kỳ thư viện ngoài nào).
+- `tests/Core/AnalyticsTrackingTest.php` (5 test), `tests/Core/AdminAnalyticsUiTest.php` (5 test).
+
+### Fixed (3 điểm tự phát hiện/đối chiếu source thật trước khi code, khác yêu cầu ban đầu của Owner)
+
+1. **`routes/web.php` không tồn tại** trong dự án (route đăng ký theo từng module qua `ModuleManager`) — gắn middleware vào `modules/Public/routes.php` thay vì đường dẫn Owner đề xuất.
+2. **Trùng tên migration** với `2026_08_03_000001_create_media_table.php` đã tồn tại — đổi thành `2026_08_10_000001_create_analytics_views_table.php` (tiếp theo migration mới nhất).
+3. **`tests/Core/RealMigrationsTest.php`**: bổ sung `'2026_08_10_000001_create_analytics_views_table'` vào hằng số dùng chung `EXPECTED_ORDER` — 3 test (`testMigrateCreatesAllSevenTablesInOrder`, `testRollbackDropsAllTablesInReverseOrder`, `testMigrateIsIdempotentAfterRollback`) tự động cập nhật theo, không sửa từng test riêng lẻ.
+4. **Phòng ngừa regression `AdminUiFoundationTest.php`** (fixture cũ không có bảng `analytics_views`): bọc toàn bộ lệnh gọi `AnalyticsService` trong `DashboardController` qua `fetchAnalyticsSummary()` với `try/catch (\Throwable)`, fallback `0`/`[]` — cùng nguyên tắc đã áp dụng cho bảng `media` ở PHASE 11.
+
+### Architecture Decisions
+
+- **`ip_hash` không phải crypto-secure** — mục đích ẩn danh thống kê (anonymize), không phải bảo mật, dùng `sha256(ip . app.key)`.
+- **Cutoff thời gian tính bằng PHP (`date('Y-m-d H:i:s', time() - N)`), không dùng hàm ngày-giờ SQL đặc thù driver** — nhất quán với triết lý Portable SQL đã chốt ở CMS-028 (SQLite/MySQL cùng hoạt động).
+- **`dailyViews()` luôn trả đủ N ngày** (kể cả ngày 0 lượt xem) — biểu đồ SVG cần trục X liên tục, không bỏ trống ngày không có dữ liệu.
+
+### Verification
+
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **666 tests, 1341 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression.
+
 ## [0.1.1] — 2026-08-03 — CMS-048: Visual Page Builder (PHASE 11)
 
 > **Lưu ý ID**: nhánh Git của Phase này đặt tên `feature/CMS-034-visual-page-builder`, nhưng `CMS-034` **đã được dùng** cho "Module System Bootstrap (Auth Module)" từ trước (xem `[0.0.34]` bên dưới, `core-architecture.md` mục 3.27). Task này được đánh số lại đúng thứ tự thật là **CMS-048** (tiếp theo CMS-047) trong tài liệu — không đổi tên nhánh Git đã checkout.

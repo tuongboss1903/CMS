@@ -918,6 +918,28 @@ POST /admin/seo/pages/{id}
 
 **Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 656 tests, 1305 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
 
+### 3.48. Advanced Analytics Dashboard — `modules/Analytics/`, mở rộng `modules/Admin/`, `modules/Public/` — v0.1.2 (PHASE 12, CMS-049)
+
+**Bối cảnh**: theo dõi lượt truy cập Public site theo tenant (Total Views/Unique Visitors/Top Pages/biểu đồ 7 ngày) hiển thị trên Admin Dashboard — bảng mới `analytics_views`, không đụng schema nào khác.
+
+**Service Layer thứ 2 của dự án** (`modules/Analytics/AnalyticsService.php`) — cùng mô hình `SiteSettingsManager` (mục 3.42): dùng bởi ≥2 nơi độc lập (`AnalyticsTrackingMiddleware` ghi, `Admin\DashboardController` đọc). Không có `module.json`/`routes.php` riêng — không có HTTP endpoint, chỉ autoload PSR-4 + Container auto-wiring (không cần `ModuleManager::discover()` biết đến class này).
+
+**Ghi log qua Middleware, không qua Controller**: `AnalyticsTrackingMiddleware` gắn trực tiếp vào 2 route `/` và `/{slug}` trong `modules/Public/routes.php` (route đăng ký theo từng module — **dự án không có `routes/web.php`**). Chạy như "After" middleware, chỉ ghi khi Response status `200` (bỏ qua 404). Silent-fail tuyệt đối qua `try/catch (\Throwable)` — lỗi ghi log không bao giờ được làm gián đoạn trải nghiệm Public site thật.
+
+**Multi-tenancy Isolation**: mọi query đọc trong `AnalyticsService` đều lọc `tenant_id = ?` qua `TenantManager::id()` hiện tại — không có ngoại lệ.
+
+**IP chỉ lưu dạng hash** (`sha256(ip . app.key)`) — anonymize nhẹ, không phải crypto-secure, đúng mục đích thống kê chứ không phải bảo mật.
+
+**Zero External Dependency**: biểu đồ 7 ngày trên Dashboard vẽ bằng SVG thuần server-side (PHP loop tính toạ độ `<rect>`), không Chart.js/D3/bất kỳ thư viện JS ngoài nào.
+
+**3 điểm tự phát hiện khác yêu cầu ban đầu** (đối chiếu source thật trước khi code): (1) `routes/web.php` không tồn tại → dùng `modules/Public/routes.php`; (2) migration trùng tên với `2026_08_03_000001_create_media_table.php` đã có → đổi ngày thành `2026_08_10_000001`; (3) `tests/Core/RealMigrationsTest.php::EXPECTED_ORDER` cần bổ sung migration mới (Owner tự phát hiện qua PHPUnit thật, đã xác minh đúng trước khi sửa).
+
+**Phòng ngừa regression `AdminUiFoundationTest.php`** (fixture cũ không có bảng `analytics_views`, cùng bug pattern với bảng `media` ở mục 3.47): `DashboardController::fetchAnalyticsSummary()` bọc `try/catch (\Throwable)`, fallback `0`/`[]`.
+
+**Permissions**: không permission mới (Dashboard đã yêu cầu `Auth::check()` sẵn có).
+
+**Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 666 tests, 1341 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -974,6 +996,8 @@ POST /admin/seo/pages/{id}
 | SEO Module (`modules/Seo/`) | 17 | Integration (`ModuleManager` trỏ `modules/` thật) |
 | Admin Page Builder (`modules/Admin/Page*Controller` - block mode) | 9 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, CSRF qua `CsrfMiddleware` thật) |
 | Public Page Builder Rendering (`modules/Public/*`, block render) | 6 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật — khác `PublicPageRenderingTest.php` dùng fixture theme) |
+| Analytics Tracking (`AnalyticsTrackingMiddleware`, `AnalyticsService`) | 5 | Integration (`ModuleManager` trỏ `modules/` thật, `Router::dispatch()` thật, fixture theme `test-theme`) |
+| Admin Analytics UI (`modules/Admin/DashboardController` - Analytics) | 5 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, Session/Auth thật) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 
