@@ -6,6 +6,31 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.1.0-beta] — 2026-08-02 — Beta Release Readiness & Staging Walkthrough (PHASE 8)
+
+> Mốc đóng gói Beta — tổng hợp lại toàn bộ PHASE 7 (đã tag riêng `v0.0.59`) cùng PHASE 8 mới, đánh dấu sản phẩm đã sẵn sàng trình diễn khách hàng doanh nghiệp và triển khai Staging thật. Không sửa code PHP nào trong PHASE 8 — chỉ 2 tài liệu vận hành mới.
+
+### Added — PHASE 8 (mới)
+
+- **`DEMO_WALKTHROUGH.md`**: kịch bản Demo 4 bước cho Sales/Founder — (1) Public Landing Page Showcase (Hero/Feature Grid/Responsive 3 cấp độ), (2) Multi-Tenant Real-time Switch (`cms.test` ↔ `restaurant.test`, điểm bán hàng cốt lõi), (3) Admin Dashboard & Content Management (4 Metric Card, Activity Stream, Quill.js, Upload Media), (4) Dynamic Menu Builder & SEO Meta Automation (kéo-thả AJAX, OG/JSON-LD qua View Source, Sitemap/Robots tự sinh). Mỗi bước: Mục tiêu → Thao tác → Key Selling Points → Điều kiện chuẩn bị.
+- **`STAGING_CHECKLIST.md`**: checklist thao tác triển khai Staging/VPS — Web Server Setup (kèm tạo `public/.htaccess` cho Apache), SSL/HTTPS Multi-Domain (chứng chỉ SAN đa-domain qua `certbot -d ... -d ...`, không dùng Wildcard vì domain tenant độc lập không cùng gốc), Data Initialization (chuỗi lệnh đúng thứ tự phụ thuộc: `migrate` → `bootstrap` (1 lần) → `seed_demo` Tenant 1 → `add_site` Tenant 2 → `seed_demo` Tenant 2), Permissions & Environment.
+
+### Architecture Decisions — PHASE 8
+
+- **Chứng chỉ SAN đa-domain, không Wildcard**: `TenantResolverMiddleware` khớp domain chính xác tuyệt đối, không phải subdomain của 1 domain gốc — Wildcard Certificate không áp dụng được cho mô hình multi-tenant của dự án.
+- **Đính chính**: `public/uploads/` (tồn tại vật lý, còn trong `.gitignore` cũ) **không** phải nơi lưu Media thật — `STAGING_CHECKLIST.md` chỉ liệt kê phân quyền cho `storage/app/media/` (đúng nơi `UploadMediaController` thực sự ghi file), tránh lan truyền nhầm lẫn đường dẫn sang tài liệu vận hành.
+
+### Recap — PHASE 7: UI/UX Demo Polish & Enterprise Showcase Pack (đã tag `v0.0.59`, xem chi tiết ở mục riêng bên dưới)
+
+- Public Landing Page (Hero/Feature Grid/Showcase/CTA qua `content['html']`, CSS3 thuần, breakpoint Tablet mới).
+- Enterprise Seeder 2 content pack thật (`tech`/`restaurant`) + `bin/add_site.php` (Tenant thứ 2 trở đi, tái dùng Admin/Role hệ thống).
+- Admin Dashboard: `page_count`/`media_count`/Activity Stream (UNION Page+Media+User).
+- 2 lần Root Cause Analysis bác bỏ đề xuất sai từ Owner (RCA đúng: test fixture thiếu `created_at`, không phải `registered_at`).
+
+### Quality Assurance
+
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 641 tests, 1264 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế). Không regression sau khi bổ sung 2 tài liệu Markdown (không đụng code PHP).
+
 ## [0.0.59] — 2026-08-02 — UI/UX Demo Polish & Enterprise Showcase Pack (PHASE 7)
 
 ### Added
