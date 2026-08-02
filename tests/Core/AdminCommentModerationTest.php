@@ -9,6 +9,10 @@ use Core\Container;
 use Core\Csrf;
 use Core\Database;
 use Core\Http\Request;
+use Core\Logger;
+use Core\Mail\Drivers\ArrayMailerDriver;
+use Core\Mail\Mailer;
+use Core\Mail\MailerDriver;
 use Core\ModuleManager;
 use Core\Router;
 use Core\Session;
@@ -23,6 +27,9 @@ use PHPUnit\Framework\TestCase;
  * Core\Csrf::token() (Container) thay vi parse tu HTML GET - list.php chi render "_token" BEN
  * TRONG vong lap tung dong comment, nen khi danh sach rong (vd tenant khac chua co comment) se
  * khong co token nao de parse (da phat hien qua PHPUnit that).
+ *
+ * Phase 15 (CMS-052): CommentApproveController/CommentRejectController gio can Core\Mail\Mailer
+ * (interface MailerDriver, khong the auto-wire) - dang ky ArrayMailerDriver (test double).
  */
 final class AdminCommentModerationTest extends TestCase
 {
@@ -48,6 +55,12 @@ final class AdminCommentModerationTest extends TestCase
             View::class,
             static fn (): View => new View(self::REAL_THEMES_PATH, 'default', 'default')
         );
+        $this->container->singleton(MailerDriver::class, static fn (): ArrayMailerDriver => new ArrayMailerDriver());
+        $this->container->singleton(Mailer::class, static fn (Container $c): Mailer => new Mailer(
+            $c->get(MailerDriver::class),
+            $c->get(View::class),
+            new Logger(\sys_get_temp_dir() . '/cms-test-mail-error.log')
+        ));
 
         $this->router = new Router($this->container);
         $this->database = $this->container->get(Database::class);

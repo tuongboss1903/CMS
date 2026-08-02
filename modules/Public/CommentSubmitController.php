@@ -12,6 +12,7 @@ use Core\RateLimiter;
 use Core\Session;
 use Core\TenantManager;
 use Core\Validator;
+use Modules\Admin\NotificationService;
 
 /**
  * POST /{slug}/comments - Phase 14 (Comment/Review System, CMS-051). Khach KHONG can dang nhap
@@ -25,6 +26,11 @@ use Core\Validator;
  *
  * Redirect kem Flash Message - dung quy uoc chinh thuc CMS-017 (khong tu sinh JSON API o day,
  * Public form la SSR thuan).
+ *
+ * Phase 15 (Notification & Email System, CMS-052): sau khi INSERT comments thanh cong, goi
+ * NotificationService::notifyAdmins() (in-app + email cho moi Admin thuoc tenant). Tu than
+ * notifyAdmins() da silent-fail noi bo (xem docblock NotificationService) - KHONG boc them try/catch
+ * o day, dung nguyen tac "1 diem chiu trach nhiem silent-fail" da ap dung cho Mailer.
  */
 final class CommentSubmitController
 {
@@ -34,6 +40,7 @@ final class CommentSubmitController
     public function __construct(
         private readonly Config $config,
         private readonly Database $database,
+        private readonly NotificationService $notificationService,
         private readonly RateLimiter $rateLimiter,
         private readonly Session $session,
         private readonly TenantManager $tenantManager,
@@ -47,7 +54,7 @@ final class CommentSubmitController
         $tenantId = $this->tenantManager->id();
 
         $page = $this->database->selectOne(
-            'SELECT id FROM pages WHERE tenant_id = ? AND slug = ? AND status = ? AND deleted_at IS NULL',
+            'SELECT id, title FROM pages WHERE tenant_id = ? AND slug = ? AND status = ? AND deleted_at IS NULL',
             [$tenantId, $slug, 'published']
         );
 
@@ -90,6 +97,24 @@ final class CommentSubmitController
                 (string) $data['body'],
                 'pending',
                 $this->hashIp($request->ip()),
+            ]
+        );
+
+        $commentId = (int) $this->database->connection()->lastInsertId();
+
+        $this->notificationService->notifyAdmins(
+            'comment.new',
+            'comment',
+            $commentId,
+            'Binh luan moi tu ' . (string) $data['guest_name'],
+            (string) $data['body'],
+            'Binh luan moi can duyet',
+            'emails.comment_new',
+            [
+                'guest_name' => $data['guest_name'],
+                'page_title' => $page['title'],
+                'body' => $data['body'],
+                'admin_url' => '/admin/comments',
             ]
         );
 

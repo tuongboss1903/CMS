@@ -36,6 +36,7 @@ final class RealMigrationsTest extends TestCase
         '2026_08_10_000001_create_analytics_views_table',
         '2026_08_11_000001_create_page_translations_table',
         '2026_08_12_000001_create_comments_table',
+        '2026_08_13_000001_create_notifications_table',
     ];
 
     public function testMigrateCreatesAllSevenTablesInOrder(): void

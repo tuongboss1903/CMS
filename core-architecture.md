@@ -988,6 +988,26 @@ POST /admin/seo/pages/{id}
 
 **Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 715 tests, 1446 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
 
+### 3.51. Notification & Email System — `Core\Mail\*`, `notifications`, `modules/Admin/NotificationService.php` — v0.1.5 (PHASE 15, CMS-052)
+
+**Bối cảnh**: nối tiếp Moderation Comment (Phase 14) — báo Admin khi có comment mới (in-app + email), báo khách khi comment được duyệt/từ chối (email).
+
+**`Core\Mail\MailerDriver`** (interface, 1 method `send()`) + **`LogMailerDriver`**/**`SmtpMailerDriver`**/**`ArrayMailerDriver`** — cùng mô hình `Core\Cache\CacheDriver` (interface tối giản + nhiều driver + 1 facade `Core\Mail\Mailer` duy nhất được gọi từ tầng trên). `SmtpMailerDriver` **tự viết hoàn toàn** (fsockopen + `stream_socket_enable_crypto()` cho STARTTLS, EHLO/AUTH LOGIN/MAIL FROM/RCPT TO/DATA thuần văn bản theo RFC 5321 rút gọn) — không PHPMailer/Symfony Mailer, đúng Zero-dependency đã giữ xuyên suốt dự án (Router/Validator/Cache đều tự viết). `ArrayMailerDriver` chỉ dùng cho test.
+
+**`Core\Mail\Mailer`**: render template qua `Core\View` có sẵn (không Engine mới — email là file HTML độc lập trong `themes/default/views/emails/*.php`, không `extend()`/`section()`). Bản text derive qua `strip_tags()` (Owner Decision, không viết template `.txt` riêng). **Silent-fail tuyệt đối** — mọi `Throwable` bắt nội bộ, ghi qua `Logger` dùng chung (`storage/logs/app.log`), không bao giờ throw ra Controller gọi nó.
+
+**Lỗi thật đã gặp và tự sửa qua PHPUnit**: `Core\View::resolvePath()` có `NAME_PATTERN = '/^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*$/'` — **không chấp nhận dấu `-`**. 3 template email ban đầu đặt tên `comment-new.php`/`comment-approved.php`/`comment-rejected.php` khiến `ViewNotFoundException` bị throw ngay ở bước validate tên; vì `Mailer::send()` đã silent-fail theo thiết kế, lỗi đặt sai tên bị che giấu hoàn toàn (không Error nào xuất hiện, chỉ toàn bộ email "gửi" âm thầm thất bại) — chỉ lộ ra qua assertion sai kích thước mảng test (`assertCount` mong đợi 1/2, thực tế 0). Đổi tên 3 file sang underscore, **không sửa `Core\View`** (Core Component đã ổn định, thay đổi regex ngoài phạm vi được duyệt).
+
+**`notifications`** (in-app, KHÁC với gửi email — không bảng nào lưu cho SMTP/log driver): polymorphic `notifiable_type`/`notifiable_id` (MVP chỉ `'comment'`), `read_at NULL` = chưa đọc (đúng quy ước `pages.published_at`).
+
+**`modules/Admin/NotificationService.php`**: `notifyAdmins()` JOIN `user_site_roles` lấy toàn bộ Admin của tenant hiện tại (đúng pattern `DashboardController::user_count`), tạo 1 dòng `notifications` + gọi `Mailer::send()` cho mỗi Admin — tự bọc `Throwable` RIÊNG cho phần ghi DB (độc lập với silent-fail của `Mailer`, vì đây là loại lỗi khác — ghi bảng, không phải gửi mail). Đặt trong `modules/Admin/` theo đúng chỉ định Owner dù bị gọi cross-module từ `Modules\Public\CommentSubmitController` — khác tiền lệ `AnalyticsService` (mục 3.48) đặt ở thư mục riêng không thuộc module route nào; không sai kỹ thuật (PSR-4 không phụ thuộc `module.json`).
+
+**`MailerDriver` là interface → Container không tự auto-wire được** (khác mọi Service/Middleware concrete-class đã thêm ở Phase 12/13) — bắt buộc đăng ký tường minh trong `core/Application.php::registerCoreServices()` (đọc `config/mail.php` chọn `log`/`smtp`), và 2 test suite Phase 14 cũ phải bổ sung `ArrayMailerDriver` vào `setUp()` để không vỡ.
+
+**Sync-only, không Queue** — dự án chưa có hạ tầng cron/worker; `Mailer` tự silent-fail nên gửi mail chậm/lỗi không crash request. Technical Debt ghi nhận: cần Queue thật (`jobs` + `bin/queue-worker.php`) nếu traffic tăng.
+
+**Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 736 tests, 1499 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -1052,6 +1072,9 @@ POST /admin/seo/pages/{id}
 | Comment Submission (`modules/Public/CommentSubmitController.php`) | 9 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng fixture theme `test-theme`, Session/CSRF/RateLimiter thật) |
 | Admin Comment Moderation (`modules/Admin/Comment*Controller`) | 10 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, Session/Auth thật) |
 | Public Comment Rendering (`themes/default/views/pages/default.php`) | 7 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật) |
+| Mailer (`Core\Mail\*`) | 8 | Unit + Integration (`LogMailerDriver`/`ArrayMailerDriver` thật, `View` dùng `themes/default/` thật render template email thật, `SmtpMailerDriver` test kết nối thất bại có kiểm soát) |
+| Notification Service (`modules/Admin/NotificationService.php`) | 7 | Integration (`Database` SQLite in-memory thật, `ArrayMailerDriver`, cách ly Multi-tenant) |
+| Comment Notification Integration (Phase 14 + Phase 15 nối liền) | 6 | Integration (`ModuleManager` trỏ `modules/` thật, boot cả `admin` lẫn `public`, `View` dùng `themes/default/` thật) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 

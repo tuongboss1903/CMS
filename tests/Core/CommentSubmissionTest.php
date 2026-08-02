@@ -9,6 +9,10 @@ use Core\Container;
 use Core\Csrf;
 use Core\Database;
 use Core\Http\Request;
+use Core\Logger;
+use Core\Mail\Drivers\ArrayMailerDriver;
+use Core\Mail\Mailer;
+use Core\Mail\MailerDriver;
 use Core\ModuleManager;
 use Core\Router;
 use Core\Session;
@@ -22,6 +26,14 @@ use PHPUnit\Framework\TestCase;
  * comment - fixture chi phuc vu render Page co ban). Lay CSRF token TRUC TIEP tu Core\Csrf::token()
  * qua Container (Session that, khong mock) thay vi parse tu HTML - token khong phu thuoc theme
  * nao co render form hay khong.
+ *
+ * Phase 15 (CMS-052): CommentSubmitController gio can NotificationService (constructor moi) ->
+ * NotificationService can Core\Mail\Mailer (interface MailerDriver, KHONG the auto-wire tu Container
+ * neu khong dang ky - khac AnalyticsService/LocaleDetectionMiddleware truoc do la class cu the).
+ * Dang ky ArrayMailerDriver (test double, khong gui that) + bang "notifications" moi trong migrate().
+ * fixture theme "test-theme" khong co themes/emails/* nen View::render() se That Bai khi Mailer thu
+ * render template - Mailer::send() tu than da bat Throwable noi bo (silent-fail), KHONG anh huong
+ * ket qua cac test hien co (chi kiem tra bang comments, khong kiem tra notifications/email).
  */
 final class CommentSubmissionTest extends TestCase
 {
@@ -46,6 +58,12 @@ final class CommentSubmissionTest extends TestCase
             View::class,
             static fn (): View => new View(__DIR__ . '/../Fixtures/themes', 'test-theme', 'test-theme')
         );
+        $this->container->singleton(MailerDriver::class, static fn (): ArrayMailerDriver => new ArrayMailerDriver());
+        $this->container->singleton(Mailer::class, static fn (Container $c): Mailer => new Mailer(
+            $c->get(MailerDriver::class),
+            $c->get(View::class),
+            new Logger(\sys_get_temp_dir() . '/cms-test-mail-error.log')
+        ));
 
         $this->router = new Router($this->container);
         $this->database = $this->container->get(Database::class);
@@ -142,6 +160,18 @@ final class CommentSubmissionTest extends TestCase
             default_og_image_id BIGINT NULL,
             favicon_id BIGINT NULL,
             robots_txt_custom TEXT NULL
+        )');
+        $this->database->statement('CREATE TABLE notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id BIGINT NOT NULL,
+            user_id BIGINT NOT NULL,
+            type VARCHAR(50) NOT NULL,
+            notifiable_type VARCHAR(20) NOT NULL,
+            notifiable_id BIGINT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            body VARCHAR(500) NOT NULL,
+            read_at TIMESTAMP NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )');
         $this->database->statement('CREATE TABLE media (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

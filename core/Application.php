@@ -9,6 +9,10 @@ use Core\Cache\FileCacheDriver;
 use Core\Cache\RedisCacheDriver;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\Mail\Drivers\LogMailerDriver;
+use Core\Mail\Drivers\SmtpMailerDriver;
+use Core\Mail\Mailer;
+use Core\Mail\MailerDriver;
 use Core\Middleware\StartSessionMiddleware;
 use Core\Middleware\TenantResolverMiddleware;
 use Throwable;
@@ -180,6 +184,33 @@ final class Application
             Logger::class,
             fn (): Logger => new Logger($this->basePath . '/storage/logs/app.log')
         );
+
+        $this->container->singleton(MailerDriver::class, function (Container $c): MailerDriver {
+            $config = $c->get(Config::class);
+
+            if ($config->get('mail.default', 'log') === 'smtp') {
+                /** @var array<string, mixed> $smtp */
+                $smtp = $config->get('mail.drivers.smtp', []);
+
+                return new SmtpMailerDriver(
+                    (string) ($smtp['host'] ?? '127.0.0.1'),
+                    (int) ($smtp['port'] ?? 587),
+                    $smtp['username'] ?? null,
+                    $smtp['password'] ?? null,
+                    (string) ($smtp['encryption'] ?? 'tls'),
+                    (string) $config->get('mail.from.address', 'no-reply@example.com'),
+                    (string) $config->get('mail.from.name', 'CMS')
+                );
+            }
+
+            return new LogMailerDriver(new Logger((string) $config->get('mail.drivers.log.path', $this->basePath . '/storage/logs/mail.log')));
+        });
+
+        $this->container->singleton(Mailer::class, static fn (Container $c): Mailer => new Mailer(
+            $c->get(MailerDriver::class),
+            $c->get(View::class),
+            $c->get(Logger::class)
+        ));
     }
 
     private function isDebug(): bool

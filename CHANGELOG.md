@@ -6,6 +6,34 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.1.5] — 2026-08-13 — CMS-052: Notification & Email System (PHASE 15)
+
+### Added
+
+- **`notifications`** (migration `2026_08_13_000001_create_notifications_table.php`): in-app notification cho Admin, polymorphic `notifiable_type`/`notifiable_id` (MVP chỉ `'comment'`), `read_at NULL` = chưa đọc (đúng quy ước cột timestamp nullable thay boolean, giống `pages.published_at`).
+- **`config/mail.php`** (mới, theo khuôn `config/cache.php`): `default` (`env('MAIL_DRIVER','log')`), `from.{address,name}`, `drivers.{log,smtp}`.
+- **`Core\Mail\MailerDriver`** (interface) + 3 driver: `LogMailerDriver` (ghi `storage/logs/mail.log` qua `Logger` có sẵn — không gửi thật, dùng local/test), `SmtpMailerDriver` (client SMTP **tự viết** qua `fsockopen()` + `stream_socket_enable_crypto()` cho STARTTLS — không thư viện ngoài, đúng Zero-dependency, EHLO/AUTH LOGIN/MAIL FROM/RCPT TO/DATA thuần văn bản), `ArrayMailerDriver` (test double, lưu email trong mảng — không phải driver production).
+- **`Core\Mail\Mailer`** (facade duy nhất, cùng mô hình `Core\Cache`): render template qua `Core\View` có sẵn (không Engine mới), derive bản text qua `strip_tags()` (Owner Decision — không viết template `.txt` riêng). **Silent-fail tuyệt đối**: mọi `Throwable` bị bắt nội bộ, ghi qua `Logger` dùng chung, không bao giờ throw ra Controller.
+- **`modules/Admin/NotificationService.php`**: `notifyAdmins()` (tạo notification in-app + gửi email cho mọi Admin thuộc tenant, tự bọc `Throwable` riêng cho phần ghi DB — độc lập với silent-fail của `Mailer`), `markAsRead()`, `unreadCount()`.
+- 3 email template `themes/default/views/emails/{comment_new,comment_approved,comment_rejected}.php`.
+- Tích hợp vào Phase 14: `CommentSubmitController` → `notifyAdmins()` sau khi tạo comment; `CommentApproveController`/`CommentRejectController` → JOIN `pages` lấy `guest_email`/`page_title`, gửi email qua `Mailer`.
+- 21 test mới: `tests/Core/MailerTest.php` (8), `tests/Core/NotificationServiceTest.php` (7), `tests/Core/CommentNotificationIntegrationTest.php` (6).
+
+### Fixed (tự phát hiện qua PHPUnit thật)
+
+- **Tên file template dùng gạch ngang bị `View::resolvePath()` từ chối**: `NAME_PATTERN` của `Core\View` (`/^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*$/`) không chấp nhận dấu `-` — 3 template ban đầu đặt tên `comment-new.php`/`comment-approved.php`/`comment-rejected.php` khiến `View::render()` throw `ViewNotFoundException` ngay ở bước validate tên (trước cả khi kiểm tra file tồn tại), `Mailer::send()` bắt và trả `false` âm thầm theo đúng thiết kế silent-fail — khiến lỗi đặt sai tên bị che giấu hoàn toàn. Đổi tên 3 file sang underscore (`comment_new.php`...), không sửa `Core\View` (giữ nguyên Core Component đã ổn định).
+- 2 test tự viết đang PASS sai lý do cũng được sửa cùng lúc: `testMailerSendReturnsFalseWhenTemplateMissing` (dùng tên có gạch ngang nên pass nhờ regex-reject chứ không phải file-not-found thật) và `testMailerSendReturnsFalseWhenDriverThrows` (chưa từng chạm tới `driver->send()` vì template đã fail trước đó).
+
+### Architecture Decisions
+
+- **`MailerDriver` là interface → không auto-wire được** (khác `AnalyticsService`/`LocaleDetectionMiddleware` là class cụ thể ở Phase 12/13) — bắt buộc đăng ký tường minh trong `core/Application.php`, và 2 test suite Phase 14 cũ (`CommentSubmissionTest.php`, `AdminCommentModerationTest.php`) phải bổ sung `ArrayMailerDriver` vào `setUp()` để không vỡ khi Controller giờ cần `Mailer`.
+- **Sync-only, không Queue/Worker** — dự án chưa có hạ tầng cron/worker nào, `Mailer` tự bọc try/catch nên gửi mail chậm/lỗi không làm crash request; để dành Queue thật (bảng `jobs` + `bin/queue-worker.php`) cho CMS riêng nếu traffic tăng.
+- **`NotificationService` đặt tại `modules/Admin/`** theo đúng chỉ định Owner, dù bị gọi cross-module từ `Modules\Public\CommentSubmitController` — khác tiền lệ `AnalyticsService` (Phase 12) đặt ở thư mục riêng không thuộc module nào; không sai kỹ thuật (PSR-4 không phụ thuộc `module.json`), chỉ khác tổ chức thư mục.
+
+### Verification
+
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **736 tests, 1499 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression.
+
 ## [0.1.4] — 2026-08-12 — CMS-051: Comment/Review System (PHASE 14)
 
 ### Added
