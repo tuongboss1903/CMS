@@ -6,6 +6,33 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.1.4] — 2026-08-12 — CMS-051: Comment/Review System (PHASE 14)
+
+### Added
+
+- **`comments`** (migration `2026_08_12_000001_create_comments_table.php`): `tenant_id`, `entity_type`/`entity_id` (polymorphic, MVP chỉ `'page'` — đúng tiền lệ `seo_meta` CMS-043), `guest_name`, `guest_email` (không hiển thị công khai), `body`, `status` (`pending`|`approved`|`rejected`, mặc định `pending` — moderation-first), `ip_hash`. Index `(tenant_id, entity_type, entity_id, status)` và `(tenant_id, status)`. Không `parent_id` (không threaded-reply, khoá phạm vi MVP theo Architecture Analysis).
+- **`modules/Public/CommentSubmitController.php`** (`POST /{slug}/comments`, route POST đầu tiên của Public module — cần `CsrfMiddleware` lần đầu ở module này): validate (`guest_name`/`guest_email`/`body` required, email đúng định dạng), anti-spam qua `core/RateLimiter.php` có sẵn (5 lần/10 phút/session, tái dùng nguyên, không CAPTCHA), `ip_hash` dùng kỹ thuật sha256+`app.key` giống `AnalyticsService` (Phase 12). Redirect kèm Flash Message (đúng quy ước CMS-017).
+- **Public rendering** (`PublicPageController.php`): hiển thị comment `status='approved'`, Form gửi comment mới. **Chỉ áp dụng `PublicPageController`, không áp dụng `HomeController`** (Owner Decision phạm vi Phase 14).
+- **Admin Moderation**: `CommentListController` (lọc `?status=`, mặc định `pending`), `CommentApproveController`, `CommentRejectController` (ẩn vĩnh viễn, không xoá — phục vụ chống gửi lại/điều tra spam), `CommentDeleteController` (hard delete — UGC/log, không soft-delete, đúng tiền lệ `analytics_views`). Menu "Comments" mới trong Sidebar.
+- 3 permission mới: `comment.view`, `comment.moderate`, `comment.delete` (`bin/bootstrap.php`).
+- 26 test mới: `tests/Core/CommentSubmissionTest.php` (9), `tests/Core/AdminCommentModerationTest.php` (10), `tests/Core/PublicCommentRenderingTest.php` (7).
+
+### Fixed (tự phát hiện qua PHPUnit thật, 2 vòng)
+
+1. **Regression tiềm ẩn ở `PublicPageController.php`**: gọi `Csrf::token()` vô điều kiện sẽ `throw SessionException` ở 2 test suite cũ chưa `Session::start()` (`PublicLandingPageTest`, `AnalyticsTrackingTest`) — sửa bằng cách chỉ sinh token khi `Session::isStarted()`, `null` khi chưa start (Form tự ẩn, không crash).
+2. **`RouteNotFoundException`**: test nhét query string thẳng vào URI thay vì dùng tham số `query` riêng của `Request`.
+3. **Assertion sai do trùng chữ với UI**: `guest_name` test trùng label nút filter tab ("Cho duyet"/"Da duyet") — label này luôn xuất hiện trong HTML bất kể đang lọc status nào, gây `assertStringNotContainsString` fail sai lý do.
+4. **419 thay vì 404** ở test cách ly tenant: `list.php` chỉ render `_token` bên trong vòng lặp từng dòng comment — tenant chưa có comment nào thì không có token nào để parse từ HTML. Sửa bằng lấy CSRF token trực tiếp từ `Core\Csrf::token()` qua Container thay vì parse HTML (đồng bộ kỹ thuật với `CommentSubmissionTest.php`).
+
+### Architecture Decisions
+
+- **Không JSON Column cho rating/sao** — MVP khoá cứng chỉ Comment văn bản thuần, không rating aggregate (trục dữ liệu khác, để dành CMS riêng nếu có nhu cầu thật).
+- **`status='pending'` mặc định** (moderation-first), **`guest_email` không bao giờ render công khai**, **RateLimiter 5 lần/10 phút/session** — 3 quyết định Owner đã duyệt qua Architecture Analysis trước khi code.
+
+### Verification
+
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **715 tests, 1446 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression.
+
 ## [0.1.3] — 2026-08-11 — CMS-050: Multi-language Support (i18n) & Localization MVP (PHASE 13)
 
 ### Added

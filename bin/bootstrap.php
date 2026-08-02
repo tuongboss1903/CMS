@@ -51,6 +51,7 @@ $permissionKeys = [
     'menu.view', 'menu.create', 'menu.update', 'menu.delete',
     'seo.view', 'seo.update',
     'settings.view', 'settings.update',
+    'comment.view', 'comment.moderate', 'comment.delete',
 ];
 
 try {

@@ -1,6 +1,6 @@
 # CMS Đa Website — Multi-Tenant CMS Platform
 
-**Phiên bản**: `v0.1.3` (Production Ready) | **Kiểm thử**: 689/689 PHPUnit tests (100% PASS)
+**Phiên bản**: `v0.1.4` (Production Ready) | **Kiểm thử**: 715/715 PHPUnit tests (100% PASS)
 
 CMS đa website (multi-tenant, SaaS-ready) — core tự viết hoàn toàn bằng PHP 8.2/8.3, **không dùng framework nền** (Laravel/Symfony...). Mỗi website khách hàng (tenant) vận hành độc lập trên cùng 1 hạ tầng, cách ly dữ liệu tuyệt đối qua domain riêng.
 
@@ -12,6 +12,7 @@ CMS đa website (multi-tenant, SaaS-ready) — core tự viết hoàn toàn bằ
 - **Admin UI đầy đủ**: Dashboard (kèm Analytics — Total Views/Unique Visitors/Top Pages/biểu đồ SVG), User/Role, Pages/Media/Menu/SEO Management, Global Settings.
 - **Public Engine**: Landing Page B2B, Breadcrumb, Search nội bộ, Sitemap.xml/Robots.txt tự sinh.
 - **Đa ngôn ngữ (i18n)**: bản dịch Page theo locale (`vi`/`en`) qua bảng `page_translations`, tự động fallback ngôn ngữ gốc khi thiếu bản dịch, route công khai `/{locale}/...`, dịch UI tĩnh qua `__()`.
+- **Comment/Review**: khách để lại bình luận trên Page công khai (không cần đăng nhập), Admin duyệt trước khi hiển thị (moderation-first), chống spam qua Rate Limiting.
 - **CI/CD**: GitHub Actions, PHP 8.2 + 8.3.
 
 ## Bắt đầu nhanh
@@ -20,7 +21,7 @@ Xem hướng dẫn đầy đủ tại **[SETUP_LOCAL.md](SETUP_LOCAL.md)** (demo
 
 ```bash
 composer install
-vendor/bin/phpunit    # xac nhan 689/689 PASS truoc khi bat dau
+vendor/bin/phpunit    # xac nhan 715/715 PASS truoc khi bat dau
 ```
 
 ## Tài liệu dự án
@@ -43,7 +44,7 @@ vendor/bin/phpunit    # xac nhan 689/689 PASS truoc khi bat dau
 vendor/bin/phpunit
 ```
 
-Toàn bộ 689 test chạy trên SQLite in-memory (không phụ thuộc MySQL thật) — 4 test skip có điều kiện khi môi trường không có `ext-redis`.
+Toàn bộ 715 test chạy trên SQLite in-memory (không phụ thuộc MySQL thật) — 4 test skip có điều kiện khi môi trường không có `ext-redis`.
 
 ## Giấy phép
 
