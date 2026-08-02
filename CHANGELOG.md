@@ -6,6 +6,31 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.48] — CMS-041: Media Library (Module JSON API)
+
+### Added
+
+- `modules/Media/` — Media Module (JSON API thuần): `ListMediaController` (`GET /media`), `UploadMediaController` (`POST /media`), `UpdateMediaController` (`PATCH /media/{id}`), `DeleteMediaController` (`DELETE /media/{id}`).
+- `database/migrations/2026_08_03_000001_create_media_table.php` — bảng `media` (MVP tối giản): `tenant_id, file_name, path, mime_type, size, alt_text, title, caption, uploaded_by, created_at`.
+- Permission `media.view/upload/update/delete` — mở rộng `bin/bootstrap.php` (16 → 20 permission).
+- Kích hoạt `sites.storage_used_bytes` (tồn tại từ CMS-028, chưa từng dùng) — cộng khi upload, trừ khi xoá, cùng transaction với thao tác `media`.
+- `tests/Core/ModuleMediaIntegrationTest.php` (13 test).
+
+### Architecture Decisions
+
+- **MVP tối giản, cắt bỏ toàn bộ khỏi spec gốc `07-module-media.md`**: không `media_folders`, không `media_variants` (resize/WebP), không `media_usages`, không `StorageDriver` (S3), không Queue — lý do: chưa có consumer thật nào tham chiếu `media` (kể cả `pages`), chưa có thư viện xử lý ảnh trong `composer.json`, chưa có Admin UI Media.
+- **Không Admin UI HTML cho Media trong CMS-041** — chỉ Module JSON, đúng tiền lệ Page (CMS-040 JSON trước, Admin UI User/Role là task riêng biệt sau ở CMS-046/047).
+- **Validate file thủ công trong Controller** (bắt buộc file + `UPLOAD_ERR_OK`, size ≤ 5MB, mime whitelist `image/jpeg,image/png,image/gif,application/pdf`) — không rule Validator mới, không sửa `core/Validator.php`.
+- **Storage Local filesystem thuần** (`storage/app/media/{tenant_id}/{tên_file_duy_nhất}`) — không interface `StorageDriver` khi chỉ có 1 implementation (nhất quán nguyên tắc đã áp dụng cho `Database`/`View`).
+- **`move_uploaded_file()` với fallback `rename()`** khi `is_uploaded_file()` false — giải quyết giới hạn PHP thật (không thể test `move_uploaded_file()` qua CLI/PHPUnit, hàm này luôn trả `false` ngoài request HTTP thật) — `move_uploaded_file()` vẫn là đường đi chính cho request thật (giữ bảo mật), `rename()` chỉ kích hoạt ngoài HTTP thật — không thêm abstraction/dependency mới, đúng pattern Laravel/Symfony.
+- **Transaction**: Upload = `INSERT media` + `UPDATE sites.storage_used_bytes +=`; Delete = `DELETE media` + `UPDATE sites.storage_used_bytes -=` — cùng 1 `Database::transaction()`, đúng nguyên tắc "multi-step writes" (`database-design.md` mục 6.3).
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/ModuleMediaIntegrationTest.php` trên môi trường thật: **PASS** — 13 tests, 35 assertions.
+- **Fix sau PHPUnit thật**: `tests/Core/RealMigrationsTest.php::EXPECTED_ORDER` thiếu `2026_08_03_000001_create_media_table` (gây 3 failure toàn suite, thuần test-expectation chưa cập nhật, không phải lỗi migration) — sửa đúng 1 dòng.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 499 tests, 940 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## [0.0.47] — CMS-047: Admin Role Management UI
 
 ### Added

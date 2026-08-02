@@ -46,6 +46,7 @@ $permissionKeys = [
     'role.view', 'role.create', 'role.update', 'role.delete', 'role.assign_permission',
     'dashboard.view',
     'page.view', 'page.create', 'page.update', 'page.delete', 'page.publish',
+    'media.view', 'media.upload', 'media.update', 'media.delete',
 ];
 
 try {

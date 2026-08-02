@@ -1,6 +1,6 @@
 # CORE ARCHITECTURE — CMS Đa Website
 
-> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-047, tag `v0.0.1` → `v0.0.47`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033; không có `v0.0.39` — bỏ qua khi chuyển từ CMS Foundation Completion sang Product Development, CMS-040 nối tiếp trực tiếp CMS-038; không có `v0.0.41`-`v0.0.43` — Product Development roadmap đổi thứ tự sau CMS-040, CMS-044/045/046/047 triển khai trước CMS-041/042/043). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Từ CMS-038, có thêm `modules/Role/`+`modules/Dashboard/`+`bin/bootstrap.php`, xem mục 3.28. Từ CMS-040, có thêm `modules/Page/` + Content Schema thật đầu tiên (`pages`), xem mục 3.29. Từ CMS-044, có thêm `modules/Public/` + `themes/default/` — CMS lần đầu render được website HTML thật (không còn thuần Headless API), xem mục 3.30. Từ CMS-045, có thêm `modules/Admin/` + `themes/default/views/admin/` — CMS lần đầu có giao diện quản trị HTML (login + dashboard) và CSRF lần đầu được gắn vào route thật, xem mục 3.31. Từ CMS-046, `modules/Admin/` mở rộng với Admin User Management UI (List/Create/Edit/Lock/Unlock/Assign Role dạng HTML), xem mục 3.32. Từ CMS-047, `modules/Admin/` mở rộng với Admin Role Management UI (List/Create/Edit/Delete/Permission Assignment dạng HTML), xem mục 3.33. **Lưu ý khoảng trống tài liệu đã biết**: `modules/User/` (CMS-037) chưa có mục riêng trong tài liệu này (Documentation Completion của CMS-037 chỉ giới hạn `TODO.md`/`CHANGELOG.md` theo yêu cầu lúc đó) — không phải sai sót của lượt cập nhật này. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
+> Trạng thái: **CHÍNH THỨC** — mô tả kiến trúc Core Foundation đã hoàn thành (CMS-001 → CMS-041, tag `v0.0.1` → `v0.0.48`; không có `v0.0.17` — CMS-017 chỉ là Architecture Decision, không phát sinh code; không có `v0.0.32` — nhãn "CMS-032" bị huỷ ngay khi phát hiện trùng lặp phạm vi, công việc dồn thẳng vào CMS-033; không có `v0.0.39` — bỏ qua khi chuyển từ CMS Foundation Completion sang Product Development, CMS-040 nối tiếp trực tiếp CMS-038; CMS-044/045/046/047 triển khai trước CMS-041 — tag không theo thứ tự số task, mà theo thứ tự hoàn thành thật: CMS-041 hoàn thành sau CMS-047 nên mang tag `v0.0.48`). Từ CMS-034, `modules/` không còn rỗng — Module thật đầu tiên (`Auth`) đã tồn tại, xem mục 3.27. Từ CMS-038, có thêm `modules/Role/`+`modules/Dashboard/`+`bin/bootstrap.php`, xem mục 3.28. Từ CMS-040, có thêm `modules/Page/` + Content Schema thật đầu tiên (`pages`), xem mục 3.29. Từ CMS-044, có thêm `modules/Public/` + `themes/default/` — CMS lần đầu render được website HTML thật (không còn thuần Headless API), xem mục 3.30. Từ CMS-045, có thêm `modules/Admin/` + `themes/default/views/admin/` — CMS lần đầu có giao diện quản trị HTML (login + dashboard) và CSRF lần đầu được gắn vào route thật, xem mục 3.31. Từ CMS-046, `modules/Admin/` mở rộng với Admin User Management UI (List/Create/Edit/Lock/Unlock/Assign Role dạng HTML), xem mục 3.32. Từ CMS-047, `modules/Admin/` mở rộng với Admin Role Management UI (List/Create/Edit/Delete/Permission Assignment dạng HTML), xem mục 3.33. Từ CMS-041, có thêm `modules/Media/` — Content Module thứ 2 (sau `pages`), lần đầu kích hoạt `sites.storage_used_bytes`, xem mục 3.34. **Lưu ý khoảng trống tài liệu đã biết**: `modules/User/` (CMS-037) chưa có mục riêng trong tài liệu này (Documentation Completion của CMS-037 chỉ giới hạn `TODO.md`/`CHANGELOG.md` theo yêu cầu lúc đó) — không phải sai sót của lượt cập nhật này. Tài liệu này tổng hợp lại toàn bộ quyết định thiết kế đã chốt qua các vòng Design Review/Code Review/Architecture Review — dùng làm tài liệu tham chiếu khi viết Module (Phase 3+), không lặp lại chi tiết đã có trong `cms-architecture-proposal.md`/`database-design.md`.
 >
 > **`public/index.php` nay đã là bootstrap thật** (`Application::bootstrap(dirname(__DIR__))->run()`), không còn là smoke test — sơ đồ mục 2 dưới đây giờ mô tả đúng luồng chạy thực tế.
 
@@ -518,6 +518,66 @@ POST /admin/roles/{id}/permissions
 
 **Không sửa**: `core/*`, `modules/Auth/*`, `modules/User/*`, `modules/Role/*`, `database/*`, `composer.json`, `phpunit.xml`.
 
+### 3.34. Media Module — `modules/Media/` — v0.0.48
+
+**Database**: `database/migrations/2026_08_03_000001_create_media_table.php` — bảng `media` (Content Module thứ 2 sau `pages`, MVP tối giản): `tenant_id, file_name, path, mime_type, size (BIGINT), alt_text NULL, title NULL, caption NULL, uploaded_by, created_at`. FK `tenant_id → sites CASCADE`, `uploaded_by → users RESTRICT`, index `(tenant_id)`. Không `deleted_at` (hard delete). Đúng convention driver-aware PK (CMS-028/040).
+
+**Routes** (`modules/Media/routes.php`, JSON API phẳng, không `/api/v1` prefix):
+```
+GET    /media          media.view
+POST   /media          media.upload
+PATCH  /media/{id}      media.update
+DELETE /media/{id}      media.delete
+```
+
+**Controllers** (`Database` trực tiếp, không Service/Repository, đúng Controller Contract 1 `handle()`):
+- `ListMediaController` — `SELECT ... WHERE tenant_id = ?`, không pagination (đúng tiền lệ `ListPagesController`).
+- `UploadMediaController` — validate thủ công trong Controller (không rule Validator mới): file bắt buộc + `UPLOAD_ERR_OK`, size ≤ 5MB, mime whitelist `image/jpeg,image/png,image/gif,application/pdf`.
+- `UpdateMediaController` — partial update `alt_text`/`title`/`caption` (không `file_name`/`path`/`mime_type`/`size`), đúng pattern `EditPageController`.
+- `DeleteMediaController` — 404 cho media không thuộc tenant hiện tại.
+
+**Upload flow**:
+```
+1. Validate (file/size/mime) - ngoai transaction (khong can DB)
+2. Move file vao storage/app/media/{tenant_id}/{ten_file_duy_nhat} - ngoai transaction (I/O)
+3. Database::transaction(): INSERT media + UPDATE sites.storage_used_bytes +=
+4. Transaction loi -> unlink() file vua move (don rac thu cong, khong tu rollback duoc filesystem)
+```
+
+**Delete flow**:
+```
+1. SELECT media WHERE id=? AND tenant_id=? - xac nhan ton tai, lay path+size TRUOC
+2. Database::transaction(): DELETE media + UPDATE sites.storage_used_bytes -=
+3. Transaction commit thanh cong -> unlink(path) SAU CUNG (file khong ton tai thi khong throw)
+```
+Cả 2 luồng dùng đúng 1 `Database::transaction()` bọc 2 câu SQL liên quan — đúng nguyên tắc "multi-step writes" (`database-design.md` mục 6.3), đúng yêu cầu Owner (Upload/Delete phải cùng transaction).
+
+**Tenant isolation**: mọi Controller scoped `TenantManager::id()`; `Update`/`Delete` trả `404` (không `403`) cho media thuộc tenant khác — nhất quán nguyên tắc cross-tenant xuyên suốt dự án từ CMS-037.
+
+**Permission model**: `media.view/upload/update/delete` — mở rộng `bin/bootstrap.php` `$permissionKeys` (16 → 20), đúng tiền lệ chính thức từ CMS-040 (không seed permission riêng, không sửa Role Module).
+
+**Storage**: Local filesystem thuần (`storage/app/media/{tenant_id}/{tên_file_duy_nhất}`) — **không** interface `StorageDriver` (0 abstraction khi chỉ có 1 implementation, nhất quán `Database`/`View`). `sites.storage_used_bytes` (tồn tại từ CMS-028, chưa từng dùng) **lần đầu được kích hoạt** — cộng khi upload, trừ khi xoá.
+
+**Validation**: hoàn toàn thủ công trong Controller (size cứng `5 * 1024 * 1024`, mime whitelist hardcode 4 loại) — **không** rule Validator mới, **không** sửa `core/Validator.php` (`core/Validator.php` không có rule cho file).
+
+**Phạm vi cắt bỏ khỏi spec gốc `07-module-media.md`** (Owner Decision CMS-041, đều là MVP tối giản có chủ đích):
+- **Không** `media_folders` — chưa có Admin UI Media để tổ chức thư mục.
+- **Không** `media_variants` (resize/thumbnail/WebP) — `composer.json` không có thư viện xử lý ảnh (GD/Imagick), không thêm dependency mới.
+- **Không** `media_usages` (theo dõi nơi sử dụng) — chưa có consumer thật nào tham chiếu `media` (`pages` không có `featured_image_id`).
+- **Không** `StorageDriver`/S3 — chỉ Local filesystem.
+- **Không** Queue xử lý bất đồng bộ — nhất quán Owner Decision CMS-025 (Queue để sau khi Foundation hoàn tất).
+- **Không** Admin UI HTML cho Media trong CMS-041 — đúng tiền lệ Page (CMS-040 JSON trước, Admin UI là task riêng sau).
+
+**Xung đột kỹ thuật phát hiện khi implement**: `move_uploaded_file()` chỉ hoạt động với upload HTTP thật (`is_uploaded_file()` PHP tự kiểm tra nội bộ) — luôn trả `false` trong môi trường CLI/PHPUnit, không thể test "Upload success". Owner Decision (qua `AskUserQuestion`): thêm 1 nhánh điều kiện `is_uploaded_file($tmp) ? move_uploaded_file() : rename()` trong `UploadMediaController` — `move_uploaded_file()` vẫn là đường đi chính cho request thật (giữ bảo mật chống path traversal/file inclusion), `rename()` chỉ kích hoạt ngoài HTTP thật (CLI/test) — không abstraction/dependency mới, đúng pattern Laravel/Symfony đã giải quyết cùng vấn đề.
+
+**Technical Debt ghi nhận** (Owner Decision, chưa xử lý): (1) `rename()` fallback chỉ phục vụ CLI/testing, không phải hành vi production thật; (2) chưa có image processing (resize/variant/WebP) — cần thêm dependency mới nếu triển khai; (3) chưa có `media_usages` — cần làm khi Page/Post thật sự tham chiếu `media`.
+
+**Fix sau PHPUnit thật**: `tests/Core/RealMigrationsTest.php::EXPECTED_ORDER` thiếu `2026_08_03_000001_create_media_table` (gây 3 failure toàn suite, thuần test-expectation chưa cập nhật — migration mới đã chạy/rollback đúng thứ tự thật theo output PHPUnit, không phải bug migration) — sửa đúng 1 dòng, đúng root cause đã gặp ở CMS-040.
+
+**Testing**: `tests/Core/ModuleMediaIntegrationTest.php` (13 test) — cùng pattern `ModulePageIntegrationTest` (`ModuleManager` trỏ `modules/` thật). `UploadMediaController`/`DeleteMediaController` override qua `Container::singleton()` với thư mục storage TEMP riêng (không ghi file thật vào `storage/app/media` của repo, đúng pattern `View` CMS-044/045).
+
+**Không sửa**: `core/*`, `modules/Auth/*`, `modules/User/*`, `modules/Role/*`, `modules/Page/*`, `modules/Public/*`, `modules/Admin/*`, `composer.json`, `phpunit.xml`, migration cũ.
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -530,7 +590,7 @@ POST /admin/roles/{id}/permissions
 
 ## 5. Testing Summary
 
-**486 test, 900 assertion — PASS** (PHP 8.3.30), Verified PASS thật tính đến CMS-047. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`. **Lưu ý**: bảng này chưa có dòng cho `modules/User/`/`ModuleUserIntegrationTest` (CMS-037, 7 test) — cùng khoảng trống tài liệu đã ghi ở đầu file, không phải thiếu sót của các lượt cập nhật sau đó.
+**499 test, 940 assertion — PASS** (PHP 8.3.30), Verified PASS thật tính đến CMS-041. Chạy trên SQLite in-memory (Database/View/Router/Migration integration) — không phụ thuộc MySQL thật. 4 test skip có điều kiện (Redis) khi môi trường không có `ext-redis`. **Lưu ý**: bảng này chưa có dòng cho `modules/User/`/`ModuleUserIntegrationTest` (CMS-037, 7 test) — cùng khoảng trống tài liệu đã ghi ở đầu file, không phải thiếu sót của các lượt cập nhật sau đó.
 
 | Component | Số test | Chiến lược |
 |---|---|---|
@@ -569,6 +629,7 @@ POST /admin/roles/{id}/permissions
 | Admin Module (`modules/Admin/`) | 7 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, CSRF qua `CsrfMiddleware` thật) |
 | Admin User Management UI (`modules/Admin/User*Controller`) | 12 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, CSRF qua `CsrfMiddleware` thật) |
 | Admin Role Management UI (`modules/Admin/Role*Controller`) | 14 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, CSRF qua `CsrfMiddleware` thật) |
+| Media Module (`modules/Media/`) | 13 | Integration (`ModuleManager` trỏ `modules/` thật, `Upload`/`DeleteMediaController` override storage TEMP qua `Container::singleton()`) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 
