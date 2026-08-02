@@ -471,6 +471,23 @@ Thay thế hoàn toàn kế hoạch cũ (Middleware cụ thể / `public/index.p
   - [x] Khong sua `core/*`, `modules/Auth|User|Role|Page|Media|Menu|Seo|Public/*`, `database/*`, `composer.json`, `phpunit.xml`, `bin/bootstrap.php` (permission `seo.*` da co san tu CMS-043) — dung pham vi da khoa
   - [x] **Technical Debt ghi nhan**: (1) `modules/Admin/Seo*Controller.php` trung lap logic voi `modules/Seo/*` (JSON) — cung loai Technical Debt da ghi nhan o Page/Media/Menu Admin UI; (2) "Global SEO Settings" (Site Title format/Meta Description mac dinh/OG Image mac dinh/Robots.txt/Sitemap toggle) van la khoang trong — chua co bang/Module nao, can Architecture Analysis rieng neu trien khai trong tuong lai
   - [x] **Verified** — `vendor/bin/phpunit` PASS tren moi truong that — `AdminSeoManagementUiTest`: 16 tests/32 assertions; toan bo suite: 592 tests, 1144 assertions, 0 Errors/Failures, 4 Skipped dung thiet ke (Redis) → **SEO Meta Settings Admin UI COMPLETED — tag `v0.0.55`**
+- [x] **Phase 4: Global Settings & SEO Infrastructure (Milestone v0.0.56)** — [DONE]
+  - [x] Schema extension cho SEO Meta (`og_title`, `og_description`, `is_index`, `is_follow`) — migration `2026_08_08_000001_alter_seo_meta_add_og_robots_fields.php`, cap nhat `modules/Seo/UpdateSeoMetaController.php` (JSON API) + `modules/Admin/SeoUpdateController.php`/view (Admin UI)
+  - [x] Migration `site_settings` table (1 ban ghi/tenant) — `2026_08_09_000001_create_site_settings_table.php`
+  - [x] `SiteSettingsManager` Service Layer (`modules/Settings/SiteSettingsManager.php`) — Service Layer dau tien cua du an, runtime array cache theo tenant
+  - [x] Dynamic `/sitemap.xml` (`SitemapController`) va `/robots.txt` (`RobotsController`)
+  - [x] Giai quyet Route Collision Public qua `dependencies: ["settings"]` trong `modules/Public/module.json` — `Settings` boot truoc `Public`, dam bao `/sitemap.xml`/`/robots.txt` khop truoc `GET /{slug}`
+  - [x] Admin UI Global Settings (`modules/Admin/{SettingShowEditController,SettingUpdateController}.php` + view) + muc "Cai dat chung" trong Sidebar
+  - [x] `site_name` inject vao logo header Public layout (khong tu sinh fallback description/OG/favicon — giu nguyen Option A tu Public Website Polish)
+  - [x] `tests/Core/ModuleSettingsIntegrationTest.php` (9 test, gom test route-collision truc tiep), `tests/Core/AdminSettingsManagementUiTest.php` (9 test)
+  - [x] **Fix sau PHPUnit that**: `ModuleSettingsIntegrationTest` FAIL 3 test (`NOT NULL constraint failed: pages.created_by`) — loi o helper `seedPage()` cua chinh test moi (thieu `created_by`), khong phai loi Controller/Migration. Sua: them `seedUser()` + bo sung `created_by`
+  - [x] **Verified** — `vendor/bin/phpunit` PASS tren moi truong that — toan bo suite: 613 tests, 1208 assertions, 0 Errors/Failures, 4 Skipped dung thiet ke (Redis) → **Phase 4 COMPLETED — tag `v0.0.56`**
+- [ ] **Phase 5: Public Engine Polish & Public Media Delivery (Milestone v0.0.57)** — [PLANNED]
+  - [ ] Public Media Serve Route (`GET /media/{tenant_id}/{filename}`) — mo khoa gioi han da ghi nhan nhieu lan (Public Website Polish, Media Admin UI, Phase 4) ve viec chua co route cong khai phuc vu file `storage/app/media/*`
+  - [ ] Public SEO Header Integration: render that `<meta name="robots" content="...">` dua tren `is_index`/`is_follow` (da luu DB tu Phase 4, chua render); Favicon `<link rel="icon">` (phu thuoc Public Media Serve Route o tren); OG Image fallback tu `site_settings.default_og_image_id` khi Page chua co `seo_meta` rieng
+  - [ ] Breadcrumb Service — dung "ancestor chain" tu `pages.parent_id` (hoan tu Public Website Polish)
+  - [ ] Public Search Feature (`GET /search?q={query}`) — chua co Architecture Analysis, can xac dinh pham vi (LIKE search vs full-text) truoc khi thiet ke
+  - [ ] Can Architecture Analysis rieng truoc khi Implementation (chua duyet Final Design)
 - [ ] Event / Queue — chưa đánh số CMS; Event có nghi vấn trùng lặp với `Hook` (xem `core-architecture.md` mục 6), Queue để sau khi Foundation hoàn tất (Owner Decision CMS-025)
 - [ ] ThemeManager Integration / Content Schema Migration tiếp tục / Database query logging / `PluginManager::getFailures()` logging / Domain normalization / Super Admin domain bypass / `AuthorizationMiddleware` tham số hoá thật / CSRF cho `/login`+`/logout` / `roles` UNIQUE fix (#20) / Module/Plugin theo Site (#9) / Multi-site session (#26) — chưa đánh số CMS, để dành sau khi có nhu cầu thật
 

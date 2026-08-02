@@ -23,6 +23,7 @@ use Modules\Settings\SiteSettingsManager;
 final class HomeController
 {
     public function __construct(
+        private readonly BreadcrumbBuilder $breadcrumbBuilder,
         private readonly Database $database,
         private readonly SiteSettingsManager $siteSettings,
         private readonly TenantManager $tenantManager,
@@ -62,13 +63,18 @@ final class HomeController
         }
 
         $seo = $this->fetchSeoMeta($tenantId, $pageId);
+        $siteSettings = $this->siteSettings->get();
+        $ogImageId = $seo['og_image_id'] ?? $siteSettings['default_og_image_id'] ?? null;
 
         $html = $this->view->render($templateName, [
             'title' => $seo['title'] ?? $page['title'],
             'content' => \json_decode($page['content'] ?? 'null', true),
             'seo' => $seo,
             'menu' => $this->fetchNavigation($tenantId, $pageId),
-            'site_settings' => $this->siteSettings->get(),
+            'site_settings' => $siteSettings,
+            'breadcrumb' => $this->breadcrumbBuilder->build($tenantId, $pageId),
+            'og_image_url' => $this->resolveMediaUrl($tenantId, $ogImageId !== null ? (int) $ogImageId : null),
+            'favicon_url' => $this->resolveMediaUrl($tenantId, $siteSettings['favicon_id'] !== null ? (int) $siteSettings['favicon_id'] : null),
         ]);
 
         return Response::html($html);
@@ -76,11 +82,15 @@ final class HomeController
 
     private function render404(): Response
     {
+        $siteSettings = $this->siteSettings->get();
+        $data = [
+            'title' => '404 Not Found',
+            'site_settings' => $siteSettings,
+            'favicon_url' => $this->resolveMediaUrl($this->tenantManager->id(), $siteSettings['favicon_id'] !== null ? (int) $siteSettings['favicon_id'] : null),
+        ];
+
         if ($this->view->exists('pages.404')) {
-            return Response::html($this->view->render('pages.404', [
-                'title' => '404 Not Found',
-                'site_settings' => $this->siteSettings->get(),
-            ]), 404);
+            return Response::html($this->view->render('pages.404', $data), 404);
         }
 
         return Response::html('404 Not Found', 404);
@@ -90,7 +100,7 @@ final class HomeController
     private function fetchSeoMeta(int|string|null $tenantId, int $pageId): ?array
     {
         $meta = $this->database->selectOne(
-            'SELECT title, description, canonical, schema_type, schema_data
+            'SELECT title, description, canonical, og_image_id, is_index, is_follow, schema_type, schema_data
              FROM seo_meta WHERE tenant_id = ? AND entity_type = ? AND entity_id = ?',
             [$tenantId, 'page', $pageId]
         );
@@ -102,6 +112,25 @@ final class HomeController
         $meta['schema_data'] = $meta['schema_data'] !== null ? \json_decode((string) $meta['schema_data'], true) : null;
 
         return $meta;
+    }
+
+    /** Chuyen media_id -> URL cong khai qua MediaServeController (GET /media/{filename}). */
+    private function resolveMediaUrl(int|string|null $tenantId, ?int $mediaId): ?string
+    {
+        if ($mediaId === null) {
+            return null;
+        }
+
+        $media = $this->database->selectOne(
+            'SELECT path FROM media WHERE id = ? AND tenant_id = ?',
+            [$mediaId, $tenantId]
+        );
+
+        if ($media === null) {
+            return null;
+        }
+
+        return '/media/' . \basename((string) $media['path']);
     }
 
     /**

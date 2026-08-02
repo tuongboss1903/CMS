@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= $this->e($title ?? '') ?></title>
+    <meta name="robots" content="<?= ((int) ($seo['is_index'] ?? 1) === 1) ? 'index' : 'noindex' ?>,<?= ((int) ($seo['is_follow'] ?? 1) === 1) ? 'follow' : 'nofollow' ?>">
+<?php if (!empty($favicon_url)): ?>
+    <link rel="icon" href="<?= $this->e($favicon_url) ?>">
+<?php endif; ?>
 <?php if (isset($seo) && $seo !== null): ?>
 <?php if (!empty($seo['description'])): ?>
     <meta name="description" content="<?= $this->e($seo['description']) ?>">
@@ -21,6 +25,9 @@
         JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP
     )) ?></script>
 <?php endif; ?>
+<?php endif; ?>
+<?php if (!empty($og_image_url)): ?>
+    <meta property="og:image" content="<?= $this->e($og_image_url) ?>">
 <?php endif; ?>
     <link rel="stylesheet" href="/assets/css/variables.css">
     <link rel="stylesheet" href="/assets/css/base.css">

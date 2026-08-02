@@ -299,7 +299,7 @@ final class ModuleSettingsIntegrationTest extends TestCase
         $this->actingAsTenant($siteId);
 
         $moduleManager = new ModuleManager(self::REAL_MODULES_PATH);
-        $moduleManager->boot($this->router, ['auth', 'user', 'role', 'dashboard', 'page', 'settings', 'public']);
+        $moduleManager->boot($this->router, ['auth', 'user', 'role', 'dashboard', 'page', 'settings', 'media', 'public']);
 
         $sitemapResponse = $this->router->dispatch(new Request('GET', '/sitemap.xml', 'example.com'));
         $robotsResponse = $this->router->dispatch(new Request('GET', '/robots.txt', 'example.com'));

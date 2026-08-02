@@ -6,6 +6,38 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.56] — 2026-08-02 — Global Settings Module & SEO Infrastructure (PHASE 4)
+
+### Added
+
+- **Global Settings Module & Service Layer**:
+  - `modules/Settings/SiteSettingsManager.php` — Service layer đầu tiên của dự án, quản lý cài đặt tenant-scoped (`site_name`, `site_tagline`, `default_meta_description`, `default_og_image_id`, `favicon_id`, `robots_txt_custom`) với runtime array cache (theo tenant, sống trong 1 request/1 instance Container — không dùng `core/Cache.php`).
+  - `modules/Settings/SitemapController.php` (`GET /sitemap.xml`) — sinh XML động từ toàn bộ Page đã publish của tenant hiện tại.
+  - `modules/Settings/RobotsController.php` (`GET /robots.txt`) — phục vụ nội dung tùy chỉnh (`robots_txt_custom`) hoặc mặc định an toàn (`Allow: /` + trỏ `Sitemap:`).
+  - `modules/Admin/{SettingShowEditController,SettingUpdateController}.php` + `themes/default/views/admin/pages/settings/edit.php` — Admin UI Global Settings, mục "Cài đặt chung" mới trong sidebar.
+  - `site_name` được inject vào logo header Public layout (`themes/default/views/layouts/main.php`).
+- **Extended SEO Meta Fields**: bổ sung `og_title`, `og_description`, `is_index`, `is_follow` vào `seo_meta` (migration `2026_08_08_000001_alter_seo_meta_add_og_robots_fields.php`) — cập nhật `modules/Seo/UpdateSeoMetaController.php` (JSON API) và `modules/Admin/SeoUpdateController.php` + view (Admin UI, kèm semantics checkbox HTML: thiếu key = bỏ chọn = `false`).
+- `database/migrations/2026_08_09_000001_create_site_settings_table.php` — bảng `site_settings` (1 bản ghi/tenant).
+- `tests/Core/ModuleSettingsIntegrationTest.php` (9 test, gồm test route-collision trực tiếp), `tests/Core/AdminSettingsManagementUiTest.php` (9 test).
+
+### Changed & Fixed
+
+- **Giải quyết Route Collision `/sitemap.xml`/`/robots.txt`** (đã hoãn từ CMS-043 và Public Website Polish): khai báo `"settings"` trong `dependencies` của `modules/Public/module.json` — buộc Module `Settings` boot (và đăng ký route) **trước** `modules/Public` trong `ModuleManager::resolveLoadOrder()` (topological sort), đảm bảo `Router::match()` (first-match-wins theo thứ tự đăng ký) khớp đúng `/sitemap.xml`/`/robots.txt` trước khi thử `GET /{slug}`.
+- `tests/Core/PublicPageRenderingTest.php` — bổ sung `'settings'` vào danh sách module enabled (bắt buộc do dependency mới) + bảng `site_settings` trong `migrate()`.
+- **Root Cause Analysis sau PHPUnit thật**: `ModuleSettingsIntegrationTest` FAIL 3 test (`NOT NULL constraint failed: pages.created_by`) — lỗi ở helper `seedPage()` của chính test mới viết (thiếu `created_by` khi INSERT), không phải lỗi Controller/Migration. Sửa: thêm helper `seedUser()` + bổ sung `created_by` vào INSERT.
+
+### Architecture Decisions
+
+- **`SiteSettingsManager` là Service Layer đầu tiên** trong toàn bộ dự án — phá lệ nguyên tắc "Controller gọi `Database` trực tiếp" đã giữ xuyên suốt Page/Media/Menu/Seo. Lý do: được dùng bởi ≥4 điểm độc lập (Sitemap, Robots, Public layout, Admin Settings) — khác hẳn pattern "1 Controller sở hữu logic" của các Module trước.
+- **Không render `<meta name="robots">` ra Public** dựa trên `is_index`/`is_follow` — chỉ lưu DB ở giai đoạn này (Owner Decision).
+- **Không tự sinh fallback `description`/OG mặc định** ở Public — giữ nguyên "Option A: không tự sinh mặc định" đã chốt ở Public Website Polish; chỉ `site_name` được inject vào layout.
+- **Chưa render `favicon` thật** — chưa có route Public phục vụ file Media (giới hạn đã ghi nhận từ Public Website Polish, chưa giải quyết).
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/ModuleSettingsIntegrationTest.php`, `AdminSettingsManagementUiTest.php`, `ModuleSeoIntegrationTest.php`, `AdminSeoManagementUiTest.php`, `PublicPageRenderingTest.php`, `RealMigrationsTest.php` trên môi trường thật: **PASS**.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 613 tests, 1208 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## [0.0.55] — SEO Meta Settings Admin UI (hoàn tất PHASE 3)
 
 ### Added
