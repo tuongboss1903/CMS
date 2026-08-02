@@ -6,6 +6,37 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.59] — 2026-08-02 — UI/UX Demo Polish & Enterprise Showcase Pack (PHASE 7)
+
+### Added
+
+- **Public Landing Page**: `public/assets/css/public.css` bổ sung `.hero-cta`, `.hero-mockup`, `.feature-grid`, `.feature-card`, `.showcase-block`, `.cta-footer` (CSS3 thuần, dùng token Design System sẵn có, không thêm dependency) + breakpoint Tablet (`max-width: 992px`) cho Feature Grid/Showcase co lại 2 cột/1 cột.
+- **Enterprise Seeder** (`bin/seed_demo.php`, viết lại hoàn toàn): 2 content pack thật — `tech` (SaaS CMS Technology Co. — Hero/6 Feature Card/Showcase/CTA/bài blog) và `restaurant` (Green Gourmet Restaurant & Cafe — ngành F&B). Nhận tham số `[domain] [pack]`, tương thích ngược với cách gọi cũ không tham số. Xóa toàn bộ text kỹ thuật ("Test Page", nội dung mẫu chung chung).
+- **`bin/add_site.php`** (mới): tạo Tenant thứ 2 trở đi — tái sử dụng Admin User + System Admin Role đã có (`roles.tenant_id IS NULL`), chỉ thêm `sites`/`site_domains`/`user_site_roles`. Không sửa `bin/bootstrap.php` (chỉ chạy được 1 lần, giữ nguyên).
+- **Admin Dashboard nâng cấp**: `modules/Admin/DashboardController.php` bổ sung `page_count`, `media_count`, Activity Stream (UNION `pages`+`media`+`users` theo thời gian gần nhất, `LIMIT 8`). `themes/default/views/admin/pages/dashboard.php`: 4 Metric Card, Quick Action Bar (Tạo trang/Tải Media/Cấu hình SEO/Xem Public Site), bảng Activity Stream.
+- `tests/Core/PublicLandingPageTest.php` (mới, 4 test) — dùng `themes/default/` thật (không phải fixture) để kiểm chứng render Landing Page.
+
+### Refactored & Changed
+
+- `themes/default/views/pages/default.php`: khi nội dung dùng `content['html']`, **không** render `<h1>{title}</h1>` chung nữa (tránh trùng lặp với heading riêng trong Hero Section) — trang `content['text']`/scalar giữ nguyên hành vi cũ.
+- `SETUP_LOCAL.md`: +mục 12 hướng dẫn demo Multi-tenant 2 domain (`cms.test` + `restaurant.test`).
+
+### Fixed
+
+- **Root Cause Analysis — bác bỏ RCA sai từ Owner (lần thứ 2 trong dự án)**: Owner đề xuất đổi `DashboardController.php` sang `users.registered_at AS created_at`, cho rằng bảng `users` dùng cột `registered_at`. Xác minh trực tiếp migration thật (`database/migrations/2026_08_01_000003_create_users_table.php:21`) xác nhận **cột `users.created_at` tồn tại thật, không có cột `registered_at` nào trong toàn bộ codebase** — áp dụng đề xuất sẽ khiến code tham chiếu cột không tồn tại. Nguyên nhân thật: bảng `users` tự tạo riêng trong `tests/Core/AdminUiFoundationTest.php::migrate()` thiếu cột `created_at` (sót lại từ trước Phase 7, chỉ lộ ra khi `DashboardController` bắt đầu query cột này). Sửa đúng 1 dòng trong fixture test — **không đụng `DashboardController.php`**.
+- Bổ sung bảng `pages`/`media` còn thiếu trong `tests/Core/AdminUiFoundationTest.php::migrate()` (tự phát hiện trước khi giao Owner test) — `DashboardController` giờ luôn query 2 bảng này.
+
+### Architecture Decisions
+
+- **Nội dung Landing Page qua `content['html']` có sẵn** (Fork A1) — không sửa schema/Admin UI, 2 Tenant tự nhiên có nội dung khác nhau vì mỗi tenant có `content` riêng trong `pages`.
+- **Mở rộng `bin/seed_demo.php` procedural** (Fork B1) — không tạo pattern Seeder Class mới (`database/seeders/`), giữ đúng convention `bin/` đã dùng xuyên suốt.
+- **Activity Stream chỉ Page + Media + User** (Fork C1) — `menus`/`menu_items` không có cột timestamp nào, đưa vào sẽ cần migration mới, vượt phạm vi "KHÔNG migration" đã khóa cho Phase 7.
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/AdminUiFoundationTest.php` trên môi trường thật: **PASS** — 8 tests, 24 assertions.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 641 tests, 1264 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## [0.0.58] — 2026-08-02 — Release Preparation & Technical Debt Clearance (PHASE 6)
 
 ### Added

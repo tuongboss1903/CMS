@@ -96,3 +96,27 @@ php bin/migrate.php status     # xem trang thai migration
 php bin/migrate.php rollback   # rollback batch migration gan nhat
 vendor/bin/phpunit             # chay toan bo test suite (khong dung DB local, dung SQLite in-memory rieng)
 ```
+
+## 12. Demo Multi-tenant — thêm Tenant thứ 2 (Phase 7)
+
+`bin/bootstrap.php` chỉ chạy được **1 lần** (khởi tạo Site đầu tiên + Admin User) — không dùng lại để tạo Tenant thứ 2. Dùng `bin/add_site.php` thay thế — tái sử dụng đúng Admin User đã có (không tạo tài khoản mới), chỉ thêm Site + Domain mới:
+
+```bash
+php bin/add_site.php "Green Gourmet Restaurant & Cafe" restaurant.test
+```
+
+Thêm dòng sau vào file hosts (cùng cách đã làm ở bước 8, **thêm dòng mới**, không thay dòng `cms.test` cũ):
+
+```
+127.0.0.1   restaurant.test
+```
+
+Tạo dữ liệu mẫu ngành F&B cho Tenant này (bộ nội dung `restaurant`, khác bộ `tech` mặc định của Tenant 1):
+
+```bash
+php bin/seed_demo.php restaurant.test restaurant
+```
+
+Mở `http://restaurant.test/` (cùng port đã chọn ở bước 9 nếu không dùng port 80) — sẽ thấy nội dung hoàn toàn khác `cms.test`, chứng minh cách ly dữ liệu theo tenant hoạt động đúng dù dùng chung 1 tiến trình web server + 1 Database.
+
+Đăng nhập `http://restaurant.test/admin/login` bằng **đúng tài khoản Admin đã tạo ở bước 6** — tài khoản này giờ quản trị được cả 2 Site.

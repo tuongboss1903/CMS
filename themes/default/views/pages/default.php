@@ -15,11 +15,14 @@
 <?php endforeach; ?>
 </nav>
 <?php endif; ?>
+<?php if (\is_array($content ?? null) && isset($content['html'])): ?>
+<div class="page-body">
+<?= $this->raw((string) $content['html']) ?>
+</div>
+<?php else: ?>
 <h1><?= $this->e($title ?? '') ?></h1>
 <div class="page-body">
-<?php if (\is_array($content ?? null) && isset($content['html'])): ?>
-<?= $this->raw((string) $content['html']) ?>
-<?php elseif (\is_array($content ?? null) && isset($content['text'])): ?>
+<?php if (\is_array($content ?? null) && isset($content['text'])): ?>
 <p><?= $this->e((string) $content['text']) ?></p>
 <?php elseif (\is_array($content ?? null)): ?>
 <pre><?= $this->e(\json_encode($content, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre>
@@ -27,6 +30,7 @@
 <p><?= $this->e((string) ($content ?? '')) ?></p>
 <?php endif; ?>
 </div>
+<?php endif; ?>
 </div>
 </div>
 <?php $this->endSection(); ?>

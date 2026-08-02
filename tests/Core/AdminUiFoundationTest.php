@@ -79,7 +79,8 @@ final class AdminUiFoundationTest extends TestCase
             name VARCHAR(150) NOT NULL,
             email VARCHAR(190) NOT NULL,
             password VARCHAR(255) NOT NULL,
-            status VARCHAR(20) NOT NULL DEFAULT \'active\'
+            status VARCHAR(20) NOT NULL DEFAULT \'active\',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )');
         $this->database->statement('CREATE TABLE roles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,6 +100,26 @@ final class AdminUiFoundationTest extends TestCase
             user_id BIGINT NOT NULL,
             site_id BIGINT NOT NULL,
             role_id BIGINT NOT NULL
+        )');
+        $this->database->statement('CREATE TABLE pages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id BIGINT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            slug VARCHAR(255) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT \'draft\',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NULL,
+            deleted_at TIMESTAMP NULL
+        )');
+        $this->database->statement('CREATE TABLE media (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id BIGINT NOT NULL,
+            file_name VARCHAR(255) NOT NULL,
+            path VARCHAR(500) NOT NULL,
+            mime_type VARCHAR(100) NOT NULL,
+            size BIGINT NOT NULL,
+            uploaded_by BIGINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )');
     }
 
@@ -246,6 +267,38 @@ final class AdminUiFoundationTest extends TestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('user_count', $response->getBody());
         self::assertStringContainsString('role_count', $response->getBody());
+        self::assertStringContainsString('page_count', $response->getBody());
+        self::assertStringContainsString('media_count', $response->getBody());
+    }
+
+    public function testDashboardCountsAndActivityStreamReflectSeededData(): void
+    {
+        $seeded = $this->seedUser(email: 'admin@example.com', password: 'correct-password');
+        $siteId = $seeded['siteId'];
+        $this->database->insert(
+            'INSERT INTO pages (tenant_id, title, slug, status) VALUES (?, ?, ?, ?)',
+            [$siteId, 'Trang mau', 'trang-mau', 'published']
+        );
+        $this->database->insert(
+            'INSERT INTO media (tenant_id, file_name, path, mime_type, size, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)',
+            [$siteId, 'anh-mau.png', $siteId . '/anh-mau.png', 'image/png', 1024, 1]
+        );
+
+        $loginPage = $this->router->dispatch(new Request('GET', '/admin/login', 'example.com'));
+        $token = $this->extractCsrfToken($loginPage->getBody());
+        $this->router->dispatch(new Request(
+            'POST',
+            '/admin/login',
+            'example.com',
+            [],
+            ['email' => 'admin@example.com', 'password' => 'correct-password', '_token' => $token]
+        ));
+
+        $response = $this->router->dispatch(new Request('GET', '/admin/dashboard', 'example.com'));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Trang mau', $response->getBody());
+        self::assertStringContainsString('anh-mau.png', $response->getBody());
     }
 
     // ---- 7. POST /admin/logout ----
