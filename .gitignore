@@ -11,6 +11,8 @@ composer.lock
 !/storage/logs/.gitkeep
 /storage/framework/*
 !/storage/framework/.gitkeep
+/storage/app/media/*
+!/storage/app/media/.gitkeep
 
 /public/uploads/*
 !/public/uploads/.gitkeep

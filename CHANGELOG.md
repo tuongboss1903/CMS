@@ -6,6 +6,33 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.0.57] — 2026-08-02 — Public Engine Polish & Public Media Delivery (PHASE 5)
+
+### Added
+
+- **Public Media Serve Route** (`GET /media/{filename}`, `modules/Media/MediaServeController.php`): phục vụ file `storage/app/media/*` công khai, kèm `Cache-Control`/`ETag`/`Last-Modified`. `tenant_id` **luôn** lấy từ `TenantManager::id()` (domain) — không nhận từ URL, chặn IDOR (đã sửa từ đề xuất gốc `/media/{tenant_id}/{filename}` qua Architecture Analysis). `{filename}` khớp theo `media.path` (tên file vật lý duy nhất do `uniqid()` sinh), không phải `media.file_name` (tên gốc, không duy nhất).
+- **Public Search** (`GET /search?q=`, `modules/Public/SearchController.php`): `LIKE` trên `title`/`content`, `status=published`, `deleted_at IS NULL`, scoped tenant, `LIMIT 50` (hằng số nối trực tiếp, không bind). View `pages/search.php` escape `$query` qua `$this->e()`.
+- **Breadcrumb** (`modules/Public/BreadcrumbBuilder.php`): walk ngược `pages.parent_id`, giới hạn `MAX_DEPTH=20` chống vòng lặp vô hạn từ dữ liệu hỏng. Tách class dùng chung giữa `HomeController`/`PublicPageController` (khác tiền lệ trùng lặp method — do logic phức tạp hơn `fetchNavigation()`).
+- **Public SEO Header Integration**: `<meta name="robots">` (dựa `seo_meta.is_index`/`is_follow`, mặc định `index,follow` khi chưa có `seo_meta`), `<link rel="icon">` (từ `site_settings.favicon_id`), `og:image` fallback (`seo_meta.og_image_id` → `site_settings.default_og_image_id`) — cả 2 đều resolve qua Media Serve Route mới.
+
+### Fixed
+
+- **Root Cause Analysis đúng vs RCA đề xuất sai**: 2 FAILURE tại `PublicSearchTest` (`testSearchExcludesDeletedPages`, `testSearchLimitsResultsTo50`) — xác minh trực tiếp source **không phải lỗi SQL** (`SearchController.php` đã có sẵn `deleted_at IS NULL` và `LIMIT 50` đúng từ đầu). Nguyên nhân thật: view `pages/search.php` luôn echo lại chính từ khóa tìm kiếm (`<p>Query: {q}</p>`), khiến assertion trên chuỗi thô bị nhiễu (đếm trùng/match giả). Sửa 2 assertion trong test dùng tiền tố markup `<p>{title}</p>` thay vì chuỗi thô — không đụng `SearchController.php`.
+- Sai vị trí tham số `query` khi dựng `new Request(...)` trong `PublicSearchTest.php` (constructor thật: `method, uri, host, query, body, headers, routeParams, files`) — rà soát và sửa toàn bộ.
+
+### Architecture Decisions
+
+- **Loại bỏ `tenant_id` khỏi URL Media Serve Route** (khác đề xuất ban đầu) — phát hiện qua Architecture Analysis: mọi nơi khác trong hệ thống đều resolve tenant qua domain (`TenantResolverMiddleware`), đặt `tenant_id` làm tham số URL do client cung cấp sẽ tạo IDOR (đổi số trong URL để xem file tenant khác).
+- **Chỉ `Cache-Control`/`ETag`/`Last-Modified`, không làm `304 Not Modified` thật** ở Phase 5 (Owner Decision, MVP).
+- **`BreadcrumbBuilder` tách class riêng** (ngoại lệ thứ 2 sau `SiteSettingsManager` — nhưng đây không phải Service nghiệp vụ, chỉ là hàm dùng chung thuần, không ghi dữ liệu).
+- **Không sửa `modules/Media/{ListMediaController,UploadMediaController,UpdateMediaController,DeleteMediaController}.php`, `core/*`** — `MediaServeController` là Controller hoàn toàn mới, không copy/sửa logic cũ.
+- `modules/Public/module.json` thêm `"media"` vào `dependencies` (đúng pattern Route Collision Resolution đã dùng cho `"settings"` ở Phase 4).
+
+### Verification
+
+- `vendor/bin/phpunit tests/Core/{PublicMediaServeTest,PublicSearchTest,PublicPageRenderingTest,ModuleSettingsIntegrationTest}.php` trên môi trường thật: **PASS**.
+- `vendor/bin/phpunit` toàn bộ suite trên môi trường thật: **PASS** — 636 tests, 1247 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## [0.0.56] — 2026-08-02 — Global Settings Module & SEO Infrastructure (PHASE 4)
 
 ### Added

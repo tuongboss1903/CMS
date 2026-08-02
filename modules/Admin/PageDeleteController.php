@@ -5,21 +5,21 @@ declare(strict_types=1);
 namespace Modules\Admin;
 
 use Core\Authorization;
-use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
-use Core\TenantManager;
+use Modules\Page\Actions\DeletePageAction;
+use Modules\Page\Actions\PageNotFoundException;
 
 /**
- * POST /admin/pages/{id}/delete - khong DELETE method. Copy logic tu
- * Modules\Page\DeletePageController (soft delete, khong xoa that).
+ * POST /admin/pages/{id}/delete - khong DELETE method. Logic nghiep vu dung chung qua
+ * Actions\DeletePageAction voi Modules\Page\DeletePageController (Pilot Action Class Pattern,
+ * Phase 6).
  */
 final class PageDeleteController
 {
     public function __construct(
         private readonly Authorization $authorization,
-        private readonly Database $database,
-        private readonly TenantManager $tenantManager,
+        private readonly DeletePageAction $action,
     ) {
     }
 
@@ -31,16 +31,11 @@ final class PageDeleteController
 
         $pageId = (int) $request->routeParam('id');
 
-        $page = $this->database->selectOne(
-            'SELECT id FROM pages WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL',
-            [$pageId, $this->tenantManager->id()]
-        );
-
-        if ($page === null) {
+        try {
+            $this->action->execute($pageId);
+        } catch (PageNotFoundException) {
             return Response::html('404 Not Found', 404);
         }
-
-        $this->database->statement('UPDATE pages SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [$pageId]);
 
         return Response::redirect('/admin/pages');
     }

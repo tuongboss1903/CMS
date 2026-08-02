@@ -8,17 +8,18 @@ use Core\Auth;
 use Core\Authorization;
 use Core\Csrf;
 use Core\Database;
-use Core\Database\QueryException;
 use Core\Http\Request;
 use Core\Http\Response;
 use Core\TenantManager;
-use Core\Validator;
 use Core\View;
+use Modules\Page\Actions\CreatePageAction;
+use Modules\Page\Actions\PageValidationException;
 
 /**
- * POST /admin/pages - copy logic tu Modules\Page\CreatePageController. content gui len dang
- * content[html] (Quill.js xuat HTML that, gan vao input hidden truoc submit) - luu dung quy uoc
- * {"html": "..."} thay vi {"text": "..."} cu (Owner Decision Phase 3), khong sua Modules\Page\*.
+ * POST /admin/pages - logic nghiep vu (validate + INSERT) dung chung qua Actions\CreatePageAction
+ * voi Modules\Page\CreatePageController (Pilot Action Class Pattern, Phase 6) - Controller nay
+ * chi con trach nhiem HTTP: check permission, goi Action, dinh dang Response HTML/redirect. content
+ * gui len dang content[html] (Quill.js), luu dung quy uoc {"html": "..."} (Owner Decision Phase 3).
  */
 final class PageCreateController
 {
@@ -26,9 +27,9 @@ final class PageCreateController
         private readonly Authorization $authorization,
         private readonly Auth $auth,
         private readonly Csrf $csrf,
+        private readonly CreatePageAction $action,
         private readonly Database $database,
         private readonly TenantManager $tenantManager,
-        private readonly Validator $validator,
         private readonly View $view,
     ) {
     }
@@ -41,51 +42,10 @@ final class PageCreateController
 
         $data = $request->all();
 
-        $result = $this->validator->validate($data, [
-            'title' => 'required|string',
-            'slug' => 'required|string',
-            'content' => 'nullable|array',
-            'template' => 'nullable|string',
-            'parent_id' => 'nullable|integer',
-        ]);
-
-        if ($result->fails()) {
-            return $this->renderWithErrors($result->errors(), $data);
-        }
-
-        $siteId = $this->tenantManager->id();
-
-        if (\array_key_exists('parent_id', $data) && $data['parent_id'] !== null && $data['parent_id'] !== '') {
-            $parentId = (int) $data['parent_id'];
-            $parent = $this->database->selectOne(
-                'SELECT id FROM pages WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL',
-                [$parentId, $siteId]
-            );
-
-            if ($parent === null) {
-                return $this->renderWithErrors(['parent_id' => ['Parent page khong hop le.']], $data);
-            }
-        } else {
-            $parentId = null;
-        }
-
-        $title = (string) $data['title'];
-        $slug = (string) $data['slug'];
-        $content = \array_key_exists('content', $data) && $data['content'] !== null
-            ? \json_encode($data['content'])
-            : null;
-        $template = \array_key_exists('template', $data) && $data['template'] !== null && $data['template'] !== ''
-            ? (string) $data['template']
-            : null;
-
         try {
-            $this->database->insert(
-                'INSERT INTO pages (tenant_id, parent_id, title, slug, content, template, status, created_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                [$siteId, $parentId, $title, $slug, $content, $template, 'draft', $this->auth->id()]
-            );
-        } catch (QueryException $exception) {
-            return $this->renderWithErrors(['slug' => ['Slug da ton tai.']], $data);
+            $this->action->execute($data, $this->auth->id());
+        } catch (PageValidationException $exception) {
+            return $this->renderWithErrors($exception->errors(), $data);
         }
 
         return Response::redirect('/admin/pages');
