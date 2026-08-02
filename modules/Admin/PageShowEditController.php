@@ -48,11 +48,23 @@ final class PageShowEditController
             [$siteId, $pageId]
         );
 
+        try {
+            $images = $this->database->select(
+                "SELECT id, file_name FROM media WHERE tenant_id = ? AND mime_type LIKE 'image/%' ORDER BY file_name ASC",
+                [$siteId]
+            );
+        } catch (\Throwable) {
+            $images = [];
+        }
+
         $content = $page['content'] !== null ? \json_decode((string) $page['content'], true) : null;
+        $editorMode = \is_array($content) && isset($content['blocks']) ? 'block' : 'quill';
 
         $html = $this->view->render('admin.pages.pages.edit', [
             'page' => $page,
             'parents' => $parents,
+            'images' => $images,
+            'editor_mode' => $editorMode,
             'errors' => [],
             'old' => [
                 'title' => $page['title'],
@@ -60,6 +72,7 @@ final class PageShowEditController
                 'content_html' => (string) ($content['html'] ?? $content['text'] ?? ''),
                 'template' => (string) ($page['template'] ?? ''),
                 'parent_id' => (string) ($page['parent_id'] ?? ''),
+                'blocks' => $content['blocks'] ?? [],
             ],
             'csrf_token' => $this->csrf->token(),
         ]);

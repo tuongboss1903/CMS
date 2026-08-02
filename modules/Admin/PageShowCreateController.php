@@ -30,15 +30,28 @@ final class PageShowCreateController
             return Response::html('403 Forbidden', 403);
         }
 
+        $siteId = $this->tenantManager->id();
+
         $parents = $this->database->select(
             'SELECT id, title FROM pages WHERE tenant_id = ? AND deleted_at IS NULL ORDER BY title ASC',
-            [$this->tenantManager->id()]
+            [$siteId]
         );
+
+        try {
+            $images = $this->database->select(
+                "SELECT id, file_name FROM media WHERE tenant_id = ? AND mime_type LIKE 'image/%' ORDER BY file_name ASC",
+                [$siteId]
+            );
+        } catch (\Throwable) {
+            $images = [];
+        }
 
         $html = $this->view->render('admin.pages.pages.create', [
             'parents' => $parents,
+            'images' => $images,
+            'editor_mode' => 'quill',
             'errors' => [],
-            'old' => ['title' => '', 'slug' => '', 'content_html' => '', 'template' => '', 'parent_id' => ''],
+            'old' => ['title' => '', 'slug' => '', 'content_html' => '', 'template' => '', 'parent_id' => '', 'blocks' => []],
             'csrf_token' => $this->csrf->token(),
         ]);
 

@@ -6,6 +6,36 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.1.1] — 2026-08-03 — CMS-048: Visual Page Builder (PHASE 11)
+
+> **Lưu ý ID**: nhánh Git của Phase này đặt tên `feature/CMS-034-visual-page-builder`, nhưng `CMS-034` **đã được dùng** cho "Module System Bootstrap (Auth Module)" từ trước (xem `[0.0.34]` bên dưới, `core-architecture.md` mục 3.27). Task này được đánh số lại đúng thứ tự thật là **CMS-048** (tiếp theo CMS-047) trong tài liệu — không đổi tên nhánh Git đã checkout.
+
+### Added
+
+- **Block Builder cho Admin Page** — `public/assets/js/page-builder.js` (Vanilla JS, không dependency ngoài): quản lý mảng block, kéo-thả sắp xếp lại (HTML5 native drag-drop, cùng kỹ thuật Menu Builder PHASE 3.3), serialize vào input ẩn `content_blocks_json` trước khi submit form.
+- **6 loại block MVP**: `heading`, `paragraph`, `image`, `hero`, `feature_grid`, `cta`.
+- **Chế độ soạn thảo kép** trên form Tạo/Sửa Page: toggle "Rich Text" (Quill.js có sẵn) ↔ "Block Builder" (mới) qua input ẩn `editor_mode`, mặc định tính theo nội dung hiện có (`content['blocks']` tồn tại → mở sẵn ở chế độ Block).
+- `themes/default/views/admin/pages/pages/blocks/_builder.php` (partial UI) + cập nhật `create.php`/`edit.php`.
+- `modules/Admin/PageCreateController.php`, `PageUpdateController.php`: decode + validate `content_blocks_json` phía server khi `editor_mode='block'` — sai type hoặc `media_id` không thuộc tenant hiện tại → **từ chối toàn bộ, silent-redirect** (Owner Decision, cùng nguyên tắc `PagePublishController`), không lưu một phần.
+- `themes/default/views/pages/default.php`: render 6 loại block ra đúng CSS class (`.hero`, `.feature-grid`/`.feature-card`, `.cta-footer`...) bằng **closure cục bộ** `$renderBlock` (không phải `function` top-level — tránh Fatal "Cannot redeclare" đã ghi nhận từ Menu Builder PHASE 5, xem mục 3.40).
+- `modules/Public/HomeController.php`, `PublicPageController.php`: thêm `resolveBlockImageUrls()` — resolve `media_id → URL` cho block `image` **trước khi** đưa vào View (View không được phép truy vấn Database, nguyên tắc kiến trúc xuyên suốt dự án).
+- `tests/Core/AdminPageBuilderTest.php` (9 test), `tests/Core/PublicPageBuilderRenderingTest.php` (6 test).
+
+### Architecture Decisions
+
+- **Không migration, không sửa JSON API/Action Class** — `pages.content` vốn là cột JSON tự do (`'content' => 'nullable|array'`, Owner Decision CMS-040), quy ước mới `{"blocks": [...]}` cùng tồn tại với `{"html": ...}` (Quill) và `{"text": ...}` (legacy) mà không cần đổi schema.
+- **Transport 1 input JSON ẩn** (`content_blocks_json`), không dùng mảng bracket-input nhiều field — giảm độ phức tạp parse phía Controller.
+- **Trùng lặp `decodeAndValidateBlocks()`/`VALID_BLOCK_TYPES`** giữa `PageCreateController`/`PageUpdateController` — có chủ đích, đúng tiền lệ Action Class Pilot (PHASE 6) và Admin Page/Media/Menu Controller trước đó.
+
+### Fixed (2 vòng Root Cause Analysis từ kết quả PHPUnit thật do Owner chạy)
+
+1. **`tests/Core/PublicPageBuilderRenderingTest.php`**: `Database::class` không có method `lastInsertId()`/`getPdo()` (chỉ có `connection(): PDO` và `insert()` — `insert()` đã tự trả về id mới). Đề xuất ban đầu từ Owner (`getPdo()->lastInsertId()`) cũng sẽ lỗi vì `getPdo()` không tồn tại — xác minh trực tiếp `core/Database.php` trước khi sửa, dùng thẳng giá trị trả về của `insert()`.
+2. **`no such table: media`** ở 3 test suite cũ (`AdminPageManagementUiTest`, và các test cũ khác không tạo bảng `media` trong fixture `migrate()`)** — do Phase 11 thêm câu query `media` không điều kiện vào `PageShowCreateController`/`PageShowEditController`/`PageCreateController::renderWithErrors()`/`PageUpdateController::renderWithErrors()` (4 điểm, phát hiện qua 2 vòng chạy PHPUnit thật, vòng đầu bỏ sót 2 điểm `renderWithErrors()`). Bọc `try { ... } catch (\Throwable) { $images = []; }` quanh cả 4 điểm — không migration bảng `media` vào các fixture test cũ (giữ nguyên phạm vi PHPUnit gốc của các test đó).
+
+### Verification
+
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **656 tests, 1305 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression.
+
 ## [0.1.0-beta] — 2026-08-02 — Beta Release Readiness & Staging Walkthrough (PHASE 8)
 
 > Mốc đóng gói Beta — tổng hợp lại toàn bộ PHASE 7 (đã tag riêng `v0.0.59`) cùng PHASE 8 mới, đánh dấu sản phẩm đã sẵn sàng trình diễn khách hàng doanh nghiệp và triển khai Staging thật. Không sửa code PHP nào trong PHASE 8 — chỉ 2 tài liệu vận hành mới.

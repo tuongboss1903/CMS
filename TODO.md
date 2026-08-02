@@ -554,3 +554,9 @@ Phần còn lại của Phase 2 (Content/Media/Menu/Form/SEO/Theme/Plugin/Settin
 ## Phase 3+ — Module Auth/User/Role/Page/SEO...
 
 Tương ứng CMS-014 → CMS-019 ở trên và các module tiếp theo tham khảo `00-master-spec.md`.
+
+Từ PHASE 4 trở đi (Global Settings, Public Engine Polish, Release Prep, UI/UX Demo Polish, Beta Readiness, Production Monitoring, Final Handoff, Visual Page Builder), tiến độ chi tiết theo dõi ở `CHANGELOG.md` (theo version) và `core-architecture.md` mục 3 (theo Component) — không lặp lại checklist ở đây.
+
+- [x] **CMS-048** — Visual Page Builder (PHASE 11) — Block Builder kéo-thả cho Admin Page (6 loại block: `heading`/`paragraph`/`image`/`hero`/`feature_grid`/`cta`), song song Quill.js Rich Text, không migration/không sửa JSON API (`pages.content` là cột JSON tự do, CMS-040). Chi tiết: `CHANGELOG.md` mục `[0.1.1]`, `core-architecture.md` mục 3.47.
+  - [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 656 tests, 1305 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế) → **CMS-048 COMPLETED — tag `v0.1.1`**
+  - [x] Lưu ý ID: nhánh Git checkout tên `feature/CMS-034-visual-page-builder`, nhưng `CMS-034` đã dùng cho Auth Module trước đó (mục CMS-034 ở trên) — đánh số lại đúng là CMS-048 trong tài liệu, không đổi tên nhánh đã checkout.

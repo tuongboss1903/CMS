@@ -898,6 +898,26 @@ POST /admin/seo/pages/{id}
 
 **Verified**: `vendor/bin/phpunit` PASS trên môi trường thật — 641 tests, 1264 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế) — không regression, đúng dự kiến vì không đụng code.
 
+### 3.47. Visual Page Builder — mở rộng `modules/Admin/`, `modules/Public/` — v0.1.1 (PHASE 11, CMS-048)
+
+> **Lưu ý ID**: nhánh Git đặt tên `feature/CMS-034-visual-page-builder` nhưng `CMS-034` đã dùng cho Auth Module (mục 3.27) — đánh số lại đúng thứ tự thật là CMS-048 trong tài liệu, không đổi tên nhánh đã checkout.
+
+**Bối cảnh**: thêm chế độ soạn thảo trực quan theo block (kéo-thả) cho Admin Page, song song với Quill.js Rich Text đã có — không migration, không sửa `modules/Page/Actions/*`/JSON API, vì `pages.content` vốn là cột JSON tự do (`'content' => 'nullable|array'`, CMS-040) nên quy ước mới `{"blocks": [...]}` cùng tồn tại với `{"html": ...}`/`{"text": ...}` mà không cần đổi schema.
+
+**6 loại block MVP**: `heading`, `paragraph`, `image`, `hero`, `feature_grid`, `cta`. `public/assets/js/page-builder.js` (Vanilla JS, kéo-thả HTML5 native cùng kỹ thuật Menu Builder mục 3.40) quản lý mảng block, serialize vào input ẩn `content_blocks_json`. `PageCreateController`/`PageUpdateController` decode+validate phía server khi `editor_mode='block'` — sai type hoặc `media_id` không thuộc tenant hiện tại → từ chối toàn bộ, silent-redirect (không lưu một phần).
+
+**View không truy vấn Database**: block `image` cần resolve `media_id → URL`, nhưng nguyên tắc kiến trúc cấm View chạm Database — `HomeController`/`PublicPageController` thêm `resolveBlockImageUrls()` resolve URL trước khi đưa `content` vào `View::render()`, tái dùng `resolveMediaUrl()` có sẵn.
+
+**Closure cục bộ, không `function` top-level**: `themes/default/views/pages/default.php` render 6 block bằng `$renderBlock = function (array $block) {...}` — đúng bug pattern đã ghi nhận ở Menu Builder (mục 3.40): `View::renderTemplate()` dùng `include` (không `include_once`), khai báo `function` top-level trong view sẽ Fatal "Cannot redeclare" khi view render lần 2 trong cùng tiến trình PHP.
+
+**2 vòng Root Cause Analysis từ PHPUnit thật**:
+1. `Database` không có `lastInsertId()`/`getPdo()` (chỉ `connection(): PDO` và `insert()` — `insert()` tự trả id) — đề xuất ban đầu của Owner (`getPdo()->lastInsertId()`) cũng sai vì `getPdo()` không tồn tại, xác minh trực tiếp `core/Database.php` trước khi sửa test.
+2. Query `media` không điều kiện thêm vào 4 điểm (`PageShowCreateController`, `PageShowEditController`, `PageCreateController::renderWithErrors()`, `PageUpdateController::renderWithErrors()`) làm vỡ `no such table: media` ở test suite cũ không tạo bảng `media` trong fixture — bọc `try/catch (\Throwable)` quanh cả 4 điểm, không sửa fixture test cũ.
+
+**Permissions**: không permission mới (dùng lại `page.create`/`page.update` sẵn có). **Không migration**.
+
+**Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 656 tests, 1305 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -952,6 +972,8 @@ POST /admin/seo/pages/{id}
 | Media Module (`modules/Media/`) | 13 | Integration (`ModuleManager` trỏ `modules/` thật, `Upload`/`DeleteMediaController` override storage TEMP qua `Container::singleton()`) |
 | Menu Module (`modules/Menu/`) | 20 | Integration (`ModuleManager` trỏ `modules/` thật) |
 | SEO Module (`modules/Seo/`) | 17 | Integration (`ModuleManager` trỏ `modules/` thật) |
+| Admin Page Builder (`modules/Admin/Page*Controller` - block mode) | 9 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, CSRF qua `CsrfMiddleware` thật) |
+| Public Page Builder Rendering (`modules/Public/*`, block render) | 6 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật — khác `PublicPageRenderingTest.php` dùng fixture theme) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 
