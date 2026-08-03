@@ -3,29 +3,25 @@
 <h1>Audit Log</h1>
 <p class="text-muted">Nhat ky hoat dong quan tri - <?= $this->e((string) $total) ?> ban ghi phu hop bo loc.</p>
 
-<form method="GET" action="/admin/audit-logs" class="card flex gap-3" style="flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-4);">
-    <div class="field">
-        <label for="event">Su kien</label>
-        <select id="event" name="event">
-            <option value="">-- Tat ca --</option>
-            <?php foreach ($available_events as $eventOption): ?>
-            <option value="<?= $this->e($eventOption) ?>"<?= $eventOption === $filters['event'] ? ' selected' : '' ?>><?= $this->e($eventOption) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    <div class="field">
-        <label for="date_from">Tu ngay</label>
-        <input type="date" id="date_from" name="date_from" value="<?= $this->e($filters['date_from']) ?>">
-    </div>
-    <div class="field">
-        <label for="date_to">Den ngay</label>
-        <input type="date" id="date_to" name="date_to" value="<?= $this->e($filters['date_to']) ?>">
-    </div>
-    <div class="field">
-        <button type="submit" class="btn btn-primary">Loc</button>
-        <a href="/admin/audit-logs" class="btn btn-secondary">Xoa loc</a>
-    </div>
-</form>
+<?php
+/**
+ * Phase 18 (UI/UX Admin Dashboard Overhaul, CMS-055): dung partial table_filter/pagination dung
+ * chung thay vi viet tay (Phase 16) - GIU NGUYEN ten query param (event/date_from/date_to/page)
+ * va class CSS (badge badge-neutral, empty-state...) de khong vo test cu (AdminAuditLogTest.php).
+ */
+$eventOptions = \array_map(
+    static fn (string $eventOption): array => ['value' => $eventOption, 'label' => $eventOption],
+    $available_events
+);
+?>
+<?php $this->include('admin.partials.table_filter', [
+    'filter_action' => '/admin/audit-logs',
+    'filter_fields' => [
+        ['name' => 'event', 'label' => 'Su kien', 'type' => 'select', 'value' => $filters['event'], 'options' => $eventOptions],
+        ['name' => 'date_from', 'label' => 'Tu ngay', 'type' => 'date', 'value' => $filters['date_from']],
+        ['name' => 'date_to', 'label' => 'Den ngay', 'type' => 'date', 'value' => $filters['date_to']],
+    ],
+]); ?>
 
 <div class="table-wrap">
 <table class="data-table">
@@ -70,12 +66,9 @@
 </table>
 </div>
 
-<?php if ($total_pages > 1): ?>
-<div class="flex gap-2" style="margin-top: var(--space-4);">
-    <?php for ($p = 1; $p <= $total_pages; $p++): ?>
-    <a href="/admin/audit-logs?<?= $this->e(\http_build_query(['event' => $filters['event'], 'date_from' => $filters['date_from'], 'date_to' => $filters['date_to'], 'page' => $p])) ?>"
-       class="btn <?= $p === $page ? 'btn-primary' : 'btn-secondary' ?> btn-sm"><?= $this->e((string) $p) ?></a>
-    <?php endfor; ?>
-</div>
-<?php endif; ?>
+<?php $this->include('admin.partials.pagination', [
+    'page' => $page,
+    'total_pages' => $total_pages,
+    'base_url' => '/admin/audit-logs?' . \http_build_query(['event' => $filters['event'], 'date_from' => $filters['date_from'], 'date_to' => $filters['date_to']]) . '&',
+]); ?>
 <?php $this->endSection(); ?>

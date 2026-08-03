@@ -342,4 +342,55 @@ final class AdminUiFoundationTest extends TestCase
         self::assertSame(302, $response->getStatusCode());
         self::assertSame('/admin/login', $response->getHeaders()['Location']);
     }
+
+    // ---- 8. Phase 18 (UI/UX Admin Dashboard Overhaul, CMS-055) - Dark Mode attribute structure ----
+
+    public function testDashboardLayoutRendersThemeToggleAndFoucGuardScript(): void
+    {
+        $this->seedUser(email: 'admin@example.com', password: 'correct-password');
+
+        $loginPage = $this->router->dispatch(new Request('GET', '/admin/login', 'example.com'));
+        $token = $this->extractCsrfToken($loginPage->getBody());
+        $this->router->dispatch(new Request(
+            'POST',
+            '/admin/login',
+            'example.com',
+            [],
+            ['email' => 'admin@example.com', 'password' => 'correct-password', '_token' => $token]
+        ));
+
+        $response = $this->router->dispatch(new Request('GET', '/admin/dashboard', 'example.com'));
+        $body = $response->getBody();
+
+        self::assertSame(200, $response->getStatusCode());
+        // topbar.php: nut chuyen Sang/Toi phai co mat tren layout admin da dang nhap.
+        self::assertStringContainsString('data-theme-toggle', $body);
+        // main.php: inline script chong FOUC phai doc dung key localStorage ma app.js dung
+        // (cms-theme) va gan [data-theme] len <html> TRUOC khi app.js (cuoi <body>) tai xong.
+        self::assertStringContainsString("localStorage.getItem('cms-theme')", $body);
+        self::assertStringContainsString('document.documentElement.setAttribute', $body);
+    }
+
+    public function testDashboardLayoutIncludesConfirmModalPartialWithFixedId(): void
+    {
+        $this->seedUser(email: 'admin@example.com', password: 'correct-password');
+
+        $loginPage = $this->router->dispatch(new Request('GET', '/admin/login', 'example.com'));
+        $token = $this->extractCsrfToken($loginPage->getBody());
+        $this->router->dispatch(new Request(
+            'POST',
+            '/admin/login',
+            'example.com',
+            [],
+            ['email' => 'admin@example.com', 'password' => 'correct-password', '_token' => $token]
+        ));
+
+        $response = $this->router->dispatch(new Request('GET', '/admin/dashboard', 'example.com'));
+        $body = $response->getBody();
+
+        // admin.partials.confirm_modal duoc include o layout main.php - phai co mat o MOI trang
+        // admin (khong rieng gi trang co form data-confirm) de app.js luon tim thay #confirm-modal.
+        self::assertStringContainsString('id="confirm-modal"', $body);
+        self::assertStringContainsString('data-confirm-accept', $body);
+    }
 }
