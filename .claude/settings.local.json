@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(\\(Get-Content d:\\\\CMS\\\\TODO.md | Measure-Object -Line\\).Lines)"
+      "PowerShell(\\(Get-Content d:\\\\CMS\\\\TODO.md | Measure-Object -Line\\).Lines)",
+      "Bash(where gh *)",
+      "Bash(where winget *)",
+      "Bash(where choco *)",
+      "Bash(where scoop *)",
+      "PowerShell(winget install *)",
+      "Bash(composer require *)",
+      "Bash(vendor/bin/php-cs-fixer fix *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git check-ignore *)",
+      "Bash(git add *)"
     ]
   }
 }
