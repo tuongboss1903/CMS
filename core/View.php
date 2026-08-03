@@ -30,10 +30,18 @@ final class View
     /** @var array<string, string> cache ket qua resolvePath() trong pham vi 1 View instance - phuc vu component/partial lap lai nhieu lan trong 1 lan render */
     private array $resolvedPathCache = [];
 
+    /**
+     * @param array<string, mixed> $globalData Phase 19 (CMS-056): du lieu merge san vao MOI
+     *     render() (khong tung Controller phai tu truyen) - phuc vu diem mo rong dung chung nhu
+     *     Plugin bo sung muc menu Admin qua Hook "admin.menu.items" (xem
+     *     Application::registerCoreServices(), View::class factory). Key trung voi $data truyen
+     *     truc tiep vao render()/include() se bi $data GHI DE (globalData chi la gia tri mac dinh).
+     */
     public function __construct(
         private readonly string $themesPath,
         private readonly string $activeTheme,
         private readonly string $defaultTheme = 'default',
+        private readonly array $globalData = [],
     ) {
     }
 
@@ -142,7 +150,7 @@ final class View
     {
         $path = $this->resolvePath($template);
 
-        \extract($data, EXTR_SKIP);
+        \extract([...$this->globalData, ...$data], EXTR_SKIP);
 
         \ob_start();
 

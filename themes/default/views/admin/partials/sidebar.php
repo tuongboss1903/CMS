@@ -15,4 +15,12 @@
     <a href="/admin/settings">Cai dat chung</a>
     <a href="/admin/system-settings">System Settings</a>
     <a href="/admin/audit-logs">Audit Log</a>
+    <a href="/admin/plugins">Plugins</a>
+
+    <?php if (!empty($extra_admin_menu_items ?? [])): ?>
+    <div class="nav-group-label">Plugin</div>
+    <?php foreach ($extra_admin_menu_items as $item): ?>
+    <a href="<?= $this->e((string) ($item['url'] ?? '#')) ?>"><?= $this->e((string) ($item['label'] ?? '')) ?></a>
+    <?php endforeach; ?>
+    <?php endif; ?>
 </nav>

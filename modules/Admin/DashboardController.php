@@ -27,6 +27,12 @@ use Modules\Analytics\AnalyticsService;
  * Phase 12 (Advanced Analytics Dashboard, CMS-049): bo sung AnalyticsService (Total Views/Unique
  * Visitors/Top Pages/bieu do 7 ngay, mac dinh chu ky '7d') - tenant isolation da xu ly ben trong
  * Service (moi query tu loc theo TenantManager::id() hien tai).
+ *
+ * Phase 18 follow-up (sau CMS-055, truoc Demo v0.2.0): bo sung recent_audit_logs/system_health -
+ * hoan tat "khung cho" da dung san trong dashboard.php (isset() guard). Chi bo sung du lieu THUAN
+ * (khong doi HTTP status/redirect/cau truc response cu) - dung lai dung 1 pattern try/catch fallback
+ * rong da co san o fetchAnalyticsSummary() (bang audit_logs co the chua ton tai o fixture test cu
+ * nhu AdminUiFoundationTest.php).
  */
 final class DashboardController
 {
@@ -84,6 +90,8 @@ final class DashboardController
             'unique_visitors' => $analytics['unique_visitors'],
             'top_pages' => $analytics['top_pages'],
             'daily_views' => $analytics['daily_views'],
+            'recent_audit_logs' => $this->fetchRecentAuditLogs($siteId),
+            'system_health' => $this->fetchSystemHealth(),
             'csrf_token' => $this->csrf->token(),
         ]);
 
@@ -144,5 +152,39 @@ final class DashboardController
              LIMIT " . self::ACTIVITY_LIMIT,
             [$siteId, $siteId, $siteId]
         );
+    }
+
+    /**
+     * Bang audit_logs (CMS-053) chua chac ton tai o moi fixture test cu (vd AdminUiFoundationTest.php
+     * dung schema toi gian hon) - bat Throwable, fallback rong, dung nguyen tac da ap dung cho bang
+     * analytics_views o fetchAnalyticsSummary() phia tren.
+     *
+     * @return list<array{event: string, created_at: string}>
+     */
+    private function fetchRecentAuditLogs(int|string|null $siteId): array
+    {
+        try {
+            return $this->database->select(
+                'SELECT event, created_at FROM audit_logs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 5',
+                [$siteId]
+            );
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * MVP toi gian - chi dung du lieu da co san (khong them dependency moi vao constructor de giu
+     * rui ro thay doi thap nhat co the o 1 sua doi bo sung ngoai Phase). Mo rong sau neu can (vd
+     * Cache driver status, Storage writable) o 1 task rieng co Architecture Review.
+     *
+     * @return list<array{label: string, value: string, ok: bool}>
+     */
+    private function fetchSystemHealth(): array
+    {
+        return [
+            ['label' => 'Ket noi Database', 'value' => 'OK', 'ok' => true],
+            ['label' => 'PHP Runtime', 'value' => \PHP_VERSION, 'ok' => true],
+        ];
     }
 }

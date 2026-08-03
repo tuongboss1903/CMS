@@ -25,6 +25,7 @@ $router->get('/admin/settings', [\Modules\Admin\SettingShowEditController::class
 $router->get('/admin/comments', [\Modules\Admin\CommentListController::class, 'handle']);
 $router->get('/admin/audit-logs', [\Modules\Admin\AuditLogController::class, 'handle']);
 $router->get('/admin/system-settings', [\Modules\Admin\SystemSettingListController::class, 'handle']);
+$router->get('/admin/plugins', [\Modules\Admin\PluginListController::class, 'handle']);
 
 $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], function (\Core\Router $router): void {
     $router->post('/admin/login', [\Modules\Admin\LoginController::class, 'handle']);
@@ -58,5 +59,6 @@ $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], funct
     $router->post('/admin/comments/{id}/reject', [\Modules\Admin\CommentRejectController::class, 'handle']);
     $router->post('/admin/comments/{id}/delete', [\Modules\Admin\CommentDeleteController::class, 'handle']);
     $router->post('/admin/system-settings', [\Modules\Admin\SystemSettingSaveController::class, 'handle']);
+    $router->post('/admin/plugins/{key}/toggle', [\Modules\Admin\PluginToggleController::class, 'handle']);
     $router->post('/admin/system-settings/{id}/delete', [\Modules\Admin\SystemSettingDeleteController::class, 'handle']);
 });

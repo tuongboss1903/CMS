@@ -106,6 +106,41 @@ final class Application
 
         $pluginManager->boot($hook, \array_keys($pluginManager->discover()));
 
+        /*
+         * Phase 19 (CMS-056): dong Technical Debt #9 (chua co co che bat/tat Plugin theo tenant).
+         * LUU Y KIEN TRUC quan trong tu ban Architecture Analysis: Application::boot() chay TRUOC
+         * khi TenantResolverMiddleware resolve tenant cho request hien tai (middleware do chi chay
+         * luc $router->dispatch(), sau boot() da xong) - nen enabledKeys truyen vao
+         * PluginManager::boot() o TREN KHONG THE loc theo tenant tai thoi diem nay (tenant chua xac
+         * dinh duoc). Vi vay PluginManager::boot() giu nguyen hanh vi cu (nap Hooks.php cua MOI
+         * plugin da discover, khong doi) - Hooks.php chi dang ky route/hook, tu no khong lo du lieu.
+         *
+         * Viec bat/tat THAT theo tung tenant duoc enforce o dung thoi diem tenant DA biet: qua
+         * Middleware rieng cua tung plugin (vd Plugins\Ecommerce\EcommercePluginGuardMiddleware,
+         * dung PluginActivationService da dang o day) gan vao route group cua chinh plugin do trong
+         * routes.php cua no - khong sua diem nay them nua.
+         *
+         * Hook "plugin.routes.register" la diem moi de Hooks.php cua plugin tu nap routes.php cua
+         * no (PluginManager::boot() truoc gio CHI nap Hooks.php, khong nap routes.php nhu
+         * ModuleManager - Plugin truoc Phase 19 chua co nhu cau dang ky Route).
+         *
+         * SUA LOI PHASE 20 (tu phat hien truoc khi code, dung Root Cause Analysis - KHONG phai sau
+         * khi Owner bao FAIL): dong nay TRUOC DAY goi $hook->do(...) NGOAI group Session+Tenant o
+         * tren - Router::group() luu/khoi phuc groupMiddleware quanh closure (xem Router.php::group()
+         * dong 115-130), nen khi group cua ModuleManager ket thuc, groupMiddleware da tro ve rong.
+         * Moi Route Plugin (routes.php cua Ecommerce) vi vay KHONG duoc bake StartSessionMiddleware/
+         * TenantResolverMiddleware vao Route::getMiddleware() - dung y het lo hong da ghi trong
+         * docblock StartSessionMiddleware.php ("moi route dung Session that nem SessionException khi
+         * chay qua HTTP that, khong bi lo trong test vi test tu goi $session->start() thu cong").
+         * Tests Phase 19 khong phat hien duoc vi TOAN BO tu dung Container/Router dung tay, khong di
+         * qua Application::boot() that. Sua bang cach boc $hook->do(...) trong CUNG 1 group voi
+         * ModuleManager::boot() o tren - Plugin Route tu gio nhan dung Session/Tenant middleware
+         * giong het Module Route.
+         */
+        $router->group(['middleware' => [StartSessionMiddleware::class, TenantResolverMiddleware::class]], function (Router $router) use ($hook): void {
+            $hook->do('plugin.routes.register', $router);
+        });
+
         $router->get('/health', static fn (Request $request): Response => Response::json([
             'success' => true,
             'data' => ['status' => 'ok'],
@@ -152,6 +187,14 @@ final class Application
 
         $this->container->singleton(TenantManager::class, static fn (): TenantManager => new TenantManager());
 
+        $this->container->singleton(
+            PluginActivationService::class,
+            static fn (Container $c): PluginActivationService => new PluginActivationService(
+                $c->get(Cache::class),
+                $c->get(Database::class)
+            )
+        );
+
         $this->container->singleton(View::class, function (Container $c): View {
             $defaultTheme = (string) $c->get(Config::class)->get('app.theme', 'default');
             $tenantManager = $c->get(TenantManager::class);
@@ -160,7 +203,23 @@ final class Application
                 ? (string) ($tenantManager->current()['theme_active'] ?? $defaultTheme)
                 : $defaultTheme;
 
-            return new View($this->basePath . '/themes', $activeTheme, $defaultTheme);
+            // Phase 19 (CMS-056): diem mo rong "admin.menu.items" - Plugin dang ky filter qua
+            // Hooks.php (boot() da chay xong truoc khi View::class lan dau duoc resolve tu 1
+            // Controller, dam bao moi filter da dang ky day du). Ket qua duoc dong bang 1 lan/
+            // request qua View::$globalData - sidebar.php doc $extra_admin_menu_items ?? [].
+            // Truyen them $tenantManager + PluginActivationService qua tham so bo sung cua
+            // Hook::apply() (khong doi API Hook) de callback cua Plugin tu quyet dinh co hien thi
+            // muc menu hay khong dua theo trang thai bat/tat that cua DUNG tenant hien tai.
+            $extraMenuItems = $c->get(Hook::class)->apply(
+                'admin.menu.items',
+                [],
+                $tenantManager,
+                $c->get(PluginActivationService::class)
+            );
+
+            return new View($this->basePath . '/themes', $activeTheme, $defaultTheme, [
+                'extra_admin_menu_items' => $extraMenuItems,
+            ]);
         });
 
         $this->container->singleton(Router::class, static fn (Container $c): Router => new Router($c));

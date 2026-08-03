@@ -35,6 +35,7 @@ final class Request
         private readonly array $files = [],
         private readonly array $cookies = [],
         private readonly array $server = [],
+        private readonly string $rawBody = '',
     ) {
     }
 
@@ -42,18 +43,20 @@ final class Request
     {
         $uri = \parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
         $headers = self::extractHeaders();
+        [$body, $rawBody] = self::resolveBody($headers);
 
         return new self(
             \strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')),
             \is_string($uri) && $uri !== '' ? $uri : '/',
             (string) ($_SERVER['HTTP_HOST'] ?? ''),
             $_GET,
-            self::resolveBody($headers),
+            $body,
             $headers,
             [],
             $_FILES,
             $_COOKIE,
-            $_SERVER
+            $_SERVER,
+            $rawBody
         );
     }
 
@@ -83,21 +86,29 @@ final class Request
      * multipart/form-data (dung cho form SSR nhu POST /admin/login). JSON body (chuan cho /api/v1/*
      * theo api-document.md, vd POST /api/v1/auth/login) phai tu doc qua php://input + json_decode.
      *
+     * Phase 20 (CMS-057): doc them $rawBody CUNG LUC voi $body (chi doc php://input DUNG 1 LAN -
+     * stream nay khong dam bao doc lai duoc lan 2) - phuc vu xac thuc chu ky HMAC cua Webhook cong
+     * thanh toan, von ky tren BYTE GOC cua payload chu khong phai mang da json_decode() (thu tu
+     * key/khoang trang/escape unicode co the khac khi json_encode() lai, khien signature sai du
+     * payload hop le). form-urlencoded (Content-Type khac JSON) khong co khai niem "raw body" rieng
+     * biet voi $_POST nen tra chuoi rong.
+     *
      * @param array<string, string> $headers
-     * @return array<string, mixed>
+     * @return array{0: array<string, mixed>, 1: string}
      */
     private static function resolveBody(array $headers): array
     {
         $contentType = $headers['CONTENT-TYPE'] ?? '';
 
         if (!\str_contains($contentType, 'application/json')) {
-            return $_POST;
+            return [$_POST, ''];
         }
 
         $raw = \file_get_contents('php://input');
-        $decoded = $raw === false || $raw === '' ? null : \json_decode($raw, true);
+        $raw = $raw === false ? '' : $raw;
+        $decoded = $raw === '' ? null : \json_decode($raw, true);
 
-        return \is_array($decoded) ? $decoded : [];
+        return [\is_array($decoded) ? $decoded : [], $raw];
     }
 
     public function getMethod(): string
@@ -123,6 +134,12 @@ final class Request
     public function input(string $key, mixed $default = null): mixed
     {
         return $this->body[$key] ?? $default;
+    }
+
+    /** Chuoi JSON goc CHUA qua decode - chi co gia tri khi Content-Type la application/json (xem resolveBody()), rong o moi truong hop khac. */
+    public function rawBody(): string
+    {
+        return $this->rawBody;
     }
 
     public function header(string $name): ?string
@@ -151,7 +168,8 @@ final class Request
             $params,
             $this->files,
             $this->cookies,
-            $this->server
+            $this->server,
+            $this->rawBody
         );
     }
 

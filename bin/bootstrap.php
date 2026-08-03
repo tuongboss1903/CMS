@@ -54,6 +54,10 @@ $permissionKeys = [
     'comment.view', 'comment.moderate', 'comment.delete',
     'audit_log.view',
     'settings.manage',
+    'product.view', 'product.create', 'product.update', 'product.delete',
+    'order.view', 'order.update_status',
+    'plugin.manage',
+    'payment.view',
 ];
 
 try {

@@ -273,4 +273,38 @@ final class ApplicationTest extends TestCase
         self::assertSame(404, $response->getStatusCode());
         self::assertFileDoesNotExist(self::FIXTURE_PATH . '/storage/logs/app.log');
     }
+
+    /**
+     * Phase 20 (CMS-057) - Regression test cho loi tu phat hien truoc khi code o Application.php:
+     * Route dang ky qua Hook "plugin.routes.register" (Plugin, khac ModuleManager::boot()) truoc day
+     * KHONG duoc bake StartSessionMiddleware/TenantResolverMiddleware vao Route::getMiddleware() vi
+     * $hook->do(...) goi NGOAI group Session+Tenant (Router::group() luu/khoi phuc groupMiddleware
+     * quanh closure). tests/Fixtures/App/plugins/TestPlugin/ mo phong dung co che 1 Plugin that
+     * (plugin.json/Hooks.php/routes.php) qua Application::bootstrap() THAT - khac moi test
+     * Ecommerce khac (Phase 19) tu dung Container/Router thu cong, khong di qua boot() that nen
+     * khong the phat hien loi nay.
+     */
+    public function testPluginRouteIsLoadedAndReachable(): void
+    {
+        $app = Application::bootstrap(self::FIXTURE_PATH);
+        $this->seedTenant($app->container()->get(Database::class));
+
+        $response = $app->handle(new Request('GET', '/plugin-ping', 'example.com'));
+
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    public function testPluginRouteHasSessionStartedAndTenantResolved(): void
+    {
+        $app = Application::bootstrap(self::FIXTURE_PATH);
+        $this->seedTenant($app->container()->get(Database::class));
+
+        $response = $app->handle(new Request('GET', '/plugin-ping', 'example.com'));
+
+        /** @var array{session_started: bool, tenant_id: int} $decoded */
+        $decoded = \json_decode($response->getBody(), true);
+
+        self::assertTrue($decoded['session_started'], 'StartSessionMiddleware phai chay cho Route dang ky qua Plugin, giong het Module.');
+        self::assertSame(1, $decoded['tenant_id'], 'TenantResolverMiddleware phai resolve dung tenant cho Route dang ky qua Plugin.');
+    }
 }

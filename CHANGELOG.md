@@ -6,6 +6,33 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.3.0] — 2026-08-17 — CMS-056: Ecommerce MVP & Plugin Architecture (PHASE 19)
+
+### Added
+
+- **Đóng Technical Debt #9** (ghi nhận từ CMS-012, `core-architecture.md`): bảng `site_plugins` mới (`tenant_id`, `plugin_key`, `is_active`, `activated_at`) + `core/PluginActivationService.php` (Cache-aware qua `Core\Cache` có sẵn, key `tenant:{id}:plugins:enabled`, tự invalidate khi `activate()`/`deactivate()`) — dùng chung cho **mọi** Plugin tương lai, không riêng Ecommerce.
+- **`core/View.php`** mở rộng additive: thêm `$globalData` (constructor param thứ 4) — merge tự động vào mọi `render()`/`include()`, không cần từng Controller tự truyền. Phục vụ điểm mở `admin.menu.items` (Plugin tự bơm mục menu Admin qua Hook, không sửa `sidebar.php` mỗi lần thêm Plugin mới).
+- **Hook mới `plugin.routes.register`** (`core/Application.php::boot()`): `PluginManager::boot()` trước Phase 19 chỉ nạp `Hooks.php` (không nạp `routes.php` như `ModuleManager`) — Plugin nay tự đăng ký Route qua action này, `$router` được truyền qua tham số bổ sung của `Hook::do()`.
+- **Ecommerce Plugin — Plugin thật đầu tiên của dự án** (`plugins/Ecommerce/`): `plugin.json`/`Hooks.php`/`routes.php`, `Plugins\Ecommerce\EcommercePluginGuardMiddleware` (fail-closed 404 nếu tenant chưa kích hoạt plugin), `Services\{CartService,ProductService}` (Giỏ hàng Session-based, Danh sách sản phẩm Cache-aware), `Actions\{AddToCartAction,RemoveFromCartAction,PlaceOrderAction,UpdateOrderStatusAction}` (Action Class Pattern, tiền lệ `modules/Page/Actions/*`).
+- **Schema Ecommerce**: `products`, `product_variants`, `orders` (Guest Checkout — `guest_name`/`guest_email`, tiền lệ Comment System), `order_items` (snapshot tên/giá tại thời điểm mua). Luồng trạng thái Đơn hàng qua cột `status` string (tiền lệ `pages.status`/`comments.status`, không ENUM/state machine riêng): `pending → processing → completed`, hoặc `pending/processing → cancelled`.
+- **9 Controller Ecommerce** (Admin: Product CRUD ×5, Order List/Show/UpdateStatus ×3; Public: Shop ×2, Cart ×2, Checkout ×2) + **Admin Plugin Toggle UI** (`modules/Admin/{PluginList,PluginToggle}Controller.php`, `/admin/plugins`) — bật/tắt Plugin theo tenant.
+- 8 permission mới: `product.{view,create,update,delete}`, `order.{view,update_status}`, `plugin.manage`.
+- 6 file test mới, 37 test: `PluginActivationServiceTest` (8), `CartServiceTest` (7), `EcommerceProductManagementTest` (8), `EcommerceCheckoutTest` (4), `EcommerceOrderManagementTest` (6), `ApplicationPluginActivationIntegrationTest` (4).
+
+### Architecture Decisions (1 điều chỉnh quan trọng so với đặc tả gốc — phát hiện trước khi code)
+
+- **Không thể lọc `enabledKeys` theo tenant tại `Application::boot()`** như đặc tả gốc yêu cầu — `boot()` chạy **trước** khi `TenantResolverMiddleware` xác định tenant của request (middleware đó chỉ chạy lúc `dispatch()`). `PluginManager::boot()` giữ nguyên hành vi nạp mọi Plugin đã discover (chỉ đăng ký route/hook, không lộ dữ liệu). Việc bật/tắt **thật** theo tenant chuyển sang enforce đúng lúc tenant đã biết — qua `EcommercePluginGuardMiddleware` gắn ở route group của Plugin (dispatch-time), vẫn đóng đúng Technical Debt #9, chỉ khác điểm thực thi.
+- **`category` là field VARCHAR đơn trên `products`** (không bảng `product_categories` riêng) — Owner Decision YAGNI, chưa có yêu cầu cây danh mục lồng nhau.
+- **Checkout dạng Guest** (không tài khoản Khách hàng) — nhất quán tiền lệ Comment System (Phase 14).
+
+### Fixed (tự phát hiện qua `composer dump-autoload -o`, Owner chạy thật)
+
+- **Lệch casing thư mục Plugin so với PSR-4**: namespace `Plugins\Ecommerce\...` nhưng thư mục vật lý ban đầu là `plugins/ecommerce/` (chữ thường) — lệch quy ước StudlyCase đã áp dụng nhất quán cho mọi `modules/*` (`Modules\Admin` ↔ `modules/Admin/`). Windows (NTFS case-insensitive) không phát hiện được qua PHPUnit thường, chỉ lộ ra qua `composer dump-autoload -o` (quét PSR-4 case-sensitive, cảnh báo "does not comply... Skipping") — sẽ crash "Class not found" thật trên Linux production nếu không sửa. Đổi tên thư mục thành `plugins/Ecommerce/` (khớp namespace), **giữ nguyên** mapping tổng quát `"Plugins\\": "plugins/"` trong `composer.json` (không khai báo mapping riêng từng Plugin — giữ đúng giá trị "Plugin cắm vào không cần sửa Core").
+
+### Verification
+
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64), sau `composer dump-autoload -o` (1793 class, 0 cảnh báo PSR-4): **825 tests, 1720 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression trên 788 test trước đó.
+
 ## [0.2.0] — 2026-08-16 — CMS-055: UI/UX Admin Dashboard Overhaul & Theme Engine Enhancement (PHASE 18)
 
 ### Added

@@ -1070,6 +1070,26 @@ POST /admin/seo/pages/{id}
 
 **Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 788 tests, 1620 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế) — không regression trên 772 test trước đó.
 
+### 3.55. Plugin Engine Architecture & Hook System — dong Technical Debt #9 — `core/PluginActivationService.php`, `site_plugins`, `plugins/Ecommerce/*` — v0.3.0 (PHASE 19, CMS-056)
+
+**Bối cảnh**: `PluginManager` + `Hook` (Action/Filter/priority/wildcard) đã tồn tại **hoàn chỉnh** từ CMS-009/CMS-012 (Phase 1) — Phase 19 **không thiết kế lại 2 component này**, chỉ đóng đúng khoảng trống đã được ghi nhận từ trước: **Technical Debt #9** — "chưa có cơ chế bật/tắt Module/Plugin theo site, `Application::boot()` coi mọi plugin đã `discover()` là enabled cho toàn hệ thống".
+
+**`site_plugins`** (`tenant_id`, `plugin_key`, `is_active`, `activated_at`) + **`core/PluginActivationService.php`**: lớp DUY NHẤT đọc/ghi bảng này, Cache-aware qua `Core\Cache` có sẵn (`remember()`/`forget()`, key `tenant:{id}:plugins:enabled`). Đặt tại `core/` (không phải `modules/`) vì là hạ tầng dùng CHUNG cho **mọi** Plugin tương lai, không riêng Ecommerce.
+
+**Giới hạn kiến trúc phát hiện trước khi code (khác đặc tả gốc)**: `Application::boot()` chạy hoàn toàn TRƯỚC khi `TenantResolverMiddleware` xác định tenant của request — middleware đó chỉ chạy trong `$router->dispatch()`, sau khi `boot()` đã xong. Vì vậy **không thể** lọc `enabledKeys` truyền vào `PluginManager::boot()` theo tenant ngay tại `boot()` (tenant chưa tồn tại ở thời điểm đó). Giải quyết: `PluginManager::boot()` **giữ nguyên** hành vi cũ (nạp `Hooks.php` của MỌI plugin đã discover — chỉ đăng ký route/hook, tự nó không lộ dữ liệu); việc bật/tắt THẬT theo tenant được enforce đúng lúc tenant ĐÃ biết — qua Middleware riêng của từng Plugin (`Plugins\Ecommerce\EcommercePluginGuardMiddleware`, fail-closed 404) gắn vào route group của chính Plugin đó.
+
+**Hook mới `plugin.routes.register`**: `PluginManager::boot()` trước Phase 19 chỉ nạp `Hooks.php` (khác `ModuleManager::boot()` nạp cả `routes.php`) — Plugin trước đó chưa có nhu cầu đăng ký Route. `Application::boot()` fire `$hook->do('plugin.routes.register', $router)` ngay sau `PluginManager::boot()`; Plugin's `Hooks.php` đăng ký `$hook->action('plugin.routes.register', fn (Router $router) => require __DIR__.'/routes.php')` — `$router` đến qua tham số bổ sung của `Hook::do()` (không đổi API `Hook`).
+
+**`core/View.php` mở rộng additive — `$globalData`**: constructor thêm tham số thứ 4, merge tự động vào MỌI `render()`/`include()` (không cần từng Controller truyền). Phục vụ điểm mở `admin.menu.items`: `Application`'s `View::class` factory tính `$hook->apply('admin.menu.items', [], $tenantManager, $pluginActivationService)` — Plugin's `Hooks.php` đăng ký filter, tự quyết định có trả về mục menu hay không dựa theo `PluginActivationService::isActive($tenantManager->id(), 'ecommerce')` của ĐÚNG tenant hiện tại (tham số bổ sung của `Hook::apply()`, không đổi API `Hook`).
+
+**Ecommerce Plugin (`plugins/Ecommerce/`, plugin thật đầu tiên của dự án)**: `EcommercePluginGuardMiddleware` (constructor inject `PluginActivationService`+`TenantManager`, fail-closed 404 nếu `!$tenantManager->check()` hoặc plugin chưa active — cùng tinh thần `TenantResolverMiddleware`) gắn ở route group ngoài cùng của `routes.php`, bọc cả route Admin lẫn Public. `Services\CartService` (Session-based, KHÔNG bảng DB riêng — Owner Decision YAGNI, dùng đúng vai trò "Storage" của `Core\Session`). `Services\ProductService` (Cache-aware, `remember()` cho danh sách sản phẩm public). 4 Action Class (tiền lệ `modules/Page/Actions/*`, Phase 6 mục 3.44): `PlaceOrderAction::execute()` bọc `Database::transaction()` (tạo `orders`+`order_items`, trừ tồn kho, snapshot tên/giá tại thời điểm mua), `UpdateOrderStatusAction` validate transition qua bảng tra cứu cố định (`pending→processing→completed`, `pending/processing→cancelled`).
+
+**Cách ly Multi-tenant**: `products`/`orders` có `tenant_id` FK `sites.id ON DELETE CASCADE` (đúng mẫu `pages`); `order_items` KHÔNG có `tenant_id` riêng (nhất quán tiền lệ `menu_items`/`role_permissions` — cách ly qua JOIN `orders.tenant_id`). Checkout dạng Guest (`guest_name`/`guest_email`, không tài khoản Khách hàng) — tiền lệ Comment System (Phase 14).
+
+**PSR-4 casing fix (tự phát hiện qua `composer dump-autoload -o` Owner chạy thật, không phải sau khi Owner báo FAIL)**: thư mục Plugin ban đầu `plugins/ecommerce/` (chữ thường) lệch namespace `Plugins\Ecommerce\...` — vi phạm quy ước StudlyCase đã áp dụng nhất quán cho mọi `modules/*`. Windows (NTFS case-insensitive) không lộ lỗi qua PHPUnit thường; chỉ `composer dump-autoload -o` (case-sensitive) phát hiện, sẽ crash thật trên Linux production nếu không sửa. Đổi tên thư mục thành `plugins/Ecommerce/`, **giữ nguyên** mapping tổng quát `"Plugins\\": "plugins/"` trong `composer.json` (không khai báo mapping riêng từng Plugin — giữ đúng giá trị "Plugin cắm vào không cần sửa Core" của Kiến trúc Plugin).
+
+**Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64), sau `composer dump-autoload -o` (1793 class, 0 cảnh báo PSR-4) — 825 tests, 1720 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế) — không regression trên 788 test trước đó.
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -1143,6 +1163,12 @@ POST /admin/seo/pages/{id}
 | Admin System Settings (`modules/Admin/SystemSetting*Controller.php`) | 11 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, `CacheDriver` đăng ký tường minh) |
 | View Partials (`themes/default/views/admin/partials/*.php`) | 14 | Integration (`Core\View::render()` thật, không Router/Database — render độc lập từng partial qua `themes/` thật) |
 | Admin UI Foundation — Dark Mode + Confirm Modal (`AdminUiFoundationTest.php`, bổ sung Phase 18) | 2 (bổ sung, không đổi 8 test cũ) | Integration (`ModuleManager` trỏ `modules/` thật, `Router::dispatch()` thật, Session/Auth thật) |
+| Plugin Activation Service (`core/PluginActivationService.php`) | 8 | Integration (`Database` SQLite in-memory thật, `Core\Cache` với `FileCacheDriver` thật) |
+| Cart Service (`Plugins\Ecommerce\Services\CartService`) | 7 | Unit/Integration (`Session` thật, không mock) |
+| Ecommerce Product Management (Admin, `Plugins\Ecommerce\Controllers\Admin\Product*Controller`) | 8 | Integration (`PluginManager` trỏ `plugins/` thật + Hook `plugin.routes.register`, không `ModuleManager`) |
+| Ecommerce Checkout (Public, `Plugins\Ecommerce\Controllers\Public\*`) | 4 | Integration (`PluginManager` trỏ `plugins/` thật, `Session`/`Database` thật, nhiều `dispatch()` liên tiếp mô phỏng nhiều request cùng 1 khách) |
+| Ecommerce Order Management (Admin, `Plugins\Ecommerce\Controllers\Admin\Order*Controller`) | 6 | Integration (`PluginManager` trỏ `plugins/` thật, luồng chuyển trạng thái Đơn hàng) |
+| Application + Plugin Activation Integration (`admin.menu.items` theo tenant) | 4 | Integration (`ModuleManager`+`PluginManager` song song trỏ thư mục thật, `View::$globalData` qua `Hook::apply()`) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 
