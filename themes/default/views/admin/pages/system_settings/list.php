@@ -17,7 +17,7 @@
         <td><code><?= $this->e($item['key']) ?></code><?php if ($item['is_encrypted']): ?> <span class="badge badge-warning">Encrypted</span><?php endif; ?></td>
         <td><?= $this->e((string) $item['value']) ?></td>
         <td>
-        <form method="POST" action="/admin/system-settings/<?= $this->e((string) $item['id']) ?>/delete" style="display:inline;" onsubmit="return confirm('Xoa setting nay?');">
+        <form method="POST" action="/admin/system-settings/<?= $this->e((string) $item['id']) ?>/delete" style="display:inline;" data-confirm="Xoa setting nay?">
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
             <button type="submit" class="btn btn-danger btn-sm">Xoa</button>
         </form>

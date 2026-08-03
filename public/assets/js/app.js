@@ -1,4 +1,40 @@
+(function () {
+    // Phase 18 (CMS-055): dark mode - doc localStorage TRUOC khi DOMContentLoaded de tranh
+    // "flash" theme sai luc tai trang (FOUC). Khong doi hanh vi server/Controller nao - thuan
+    // client-side, luu y bang [data-theme] tren <html> + localStorage.
+    var THEME_KEY = 'cms-theme';
+    var savedTheme = null;
+
+    try {
+        savedTheme = window.localStorage.getItem(THEME_KEY);
+    } catch (error) {
+        savedTheme = null;
+    }
+
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+})();
+
 document.addEventListener('DOMContentLoaded', function () {
+    var THEME_KEY = 'cms-theme';
+    var themeToggle = document.querySelector('[data-theme-toggle]');
+
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function () {
+            var current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            var next = current === 'light' ? 'dark' : 'light';
+
+            document.documentElement.setAttribute('data-theme', next);
+
+            try {
+                window.localStorage.setItem(THEME_KEY, next);
+            } catch (error) {
+                // Silent - localStorage khong kha dung (vd private mode) khong duoc lam gian doan UI.
+            }
+        });
+    }
+
     var sidebarToggle = document.querySelector('[data-sidebar-toggle]');
     var sidebar = document.querySelector('.admin-sidebar');
 
@@ -27,13 +63,50 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Phase 18 (CMS-055): thay window.confirm() tho bang modal tuy chinh (#confirm-modal, xem
+    // admin.partials.confirm_modal). Neu partial chua duoc include o trang nao do (fallback an
+    // toan), quay ve window.confirm() nguyen ban - khong bao gio chan submit ma khong hoi gi ca.
+    var confirmModal = document.getElementById('confirm-modal');
+    var confirmMessageEl = confirmModal ? confirmModal.querySelector('[data-confirm-message]') : null;
+    var confirmAcceptBtn = confirmModal ? confirmModal.querySelector('[data-confirm-accept]') : null;
+    var pendingConfirmForm = null;
+
     document.querySelectorAll('form[data-confirm]').forEach(function (form) {
         form.addEventListener('submit', function (event) {
-            if (!window.confirm(form.getAttribute('data-confirm'))) {
-                event.preventDefault();
+            if (form.getAttribute('data-confirmed') === 'true') {
+                return;
             }
+
+            if (!confirmModal || !confirmAcceptBtn) {
+                if (!window.confirm(form.getAttribute('data-confirm'))) {
+                    event.preventDefault();
+                }
+
+                return;
+            }
+
+            event.preventDefault();
+            pendingConfirmForm = form;
+
+            if (confirmMessageEl) {
+                confirmMessageEl.textContent = form.getAttribute('data-confirm') || '';
+            }
+
+            confirmModal.classList.add('is-open');
         });
     });
+
+    if (confirmAcceptBtn) {
+        confirmAcceptBtn.addEventListener('click', function () {
+            confirmModal.classList.remove('is-open');
+
+            if (pendingConfirmForm) {
+                pendingConfirmForm.setAttribute('data-confirmed', 'true');
+                pendingConfirmForm.submit();
+                pendingConfirmForm = null;
+            }
+        });
+    }
 
     document.querySelectorAll('[data-modal-open]').forEach(function (trigger) {
         trigger.addEventListener('click', function () {
@@ -54,6 +127,28 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    // Phase 18 (CMS-055): Media Grid/List toggle - thuan CSS class .is-hidden, khong tai lai trang.
+    var viewToggle = document.querySelector('[data-view-toggle]');
+
+    if (viewToggle) {
+        var viewButtons = viewToggle.querySelectorAll('[data-view]');
+        var viewPanels = document.querySelectorAll('[data-view-panel]');
+
+        viewButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                var target = button.getAttribute('data-view');
+
+                viewButtons.forEach(function (btn) {
+                    btn.classList.toggle('is-active', btn === button);
+                });
+
+                viewPanels.forEach(function (panel) {
+                    panel.classList.toggle('is-hidden', panel.getAttribute('data-view-panel') !== target);
+                });
+            });
+        });
+    }
 
     var dropzone = document.getElementById('media-dropzone');
     var fileInput = document.getElementById('media-file-input');

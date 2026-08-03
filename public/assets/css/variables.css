@@ -61,3 +61,37 @@
   --transition-fast: 120ms ease;
   --transition-base: 200ms ease;
 }
+
+/* ============================================================
+   Phase 18 (UI/UX Admin Dashboard Overhaul, CMS-055) — Light theme.
+   :root o tren la theme MAC DINH (Tech Green / Dark, khong doi - moi
+   test/trang hien co khong truyen [data-theme] van render y nguyen
+   nhu truoc, zero-regression thi giac). Toggle qua app.js ghi
+   [data-theme="light"] len <html> + luu localStorage.
+   ============================================================ */
+:root[data-theme="light"] {
+  --color-bg: #F5F6F8;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-card: #FFFFFF;
+  --color-border: #DDE1E8;
+  --color-border-subtle: #E9ECF1;
+
+  --color-text-primary: #1A2333;
+  --color-text-secondary: #566072;
+  --color-text-muted: #8993A4;
+
+  --color-accent: #0E9F6E;
+  --color-accent-hover: #0C8A5F;
+  --color-accent-soft: rgba(14, 159, 110, 0.10);
+  --color-accent-text: #0C8A5F;
+
+  --color-danger: #DC2626;
+  --color-danger-soft: rgba(220, 38, 38, 0.08);
+  --color-warning: #D97706;
+  --color-warning-soft: rgba(217, 119, 6, 0.10);
+  --color-info: #2563EB;
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 16px rgba(16, 24, 40, 0.10);
+  --shadow-glow: 0 0 24px rgba(14, 159, 110, 0.10);
+}

@@ -2,7 +2,7 @@
 <?php $this->section('content'); ?>
 <h1>Comments</h1>
 
-<div class="flex gap-2" style="margin-bottom: var(--space-4);">
+<div class="table-filter-tabs">
     <a href="/admin/comments?status=pending" class="btn <?= $status === 'pending' ? 'btn-primary' : 'btn-secondary' ?> btn-sm">Cho duyet</a>
     <a href="/admin/comments?status=approved" class="btn <?= $status === 'approved' ? 'btn-primary' : 'btn-secondary' ?> btn-sm">Da duyet</a>
     <a href="/admin/comments?status=rejected" class="btn <?= $status === 'rejected' ? 'btn-primary' : 'btn-secondary' ?> btn-sm">Da tu choi</a>
@@ -33,7 +33,7 @@
         <button type="submit" class="btn btn-secondary btn-sm">Tu choi</button>
     </form>
     <?php endif; ?>
-    <form method="POST" action="/admin/comments/<?= $this->e((string) $comment['id']) ?>/delete" style="display:inline;" onsubmit="return confirm('Xoa binh luan nay?');">
+    <form method="POST" action="/admin/comments/<?= $this->e((string) $comment['id']) ?>/delete" style="display:inline;" data-confirm="Xoa binh luan nay?">
         <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
         <button type="submit" class="btn btn-danger btn-sm">Xoa</button>
     </form>

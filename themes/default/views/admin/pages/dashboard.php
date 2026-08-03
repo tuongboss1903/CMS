@@ -86,6 +86,51 @@
     </div>
 </div>
 
+<?php if (isset($recent_audit_logs) || isset($system_health)): ?>
+<!--
+    Phase 18 (CMS-055): widget nay CHI render khi Controller da truyen du lieu qua
+    $recent_audit_logs/$system_health - DashboardController hien CHUA truyen 2 bien nay (HARD
+    CONSTRAINT Phase 18: khong sua Controller nao). Day la scaffolding san sang, can 1 thay doi
+    THUAN BO SUNG (khong doi HTTP status/redirect) o DashboardController::handle() de co du lieu
+    that - da bao lai Owner, chua tu y lam trong Phase nay.
+-->
+<div class="dashboard-widget-grid" style="margin-top: var(--space-5);">
+    <?php if (isset($recent_audit_logs)): ?>
+    <div class="card">
+        <h2 style="font-size:16px; margin-top:0;">Audit Log gan day</h2>
+        <div class="table-wrap">
+        <table class="data-table">
+        <thead><tr><th>Su kien</th><th>Thoi gian</th></tr></thead>
+        <tbody>
+        <?php foreach ($recent_audit_logs as $log): ?>
+        <tr>
+            <td><span class="badge badge-neutral"><?= $this->e((string) $log['event']) ?></span></td>
+            <td class="text-muted"><?= $this->e((string) $log['created_at']) ?></td>
+        </tr>
+        <?php endforeach; ?>
+        <?php if (empty($recent_audit_logs)): ?>
+        <tr><td colspan="2" class="empty-state">Chua co hoat dong nao.</td></tr>
+        <?php endif; ?>
+        </tbody>
+        </table>
+        </div>
+        <p style="margin-top: var(--space-3); margin-bottom:0;"><a href="/admin/audit-logs">Xem toan bo Audit Log &rarr;</a></p>
+    </div>
+    <?php endif; ?>
+    <?php if (isset($system_health)): ?>
+    <div class="card">
+        <h2 style="font-size:16px; margin-top:0;">System Status</h2>
+        <?php foreach ($system_health as $item): ?>
+        <div class="health-item">
+            <span><span class="health-dot <?= ($item['ok'] ?? true) ? 'is-ok' : 'is-warn' ?>"></span><?= $this->e((string) $item['label']) ?></span>
+            <span class="text-muted"><?= $this->e((string) $item['value']) ?></span>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
+
 <div class="card" style="margin-top: var(--space-5);">
     <h2 style="font-size:16px; margin-top:0;">Hoat dong gan day</h2>
     <div class="table-wrap">
