@@ -1,6 +1,6 @@
 # CMS Đa Website — Multi-Tenant CMS Platform
 
-**Phiên bản**: `v0.1.7` (Production Ready) | **Kiểm thử**: 772/772 PHPUnit tests (100% PASS)
+**Phiên bản**: `v0.2.0` (Production Ready) | **Kiểm thử**: 788/788 PHPUnit tests (100% PASS)
 
 CMS đa website (multi-tenant, SaaS-ready) — core tự viết hoàn toàn bằng PHP 8.2/8.3, **không dùng framework nền** (Laravel/Symfony...). Mỗi website khách hàng (tenant) vận hành độc lập trên cùng 1 hạ tầng, cách ly dữ liệu tuyệt đối qua domain riêng.
 
@@ -16,6 +16,7 @@ CMS đa website (multi-tenant, SaaS-ready) — core tự viết hoàn toàn bằ
 - **Notification & Email**: báo Admin khi có comment mới (in-app + email), báo khách khi comment được duyệt/từ chối — Mailer tự viết (driver `log`/`smtp`, không thư viện ngoài), silent-fail tuyệt đối.
 - **Audit Log**: truy vết hành động Admin (đăng nhập, CRUD Page, duyệt Comment, đổi Settings) kèm dữ liệu trước/sau thay đổi, IP, thời gian — xem/lọc tại `/admin/audit-logs`.
 - **System Settings**: cấu hình key-value linh hoạt theo nhóm (`/admin/system-settings`), có cache và mã hoá cho giá trị nhạy cảm (SMTP password, API key...).
+- **Admin UI & Theme Engine**: giao diện quản trị chuẩn hoá toàn bộ qua 5 Partial View dùng chung (Breadcrumb/Pagination/Table Filter/Flash Message/Confirm Modal), Dark/Light Theme (`[data-theme]`, chuyển đổi tức thời, nhớ lựa chọn qua `localStorage`, không FOUC), Modal xác nhận thay `window.confirm()` thô, Roles/Permissions dạng bảng Matrix, Media Manager Grid/List — toàn bộ thuần Vanilla CSS/JS, **không Tailwind/AlpineJS/npm build step**.
 - **CI/CD**: GitHub Actions, PHP 8.2 + 8.3.
 
 ## Bắt đầu nhanh
@@ -24,7 +25,7 @@ Xem hướng dẫn đầy đủ tại **[SETUP_LOCAL.md](SETUP_LOCAL.md)** (demo
 
 ```bash
 composer install
-vendor/bin/phpunit    # xac nhan 772/772 PASS truoc khi bat dau
+vendor/bin/phpunit    # xac nhan 788/788 PASS truoc khi bat dau
 ```
 
 ## Tài liệu dự án
@@ -47,7 +48,7 @@ vendor/bin/phpunit    # xac nhan 772/772 PASS truoc khi bat dau
 vendor/bin/phpunit
 ```
 
-Toàn bộ 772 test chạy trên SQLite in-memory (không phụ thuộc MySQL thật) — 4 test skip có điều kiện khi môi trường không có `ext-redis`.
+Toàn bộ 788 test chạy trên SQLite in-memory (không phụ thuộc MySQL thật) — 4 test skip có điều kiện khi môi trường không có `ext-redis`.
 
 ## Giấy phép
 

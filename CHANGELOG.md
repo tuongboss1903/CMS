@@ -6,6 +6,33 @@
 
 Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 
+## [0.2.0] — 2026-08-16 — CMS-055: UI/UX Admin Dashboard Overhaul & Theme Engine Enhancement (PHASE 18)
+
+### Added
+
+- **Dark/Light Theme Engine** — `public/assets/css/variables.css` bổ sung block `:root[data-theme="light"]` (light-equivalent cho toàn bộ token màu hiện có: `--color-bg`, `--color-text-primary`, `--color-accent`...), giữ nguyên `:root` mặc định (Tech Green/Dark) không đổi 1 dòng nào. `public/assets/js/app.js` toggle qua `[data-theme-toggle]` (nút mới ở `topbar.php`), lưu lựa chọn vào `localStorage` (`cms-theme`), gán `[data-theme]` lên `<html>`. Script inline chống FOUC (Flash of Unstyled/wrong-theme Content) trong `<head>` của `main.php` — đọc `localStorage` và gán `data-theme` **trước khi** `app.js` (cuối `<body>`) tải xong.
+- **5 Partial View dùng chung mới** (`themes/default/views/admin/partials/`): `breadcrumb.php`, `pagination.php`, `table_filter.php`, `flash_messages.php`, `confirm_modal.php` — mỗi partial tự `return;` sớm khi rỗng (an toàn tuyệt đối khi chưa có dữ liệu). Include vào `main.php` (`flash_messages`/`breadcrumb`/`confirm_modal` xuất hiện trên MỌI trang Admin), dùng lại tường minh ở `audit_logs/list.php` (`table_filter` + `pagination`).
+- **Modal Xác nhận dùng chung** (`#confirm-modal`) thay `window.confirm()` thô — tái sử dụng cơ chế `.modal-overlay`/`[data-modal-open]`/`[data-modal-close]` đã có sẵn từ Media Upload Modal (Phase 7), không tạo cơ chế modal mới. Mọi `form[data-confirm="..."]` hiện có (Media/Comment/AuditLog/SystemSettings) tự động dùng modal mới, không cần sửa từng view.
+- **Roles/Permissions — Checkbox/Status Matrix**: `roles/permissions.php` viết lại thành 1 bảng thống nhất (gộp `assigned`/`unassigned`, sort theo tên quyền), giữ nguyên hành vi System Role không render `<form>` và endpoint `POST /admin/roles/{id}/permissions` không đổi.
+- **Media Manager — Grid/List Dual View**: `media/list.php` thêm toggle Grid/List thuần CSS (`.is-hidden`) + JS (`[data-view-toggle]`), tái dùng nguyên `$media` đã có, không sửa Controller.
+- **Dashboard — Widget khung chờ** (Recent Audit Logs, System Health): dựng UI bọc `isset($recent_audit_logs)`/`isset($system_health)`, hiện chưa render gì (Controller `DashboardController` chưa cấp dữ liệu, xem mục Ghi chú bên dưới) — sẵn sàng bật ngay khi có 1 thay đổi Controller bổ sung thuần additive.
+- 24 test mới: `tests/Core/ViewPartialTest.php` (14), 2 test bổ sung trong `tests/Core/AdminUiFoundationTest.php` (theme-toggle + confirm-modal trên layout admin thật đã đăng nhập) — cộng thêm số assertion tăng ở 2 test suite trên tổng cộng 24 test/1620 assertion cho toàn bộ Phase 18 so với 772 test trước đó (kết quả thật: 788 test).
+
+### Architecture Decisions (2 Quyết định Kỹ thuật đã trình Owner duyệt trước khi code + 2 điều chỉnh tự phát hiện)
+
+1. **Vanilla CSS/JS thuần, không Tailwind/AlpineJS** — giữ đúng tiền lệ Zero External Dependency xuyên suốt 18 Phase; theming ở tầng CSS Custom Properties (token), không build step, không npm.
+2. **Matrix UI (Roles/Permissions) giữ nguyên endpoint** — chỉ đổi trình bày (1 bảng thay 2 danh sách), không đổi `action`/`method`/tên field của `<form>` đã có.
+3. **Ràng buộc cứng: không sửa Controller** — mọi tính năng cần dữ liệu Controller chưa cấp (Dashboard widget) dựng dạng khung chờ bọc `isset()`, không giả lập dữ liệu, không phá vỡ nguyên tắc "View không truy vấn Database/Session trực tiếp".
+4. **2 sửa đường dẫn thực tế trước khi viết code** — đặc tả gốc ghi `dashboard/index.php`/`media/index.php`, đường dẫn thật là `dashboard.php`/`media/list.php` (xác minh qua các lệnh `render()` thật trong `modules/Admin/*.php` trước khi tạo file, không tạo nhầm đường dẫn).
+
+### Ghi chú cần Owner quyết định (không chặn release, không phải bug)
+
+- **Dashboard Widget (Audit Log gần đây / System Health) hiện chưa hiển thị dữ liệu thật** — cần 1 thay đổi bổ sung thuần additive ở `DashboardController` (truyền thêm `$recent_audit_logs`/`$system_health` vào View) ở Phase sau nếu Owner muốn kích hoạt; UI đã sẵn sàng, không cần sửa lại View.
+
+### Verification
+
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **788 tests, 1620 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression.
+
 ## [0.1.7] — 2026-08-15 — CMS-054: System Settings & General Configurations (PHASE 17)
 
 ### Added

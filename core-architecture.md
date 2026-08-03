@@ -1052,6 +1052,24 @@ POST /admin/seo/pages/{id}
 
 **Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 772 tests, 1586 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế).
 
+### 3.54. UI/UX Admin Dashboard Overhaul & Theme Engine Enhancement — mở rộng `public/assets/css/*`, `public/assets/js/app.js`, `themes/default/views/admin/*` — v0.2.0 (PHASE 18, CMS-055)
+
+**Bối cảnh**: sau khi hoàn tất toàn bộ trụ cột Backend & Logic Core (Phase 1-17, 772 test), Phase 18 chuyển trọng tâm sang chuẩn hoá UI/UX Admin — chuẩn bị Demo trực tiếp khách hàng. **Ràng buộc cứng do Owner đặt ra và tuân thủ 100%**: không sửa bất kỳ Controller nào (bảo toàn tuyệt đối hành vi HTTP/Session/Redirect đã được test), bảo tồn class CSS cũ (`badge`, `badge-neutral`, `table`...) mà test cũ assert qua `assertStringContainsString()`, Zero External Dependency (không Tailwind/AlpineJS/npm build step — đúng tiền lệ 18 Phase liên tục), Zero-Regression (772 test cũ + test mới phải PASS 100%).
+
+**Dark/Light Theme Engine — token-level theming**: `variables.css` trước Phase 18 chỉ có 1 bảng màu (Tech Green/Dark) tại `:root` không điều kiện — "thêm Dark Mode" thực chất là **thêm Light Mode làm biến thể thay thế**, giữ Dark làm mặc định không đổi. Thêm block `:root[data-theme="light"]` override đầy đủ token hiện có (`--color-bg`, `--color-text-primary`, `--color-accent`...) — không đổi 1 dòng nào trong `:root` gốc, zero-regression thị giác cho mọi trang/test không set `[data-theme]`. `app.js` thêm IIFE đọc `localStorage('cms-theme')` gán `[data-theme]` lên `<html>` **trước** `DOMContentLoaded` (đồng bộ, chống FOUC), cộng thêm 1 script inline riêng trong `<head>` của `main.php` (do `app.js` tải ở cuối `<body>`, không kịp chạy trước khi trình duyệt vẽ frame đầu). Toggle qua `[data-theme-toggle]` (nút mới ở `topbar.php`), lưu `localStorage`.
+
+**5 Partial View dùng chung** (`themes/default/views/admin/partials/`, tên file **bắt buộc dùng `_`** — `Core\View::NAME_PATTERN` chỉ chấp nhận alphanumeric+underscore, bài học lặp lại từ Phase 15 mục 3.51): `breadcrumb.php`, `pagination.php`, `table_filter.php`, `flash_messages.php`, `confirm_modal.php`. Mỗi partial tự `return;` sớm khi không có dữ liệu — an toàn khi include vào layout dùng chung (`main.php`) mà 1 trang cụ thể không truyền biến. `flash_messages`/`breadcrumb`/`confirm_modal` include cố định trong `main.php` (mọi trang Admin đều có); `table_filter`/`pagination` include tường minh ở từng view cần (chỉ `audit_logs/list.php` — nơi Controller thật sự hỗ trợ query param lọc/phân trang; `comments/list.php` giữ nguyên tab UI bespoke, `system_settings/list.php` không thêm gì — quyết định có chủ đích: không dựng UI cho tính năng Controller chưa hỗ trợ).
+
+**Modal Xác nhận dùng chung** (`#confirm-modal`, instance DUY NHẤT trong DOM): tái sử dụng nguyên `.modal-overlay`/`.modal`/`[data-modal-open]`/`[data-modal-close]` đã tồn tại từ Media Upload Modal (Phase 7) — không tạo cơ chế modal thứ 2. `app.js` nâng cấp handler `form[data-confirm]` (đã có sẵn từ trước) từ gọi `window.confirm()` trực tiếp sang mở `#confirm-modal`, fallback về `window.confirm()` nguyên bản nếu 1 trang nào đó chưa include partial (an toàn, không bao giờ chặn submit mà không hỏi).
+
+**Roles/Permissions Matrix**: `roles/permissions.php` viết lại từ 2 danh sách (`assigned`/`unassigned`) thành 1 bảng `usort()` theo tên — **không đổi endpoint** (`POST /admin/roles/{id}/permissions`, field `_token`/`permission_id` giữ nguyên), giữ đúng hành vi System Role không render `<form>` (test `AdminRoleManagementUiTest::testAssignPermissionToSystemRoleReturns403Html` phụ thuộc điều này) — xác minh assertion thật của test cũ trước khi sửa view, không phải sau khi FAIL.
+
+**Media Manager Grid/List Dual View**: `media/list.php` thêm `.view-toggle` (Grid/List) thuần CSS `.is-hidden` + JS `[data-view-toggle]`/`[data-view-panel]`, tái dùng nguyên `$media` đã truyền sẵn — không cần đổi Controller vì dữ liệu hiển thị giống hệt, chỉ khác cách trình bày.
+
+**Dashboard Widget — "khung chờ" bọc `isset()`**: yêu cầu gốc "Recent Audit Logs Widget"/"System Health Cards" xung đột trực tiếp với Ràng buộc #1 (không sửa Controller) và nguyên tắc "View không truy vấn Database/Session" giữ từ CMS-005 — `DashboardController` hiện không truyền `$recent_audit_logs`/`$system_health`. Giải quyết bằng cách dựng markup bọc `isset($recent_audit_logs) || isset($system_health)`, hiện render rỗng (an toàn tuyệt đối), sẵn sàng bật ngay khi 1 thay đổi Controller bổ sung thuần additive được duyệt ở Phase sau — đã báo cáo rõ cho Owner, không tự ý mở rộng phạm vi Controller.
+
+**Verified**: `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — 788 tests, 1620 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế) — không regression trên 772 test trước đó.
+
 ## 4. Nguyên tắc áp dụng xuyên suốt (đã enforce qua Code Review từng task)
 
 - **Không static/global mutable state** ở bất kỳ đâu — nguyên tắc bị vi phạm 1 lần duy nhất (bản đầu `Config`) và đã sửa ngay từ CMS-002, không tái diễn.
@@ -1123,6 +1141,8 @@ POST /admin/seo/pages/{id}
 | Admin Audit Log Viewer (`modules/Admin/AuditLogController.php`) | 9 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, lọc/phân trang) |
 | Setting Manager (`Modules\Settings\SettingManager.php`) | 10 | Integration (`Database` SQLite in-memory thật, `Core\Cache` với `FileCacheDriver` thật — không mock) |
 | Admin System Settings (`modules/Admin/SystemSetting*Controller.php`) | 11 | Integration (`ModuleManager` trỏ `modules/` thật, `View` dùng `themes/default/` thật, `CacheDriver` đăng ký tường minh) |
+| View Partials (`themes/default/views/admin/partials/*.php`) | 14 | Integration (`Core\View::render()` thật, không Router/Database — render độc lập từng partial qua `themes/` thật) |
+| Admin UI Foundation — Dark Mode + Confirm Modal (`AdminUiFoundationTest.php`, bổ sung Phase 18) | 2 (bổ sung, không đổi 8 test cũ) | Integration (`ModuleManager` trỏ `modules/` thật, `Router::dispatch()` thật, Session/Auth thật) |
 
 ## 6. Quyết định còn mở (chưa chặn, cần chốt trước Phase 3)
 
