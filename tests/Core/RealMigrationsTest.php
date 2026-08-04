@@ -45,6 +45,7 @@ final class RealMigrationsTest extends TestCase
         '2026_08_17_000004_create_orders_table',
         '2026_08_17_000005_create_order_items_table',
         '2026_08_18_000001_create_payments_table',
+        '2026_08_19_000001_create_platform_admins_table',
     ];
 
     public function testMigrateCreatesAllSevenTablesInOrder(): void

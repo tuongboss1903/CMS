@@ -87,11 +87,6 @@ final class Application
 
         $moduleManager = $this->container->get(ModuleManager::class);
         $router = $this->container->get(Router::class);
-
-        $router->group(['middleware' => [StartSessionMiddleware::class, TenantResolverMiddleware::class]], function (Router $router) use ($moduleManager): void {
-            $moduleManager->boot($router, \array_keys($moduleManager->discover()));
-        });
-
         $pluginManager = $this->container->get(PluginManager::class);
         $hook = $this->container->get(Hook::class);
 
@@ -136,9 +131,40 @@ final class Application
          * qua Application::boot() that. Sua bang cach boc $hook->do(...) trong CUNG 1 group voi
          * ModuleManager::boot() o tren - Plugin Route tu gio nhan dung Session/Tenant middleware
          * giong het Module Route.
+         *
+         * SUA LOI ROUTING (phat hien qua kiem thu he thong that CHAY CHUNG Module+Plugin trong 1
+         * Router - cac test truoc gio chi dung Container/Router rieng cho tung Module/Plugin nen
+         * khong bao gio lo): Router::match() (core/Router.php) khop route THEO DUNG THU TU DANG KY,
+         * khong xep hang theo do cu the - dong nay TRUOC DAY nam SAU khoi ModuleManager::boot() nen
+         * moi route literal cua Plugin (vd GET /shop, GET /admin/products cua Ecommerce) LUON bi
+         * route wildcard cua modules/Public (GET /{slug}, GET /{locale}/{slug}, dang ky truoc do)
+         * "nuot" mat truoc khi kip khop - Plugin tra 404 100% thoi gian tren he thong that, du code/
+         * test tung Module rieng le deu dung. Fix bang cach dang ky route Plugin TRUOC ModuleManager
+         * (doi cho 2 khoi group ben duoi) - Plugin khong tu dinh nghia route wildcard nao nen khong
+         * co nguy co nguoc lai (Plugin "nuot" nham route Module).
          */
+        /*
+         * Buoc 1 (Super Admin - Site/Tenant Management): module "system_admin" phai dang ky
+         * TRUOC moi group khac va CHI qua StartSessionMiddleware (KHONG TenantResolverMiddleware) -
+         * Super Admin khong thuoc ve 1 site nao nen khong the resolve tenant theo domain nhu
+         * cac Module/Plugin con lai. Dang ky truoc de tranh bi route wildcard cua modules/Public
+         * (vd GET /{locale}/{slug}) "nuot" mat (dung y het bai hoc rut ra tu loi routing Phase 19
+         * o duoi - route literal phai dung truoc route wildcard).
+         */
+        $discoveredModuleKeys = \array_keys($moduleManager->discover());
+
+        if (\in_array('system_admin', $discoveredModuleKeys, true)) {
+            $router->group(['middleware' => [StartSessionMiddleware::class]], function (Router $router) use ($moduleManager): void {
+                $moduleManager->boot($router, ['system_admin']);
+            });
+        }
+
         $router->group(['middleware' => [StartSessionMiddleware::class, TenantResolverMiddleware::class]], function (Router $router) use ($hook): void {
             $hook->do('plugin.routes.register', $router);
+        });
+
+        $router->group(['middleware' => [StartSessionMiddleware::class, TenantResolverMiddleware::class]], function (Router $router) use ($moduleManager, $discoveredModuleKeys): void {
+            $moduleManager->boot($router, \array_values(\array_diff($discoveredModuleKeys, ['system_admin'])));
         });
 
         $router->get('/health', static fn (Request $request): Response => Response::json([
@@ -217,8 +243,19 @@ final class Application
                 $c->get(PluginActivationService::class)
             );
 
+            // Ten user dang nhap that cho Admin Topbar (thay avatar chu "A" tinh) - doc truc tiep
+            // tu Session::get('auth.user') (da co san 'name' tu AuthenticationService::attempt()),
+            // KHONG phai View tu goi Session - closure nay la noi lap rap qua Container (giong
+            // pattern extra_admin_menu_items o tren), View van chi nhan mang du lieu thuan.
+            $session = $c->get(Session::class);
+            $currentUser = $session->isStarted() ? $session->get('auth.user') : null;
+            $currentUserName = \is_array($currentUser) && !empty($currentUser['name'])
+                ? (string) $currentUser['name']
+                : null;
+
             return new View($this->basePath . '/themes', $activeTheme, $defaultTheme, [
                 'extra_admin_menu_items' => $extraMenuItems,
+                'current_user_name' => $currentUserName,
             ]);
         });
 
