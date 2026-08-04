@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Fixtures\App\Plugins\TestPlugin;
+namespace Tests\Fixtures\App\plugins\TestPlugin;
 
 use Core\Http\Request;
 use Core\Http\Response;
