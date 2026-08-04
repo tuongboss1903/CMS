@@ -4,9 +4,35 @@
 
 ## [Unreleased]
 
-Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
+### CMS-057 — CI Hardening: PHPStan + lint gate + coverage report
 
-## [0.3.0] — 2026-08-17 — CMS-056: Ecommerce MVP & Plugin Architecture (PHASE 19)
+- Thêm PHPStan level 5 (`phpstan.neon`, quét `app/core/database/modules/plugins`) và bắt buộc `php-cs-fixer fix --dry-run` trong `.github/workflows/phpunit.yml` — chặn build khi lệch PSR-12 hoặc lỗi type. Sửa 83 file lệch line-ending (LF/CRLF) và 7 lỗi PHPStan thật (thiếu `@var` cho biến nạp động trong `routes.php`/`Hooks.php`, dead-code, `@phpstan-impure` cho `View::renderTemplate()`); ignore có phạm vi hẹp 1 trường hợp placeholder có chủ đích (`RateLimitMiddleware`, Owner Decision CMS-023).
+- Bật `coverage: pcov` trong CI (trước đó `coverage: none`), chạy `phpunit --coverage-text` để theo dõi độ phủ test khi module/plugin tăng lên. Khai báo `<source>` trong `phpunit.xml` (`core`/`modules`/`plugins`) để giới hạn phạm vi đo coverage.
+
+### CMS-058 — Bổ sung CsrfMiddleware cho module JSON API
+
+- `modules/User`, `Role`, `Menu`, `Media`, `Seo` là "JSON API phẳng" nhưng Authorization xác thực hoàn toàn qua Session cookie (cùng session với `modules/Admin` đã có CSRF từ CMS-045) — không có JWT/Bearer middleware tách bạch nào như `config/auth.php` mô tả. Phòng thủ CSRF duy nhất trước đây chỉ dựa vào `SameSite=Lax`, không có token check độc lập theo Synchronizer Token Pattern (`core/Csrf.php`).
+- Bọc `CsrfMiddleware` cho toàn bộ route ghi (POST/PATCH/DELETE) của 5 module trên, dùng `group()` giống pattern `modules/Admin`/`plugins/Ecommerce`. Cập nhật 5 test tích hợp tương ứng, gửi kèm `_token` qua `Core\Csrf::token()`.
+
+### CMS-059 — Fix lỗ hổng leo thang đặc quyền khi gán System Role
+
+- `modules/User/AssignRoleController.php` và `modules/Admin/UserAssignRoleController.php` chấp nhận cả System Role (`tenant_id NULL`) khi gán role cho user, trong khi `bin/bootstrap.php` gán TOÀN BỘ 41 permission cho System Role "Admin". Bất kỳ user nào chỉ cần quyền `user.assign_role` (quyền hẹp, đổi role trong phạm vi tenant) có thể tự gán hoặc gán cho người khác System Role này, leo thang lên toàn quyền hệ thống — ID role dễ đoán/dễ dò qua `GET /roles` ("View allowed" cho System Role).
+- Thu hẹp điều kiện xác thực role từ `(tenant_id IS NULL OR tenant_id = ?)` xuống `tenant_id = ?` — chỉ cho gán Tenant Role, đồng bộ nguyên tắc System Role đã áp dụng ở `AssignPermissionController`/`EditRoleController`/`DeleteRoleController`. Thêm 2 test regression (`ModuleUserIntegrationTest::testAssignRoleRejectsSystemRole`, `AdminUserManagementUiTest::testAssignSystemRoleIsRejected`).
+
+### CMS-060 — Xác minh MIME type thật qua `finfo_file()` khi upload media
+
+- Không tin `Content-Type` client tự khai báo trong `$file['type']` (giả mạo được) — đọc lại magic byte thật qua `finfo_file()` trước khi lưu vào storage, áp dụng đồng bộ cho cả `Modules\Media\UploadMediaController` và `Modules\Admin\MediaUploadController`. Thêm header `X-Content-Type-Options: nosniff` khi serve file (`MediaServeController`/`MediaFileController`) để chặn MIME sniffing phía trình duyệt.
+
+### CMS-061 — CSRF cho module Page + sanitize HTML content
+
+- `modules/Page/routes.php` (POST/PATCH/DELETE: create/edit/delete/publish/set-homepage) thiếu `CsrfMiddleware`, khác với `modules/Admin`/`modules/Media` đã bao đầy đủ — cho phép giả mạo request tạo/sửa/xóa Page qua cross-site form submit từ session admin đang đăng nhập. Bổ sung group middleware đúng pattern đã có.
+- Thêm `Core\Security\HtmlSanitizer` (tự viết bằng `DOMDocument`, không thêm dependency ngoài) — whitelist tag/attribute cho Page content dạng `content['html']`, lớp phòng thủ thứ 2 ở tầng lưu dữ liệu (phòng trường hợp sau này cấp quyền `page.create`/`page.update` cho role thấp hơn Admin). Tích hợp vào `CreatePageAction`/`UpdatePageAction` (dùng chung cho cả JSON API và Admin HTML).
+
+### Verification
+
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **869 tests, 1813 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression trên 825 test của `v0.3.0`.
+
+## [0.3.0] — 2026-08-17 — CMS-056: Ecommerce MVP & Plugin Architecture (PHASE 19) + Payment Gateway Integration (PHASE 20)
 
 ### Added
 
@@ -18,6 +44,9 @@ Chưa có mục nào — chờ Roadmap Review xác định CMS tiếp theo.
 - **9 Controller Ecommerce** (Admin: Product CRUD ×5, Order List/Show/UpdateStatus ×3; Public: Shop ×2, Cart ×2, Checkout ×2) + **Admin Plugin Toggle UI** (`modules/Admin/{PluginList,PluginToggle}Controller.php`, `/admin/plugins`) — bật/tắt Plugin theo tenant.
 - 8 permission mới: `product.{view,create,update,delete}`, `order.{view,update_status}`, `plugin.manage`.
 - 6 file test mới, 37 test: `PluginActivationServiceTest` (8), `CartServiceTest` (7), `EcommerceProductManagementTest` (8), `EcommerceCheckoutTest` (4), `EcommerceOrderManagementTest` (6), `ApplicationPluginActivationIntegrationTest` (4).
+- **Payment Gateway Integration (PHASE 20, triển khai chung commit với PHASE 19)**: `Plugins\Ecommerce\Services\Payment\PaymentManager` + `PaymentDriverInterface` (Driver Pattern, tiền lệ `Core\Mail\MailerDriver`/`Core\Cache\CacheDriver`) — 3 driver `CodPaymentDriver` (mặc định), `MomoPaymentDriver`, `VnPayPaymentDriver` (tự viết HMAC/HTTP thuần, Zero-dependency). Bảng `payments` mới (`tenant_id`, `order_id`, `driver`, `status`, `amount`, `transaction_ref`, `raw_payload`) tách khỏi `orders` — 1 order có thể có nhiều lượt thử thanh toán.
+- `Plugins\Ecommerce\Controllers\Public\PaymentWebhookController` (Public, không CSRF — xác thực bằng chữ ký số HMAC riêng từng cổng) + `PaymentReturnController` — cập nhật idempotent theo `transaction_ref` UNIQUE, tránh xử lý trùng khi cổng gửi lại webhook. Order Notification qua Hook (`order.created`/`order.payment_completed`/`order.shipped`) tái dùng `Core\Mail\Mailer`/`modules/Admin/NotificationService.php` đã có từ Phase 15, không viết lại hạ tầng email/notification.
+- 6 file test mới bổ sung cho Payment: `PaymentManagerTest`, `MomoPaymentDriverTest`, `VnPayPaymentDriverTest`, `PaymentWebhookControllerTest`, `OrderNotificationHookTest`, cùng mở rộng `EcommerceOrderManagementTest`/`EcommerceCheckoutTest`.
 
 ### Architecture Decisions (1 điều chỉnh quan trọng so với đặc tả gốc — phát hiện trước khi code)
 

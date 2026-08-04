@@ -596,13 +596,22 @@ Từ PHASE 4 trở đi (Global Settings, Public Engine Polish, Release Prep, UI/
   - [x] 1 điều chỉnh kiến trúc quan trọng tự phát hiện trước khi code (khác đặc tả gốc Owner yêu cầu lọc `enabledKeys` theo tenant ngay tại `Application::boot()`): `boot()` chạy TRƯỚC khi tenant được xác định (`TenantResolverMiddleware` chỉ chạy lúc `dispatch()`) — chuyển việc enforce bật/tắt theo tenant sang `EcommercePluginGuardMiddleware` ở dispatch-time, vẫn đóng đúng Technical Debt #9.
   - [x] Root Cause Analysis từ `composer dump-autoload -o` Owner chạy thật (không phải PHPUnit FAIL — Windows NTFS case-insensitive che giấu lỗi qua PHPUnit thường): thư mục Plugin lệch casing PSR-4 (`plugins/ecommerce/` vs namespace `Plugins\Ecommerce\...`) — đổi tên thư mục thành `plugins/Ecommerce/`, giữ nguyên mapping tổng quát `composer.json` (không mapping riêng từng Plugin, giữ giá trị "cắm vào không cần sửa Core").
 
-## Phase 20 — Payment Gateway Integration & Order Notification (định hướng, chưa bắt đầu code)
+## Phase 20 — Payment Gateway Integration & Order Notification
 
-> Xem Architecture Analysis đầy đủ trong báo cáo bàn giao Phase 19 (chưa có mã CMS chính thức — chờ Owner duyệt trước khi đánh số CMS-057 và triển khai).
+> Triển khai chung 1 commit (`fa7c187`) với CMS-056/Phase 19 thay vì tách riêng như dự kiến ban đầu — không phát sinh mã CMS riêng, ghi nhận lại đây cho khớp code thật. Chi tiết: `CHANGELOG.md` mục `[0.3.0]`.
 
-- [ ] `PaymentManager` + `PaymentDriverInterface` (Driver Pattern, tiền lệ `Core\Mail\MailerDriver`/`Core\Cache\CacheDriver`) — driver `Cod` (mặc định, đã có từ Phase 19), `Momo`, `VnPay`, `BankingQr` (tự viết HMAC/HTTP thuần, Zero-dependency).
-- [ ] Bảng `payments` mới (`tenant_id`, `order_id`, `driver`, `status`, `amount`, `transaction_ref`, `raw_payload`) — tách khỏi `orders` (1 order có thể có nhiều lượt thử thanh toán).
-- [ ] Webhook/IPN Controller (Public, không CSRF — xác thực bằng chữ ký số HMAC của từng cổng) + idempotent update (khoá theo `transaction_ref` UNIQUE, tránh cập nhật trùng khi cổng gửi lại webhook).
-- [ ] Order Notification qua Hook (`order.created`/`order.payment_completed`/`order.shipped`) — tái dùng `Core\Mail\Mailer` + `modules/Admin/NotificationService.php` đã có từ Phase 15, không viết lại hạ tầng email/notification.
-- [ ] Payment Gateway triển khai dưới dạng mở rộng của Ecommerce Plugin hiện có (không tạo Plugin thứ 2) — tận dụng `EcommercePluginGuardMiddleware`/`site_plugins` đã có.
-- [ ] Zero-Regression: giữ nguyên 825 test hiện có, dự kiến bổ sung ~20-25 test mới (Payment Driver, Webhook Signature Verification, Notification Hook).
+- [x] `PaymentManager` + `PaymentDriverInterface` (Driver Pattern, tiền lệ `Core\Mail\MailerDriver`/`Core\Cache\CacheDriver`) — driver `CodPaymentDriver` (mặc định), `MomoPaymentDriver`, `VnPayPaymentDriver` (tự viết HMAC/HTTP thuần, Zero-dependency). Không làm `BankingQr` (ngoài phạm vi thực tế đã triển khai).
+- [x] Bảng `payments` mới (`tenant_id`, `order_id`, `driver`, `status`, `amount`, `transaction_ref`, `raw_payload`) — tách khỏi `orders` (1 order có thể có nhiều lượt thử thanh toán).
+- [x] `PaymentWebhookController`/`PaymentReturnController` (Public, không CSRF — xác thực bằng chữ ký số HMAC của từng cổng) + idempotent update (khoá theo `transaction_ref` UNIQUE, tránh cập nhật trùng khi cổng gửi lại webhook).
+- [x] Order Notification qua Hook (`order.created`/`order.payment_completed`/`order.shipped`) — tái dùng `Core\Mail\Mailer` + `modules/Admin/NotificationService.php` đã có từ Phase 15, không viết lại hạ tầng email/notification.
+- [x] Payment Gateway triển khai dưới dạng mở rộng của Ecommerce Plugin hiện có (không tạo Plugin thứ 2) — tận dụng `EcommercePluginGuardMiddleware`/`site_plugins` đã có.
+- [x] **Verified** — cùng lượt `vendor/bin/phpunit` với CMS-056: 825 tests, 1720 assertions, 0 Errors, 0 Failures, 4 Skipped (Redis, đúng thiết kế) → **Phase 20 COMPLETED cùng tag `v0.3.0`**
+
+## CI Hardening & Security Fixes (sau v0.3.0, chưa gắn Phase/version chính thức — xem `CHANGELOG.md` mục `[Unreleased]`)
+
+- [x] **CMS-057** — CI Hardening: PHPStan level 5 + `php-cs-fixer --dry-run` (lint gate) + `coverage: pcov` (`phpunit --coverage-text`) trong `.github/workflows/phpunit.yml`. Sửa 83 file lệch line-ending, 7 lỗi PHPStan thật.
+- [x] **CMS-058** — Bổ sung `CsrfMiddleware` cho 5 module JSON API còn thiếu (`User`, `Role`, `Menu`, `Media`, `Seo`) — trước đó chỉ dựa vào `SameSite=Lax`, không có Synchronizer Token Pattern độc lập như `core/Csrf.php` đã thiết kế.
+- [x] **CMS-059** — Fix lỗ hổng leo thang đặc quyền: `AssignRoleController` (cả `modules/User` và `modules/Admin`) chấp nhận gán System Role (`tenant_id NULL`, có toàn bộ 41 permission) cho user chỉ có quyền hẹp `user.assign_role`. Thu hẹp điều kiện xác thực role về đúng `tenant_id = ?`.
+- [x] **CMS-060** — Xác minh MIME type thật qua `finfo_file()` khi upload media (không tin `$file['type']` client tự khai) — áp dụng cho `Modules\Media\UploadMediaController` và `Modules\Admin\MediaUploadController`; thêm header `X-Content-Type-Options: nosniff` khi serve file.
+- [x] **CMS-061** — Bổ sung `CsrfMiddleware` cho `modules/Page/routes.php` (bị bỏ sót ở CMS-058) + `Core\Security\HtmlSanitizer` (tự viết, whitelist tag/attribute) sanitize `content['html']` trước khi lưu DB — lớp phòng thủ XSS thứ 2 cho Page content.
+- [x] **Verified** — `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — **869 tests, 1813 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế), không regression trên 825 test của `v0.3.0`.
