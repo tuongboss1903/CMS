@@ -9,4 +9,11 @@
             <directory>tests</directory>
         </testsuite>
     </testsuites>
+    <source>
+        <include>
+            <directory>core</directory>
+            <directory>modules</directory>
+            <directory>plugins</directory>
+        </include>
+    </source>
 </phpunit>
