@@ -28,9 +28,72 @@
 - `modules/Page/routes.php` (POST/PATCH/DELETE: create/edit/delete/publish/set-homepage) thiếu `CsrfMiddleware`, khác với `modules/Admin`/`modules/Media` đã bao đầy đủ — cho phép giả mạo request tạo/sửa/xóa Page qua cross-site form submit từ session admin đang đăng nhập. Bổ sung group middleware đúng pattern đã có.
 - Thêm `Core\Security\HtmlSanitizer` (tự viết bằng `DOMDocument`, không thêm dependency ngoài) — whitelist tag/attribute cho Page content dạng `content['html']`, lớp phòng thủ thứ 2 ở tầng lưu dữ liệu (phòng trường hợp sau này cấp quyền `page.create`/`page.update` cho role thấp hơn Admin). Tích hợp vào `CreatePageAction`/`UpdatePageAction` (dùng chung cho cả JSON API và Admin HTML).
 
+### Polish (không đánh số CMS — filter list + UX Cart/Checkout/Shop)
+
+- Tìm kiếm/lọc trên list Media (theo tên file/loại), Page (theo tiêu đề/slug/trạng thái), User (theo tên/email/trạng thái) — tái sử dụng partial `admin.partials.table_filter` đã có sẵn. Flash message tự động đóng (nút x hoặc tự động sau 5s với `alert-success`), nút submit hiện trạng thái loading để chặn double-submit. `AuthenticationService` lưu thêm `name` vào Session để hiện tên user đăng nhập thật ở Topbar (trước đó là avatar chữ "A" tĩnh). Cải thiện UX Cart/Checkout/Shop (quantity stepper, layout checkout/payment_return/success).
+
+### CMS-062 — Super Admin: Site/Tenant Management (PHASE 21)
+
+- Module `SystemAdmin` mới (namespace `Modules\SystemAdmin`), tách hoàn toàn khỏi `modules/Admin` (Site-scoped) — đóng Technical Debt ghi nhận từ CMS-030 ("cơ chế Super Admin xuyên-tenant chưa tồn tại ở bất kỳ đâu, `config/tenants.php` chỉ khai báo `route_prefix: /system-admin` dự kiến, chưa có Route/Controller nào dùng đến").
+- Identity riêng: bảng `platform_admins` mới (KHÔNG dùng chung `users`/`roles`/`user_site_roles` — bảng đó thiết kế cho RBAC theo site, `roles.tenant_id NULL` đã mang nghĩa "role mặc định dùng lại cho mọi site", khác hẳn khái niệm "Super Admin toàn hệ thống"). `core/SystemAdminAuth.php`/`core/SystemAdminAuthenticationService.php` (ban sao có chủ đích của `Core\Auth`/`AuthenticationService`, session namespace `system_admin.*` riêng — không bao giờ lẫn với `auth.*` của Site Admin/User thường trên cùng trình duyệt).
+- `core/Application.php::boot()`: module `system_admin` đăng ký group riêng (chỉ `StartSessionMiddleware`, KHÔNG `TenantResolverMiddleware` — Super Admin không thuộc về 1 site nào để resolve theo domain), đăng ký TRƯỚC mọi group khác (tránh route wildcard `Public` module — vd `GET /{locale}/{slug}` — nuốt mất route literal `/system-admin/...`, đúng bài học rút ra từ lỗi routing Phase 19).
+- CRUD Site tại `/system-admin/sites` (List/Create/Edit/Update/Suspend/Activate, quản lý domain phụ Add/Delete) — thay thế `bin/bootstrap.php` (CLI, chỉ chạy được 1 lần) cho site thứ 2 trở đi. `bin/bootstrap_system_admin.php` (bootstrap Super Admin đầu tiên, độc lập với `bin/bootstrap.php`).
+- 9 test mới: `tests/Core/SystemAdminSiteManagementUiTest.php`.
+
+### CMS-063 — Super Admin: Module/Plugin/Theme Catalog (PHASE 21)
+
+- `GET /system-admin/modules` — catalog CHỈ ĐỌC (Module luôn được `ModuleManager::boot()` cho MỌI tenant theo đúng kiến trúc, không toggle được theo site — khác hẳn Plugin).
+- `GET /system-admin/themes` — catalog Theme (`core/ThemeManager` đăng ký mới vào Container, mirror `ModuleManager`/`PluginManager`), dùng làm nguồn chọn ở form Sửa Site.
+- `GET/POST /system-admin/sites/{id}/plugins(/{key}/toggle)` — Super Admin quản lý plugin cho TỪNG site từ xa, tái dùng nguyên `core/PluginActivationService` với site id truyền tường minh qua route param (không cần `TenantManager`/đăng nhập vào domain của site đó).
+- Đóng 1 gap tiềm ẩn từ CMS-062: `SiteUpdateController::theme_active` trước đó nhận text tự do không validate (rủi ro `ViewNotFoundException` thật nếu Super Admin gõ sai) — giờ validate qua `ThemeManager::discover()` thật.
+- 7 test mới bổ sung vào `SystemAdminSiteManagementUiTest.php`.
+
+### CMS-064 — Super Admin: Dashboard tổng & Audit Log xuyên-tenant (PHASE 21)
+
+- `GET /system-admin/dashboard` — thống kê xuyên TẤT CẢ site (tổng site theo trạng thái, tổng user toàn hệ thống, tổng Super Admin) + hoạt động gần đây UNION `audit_logs` (Site Admin/User trên mọi site) và `platform_audit_logs` (hành động Super Admin).
+- `GET /system-admin/audit-logs` — xem `audit_logs` của TẤT CẢ site (lọc site/event/ngày) — ngoại lệ DUY NHẤT được phép đọc không lọc theo `tenant_id`, đóng đúng Technical Debt ghi trong `modules/Admin/AuditLogController.php` ("cách ly tenant tuyệt đối, không ngoại lệ SuperAdmin").
+- `GET /system-admin/platform-audit-logs` — nhật ký hành động CỦA CHÍNH Super Admin. `core/Security/PlatformAuditLogger.php` mới (tách riêng khỏi `AuditLogger` vì `audit_logs.user_id` gắn FK vào bảng `users`, không thể lưu `platform_admin_id` vào đó) + bảng `platform_audit_logs` mới — nối vào toàn bộ Controller ghi của `SystemAdmin` (login/logout, site CRUD/suspend/activate, domain add/delete, plugin toggle).
+- Login thành công redirect về `/system-admin/dashboard` (trước đó là `/system-admin/sites`).
+- 5 test mới bổ sung vào `SystemAdminSiteManagementUiTest.php`.
+
+### CMS-065 — Super Admin: Subscription/Gói dịch vụ (PHASE 21)
+
+- Bảng `plans` mới (`key`/`name`/`price_vnd`/`billing_cycle`/`max_users`/`max_storage_mb`/`max_products`/`is_active`) + CRUD Super Admin tại `/system-admin/plans` — ẩn/hiện (`is_active`) thay vì xoá cứng, tránh mồ côi `plan_id` của site đang dùng gói đó.
+- Gán gói cho site ngay trong form Sửa Site đã có (thêm select `plan_id`, validate tồn tại — cùng pattern `theme_active` ở CMS-063).
+- **Enforcement thật** (không chỉ là nhãn hiển thị): `max_storage_mb` chặn tại `Modules\Admin\MediaUploadController` (so với `sites.storage_used_bytes` trước khi cho phép upload), `max_users` chặn tại `Modules\Admin\UserCreateController` (so với số user hiện có của site) — cả 2 bắt `Throwable` khi bảng `plans` chưa tồn tại (fixture test cũ chưa migrate thêm, cùng nguyên tắc try/catch fallback đã dùng ở `DashboardController::fetchAnalyticsSummary()`), đảm bảo zero-regression cho site không gán gói (`plan_id NULL` — mặc định của mọi site hiện có, không giới hạn).
+- 6 test mới: `tests/Core/PlanQuotaEnforcementTest.php` (tách riêng khỏi `AdminMediaManagementUiTest.php`/`AdminUserManagementUiTest.php` để không lẫn vào 1 mạch thay đổi khác đang dở); 5 test mới bổ sung vào `SystemAdminSiteManagementUiTest.php`.
+
+### CMS-066 — Site Admin: Notification UI (PHASE 21)
+
+- Đóng gap `modules/Admin/NotificationService.php` (CMS-052) — đã có logic (`notifyAdmins()`/`markAsRead()`/`unreadCount()`) từ Phase 15 nhưng chưa từng có Controller/Route/View nào dùng đến.
+- `GET /admin/notifications` — danh sách thông báo CỦA CHÍNH user đăng nhập (lọc thêm `user_id` ngoài `tenant_id` — khác `AuditLogController` xem toàn tenant). `POST /admin/notifications/{id}/read` — kiểm tra sở hữu (tenant + user) trước khi gọi `markAsRead()` (hàm đó chỉ lọc theo `tenant_id`, không lọc `user_id` — tránh 1 user đánh dấu đọc hộ thông báo người khác cùng tenant). `POST /admin/notifications/read-all`.
+- Badge số thông báo chưa đọc trong `sidebar.php`: thêm `unread_notifications_count` vào View global data (`core/Application.php`), tính 1 lần/request cùng pattern với `current_user_name` đã có ở CMS-055 — truy vấn thẳng (không qua `NotificationService`) để giữ Core không phụ thuộc Module.
+- 8 test mới: `tests/Core/AdminNotificationUiTest.php`.
+
+### CMS-067 — UI/UX: Admin/System Admin sang Tailwind CSS (PHASE 21)
+
+- Thêm build pipeline Tailwind CSS (`package.json`/`tailwind.config.js`/`postcss` — lần đầu tiên dự án có toolchain Node/npm, CHỈ phục vụ build CSS, không dùng làm framework backend, giữ đúng nguyên tắc "PHP thuần, không framework nền" của `CLAUDE.md`).
+- Port toàn bộ `base.css`/`components.css`/`admin.css` cũ (556 dòng, trước đó dùng CHUNG với Frontend qua 4 file `<link>` riêng) vào `resources/admin/tailwind.css` (`@layer base`/`@layer components`) — **GIỮ NGUYÊN 100% tên class/selector đã có** trong `themes/default/views/admin|system_admin/**` để không phá vỡ markup/test hiện có (nhiều test PHPUnit assert nguyên văn chuỗi class, vd `"badge badge-neutral"`).
+- Màu/spacing/radius/shadow vẫn trỏ qua CSS Custom Property trong `resources/shared/tokens.css` (== `variables.css` cũ) — cơ chế Light/Dark theme toggle (`public/assets/js/app.js` ghi `[data-theme]` lên `<html>`) tiếp tục hoạt động không đổi, không sửa JS. `tailwind.config.js` dùng `darkMode: ['selector', '[data-theme="dark"]']` để khớp đúng attribute đã có (thay vì strategy `class` mặc định của Tailwind).
+- 3 layout (`admin.layouts.main`, `admin.layouts.auth`, `system_admin.layouts.main`) giờ chỉ `<link>` 1 file `admin.css` đã biên dịch (`npm run build:admin`) thay vì 4 file rời. Public/Frontend theme giữ nguyên `variables.css`/`base.css`/`components.css`/`public.css` cũ (chuyển sang Sass ở CMS-068).
+- Zero-regression: không sửa bất kỳ file `.php` Controller/logic nào ngoài 3 dòng `<link>` trong layout.
+
+### CMS-068 — UI/UX: Frontend theme sang Sass/SCSS (PHASE 21)
+
+- `resources/frontend/scss/` (`_variables.scss`, `_mixins.scss` — `respond()`/`panel`/`hover-lift`/`focus-ring`, `_tokens.scss` == `resources/shared/tokens.css`, `_base.scss`, `components/*.scss`, `pages/*.scss`) dùng SCSS nesting (`&:hover`, `&::before`) + mixin thay CSS phẳng lặp lại trước đó.
+- **Quyết định quan trọng**: GIỮ NGUYÊN 100% tên class hiện có (`.hero`/`.feature-card`/`.cta-footer`/`.showcase-block`/...), KHÔNG đổi sang BEM như dự kiến ban đầu trong roadmap UI/UX — phát hiện qua `tests/Core/PublicLandingPageTest.php::seedLandingPage()` rằng các class này là "hợp đồng nội dung" thật: Page Builder (`themes/default/views/pages/default.php`) sinh HTML dùng đúng class này, VÀ nội dung đó đã được lưu thật trong CSDL (cột `pages.content`) — đổi tên sẽ làm mọi trang đã tạo trước đó (thật hoặc seed) mất style mà không có cách migrate ngược. Cùng nguyên tắc "giữ class, nâng cấp tooling bên dưới" đã áp dụng cho Admin ở CMS-067.
+- Bổ sung `.field-error` (checkout/index.php đã dùng class này từ trước nhưng `components.css` cũ chưa từng định nghĩa — đóng gap nhỏ luôn vì đang port cùng khu vực).
+- Xoá `public/assets/css/variables.css`/`base.css`/`components.css` cũ (không còn nơi nào tham chiếu — Admin dùng `admin.css` biên dịch riêng từ CMS-067, Frontend giờ dùng `public.css` biên dịch từ Sass). Layout `layouts/main.php` giờ chỉ `<link>` 1 file `public.css`.
+- Zero-regression: không sửa Controller nào, chỉ 1 dòng `<link>` trong layout.
+
+### Fix — Tên sản phẩm bị wrap hẹp trên trang Cart/Checkout (sau khi review UI thật trên browser)
+
+- Root cause: `.page-content .container` mặc định `max-width: 760px` (thiết kế cho trang văn bản thông thường như `pages/default.php`), nhưng Cart/Checkout tái sử dụng CÙNG wrapper `.page-content > .container` nên bị bó hẹp theo — `.cart-item-row` còn lại quá ít không gian cho tên sản phẩm (visual 56px cố định + giá tiền `nowrap` + nút Xoá đều chiếm trước).
+- Mở rộng RIÊNG cho trang có `.commerce-layout` qua `:has()` (tiền lệ đã dùng ở `.payment-method-option` cùng file) — `.page-content:has(.commerce-layout) .container { max-width: var(--container-max) }` — không ảnh hưởng `.container` của các trang `page-content` khác (404/default/search).
+
 ### Verification
 
-`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **869 tests, 1813 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression trên 825 test của `v0.3.0`.
+`vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **912 tests, 1931 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression trên 869 test trước Phase 21. Đã kiểm tra thật qua Chrome (Claude in Chrome) trên toàn bộ Public/Admin/System Admin/Shop/Cart/Checkout, cả 2 theme Light/Dark, không phát hiện lỗi UI nào ngoài mục Fix ở trên (đã sửa).
 
 ## [0.3.0] — 2026-08-17 — CMS-056: Ecommerce MVP & Plugin Architecture (PHASE 19) + Payment Gateway Integration (PHASE 20)
 
