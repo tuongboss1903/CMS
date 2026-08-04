@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 /** @var \Core\Router $router */
 $router->get('/system-admin/login', [\Modules\SystemAdmin\ShowLoginController::class, 'handle']);
+$router->get('/system-admin/dashboard', [\Modules\SystemAdmin\DashboardController::class, 'handle']);
+$router->get('/system-admin/audit-logs', [\Modules\SystemAdmin\AuditLogController::class, 'handle']);
+$router->get('/system-admin/platform-audit-logs', [\Modules\SystemAdmin\PlatformAuditLogController::class, 'handle']);
 $router->get('/system-admin/sites', [\Modules\SystemAdmin\SiteListController::class, 'handle']);
 $router->get('/system-admin/sites/create', [\Modules\SystemAdmin\SiteShowCreateController::class, 'handle']);
 $router->get('/system-admin/sites/{id}/edit', [\Modules\SystemAdmin\SiteShowEditController::class, 'handle']);

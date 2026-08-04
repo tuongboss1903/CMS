@@ -7,6 +7,7 @@ namespace Modules\SystemAdmin;
 use Core\Csrf;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\Security\PlatformAuditLogger;
 use Core\SystemAdminAuthenticationService;
 use Core\Validator;
 use Core\View;
@@ -20,6 +21,7 @@ final class LoginController
     public function __construct(
         private readonly SystemAdminAuthenticationService $authenticationService,
         private readonly Csrf $csrf,
+        private readonly PlatformAuditLogger $platformAuditLogger,
         private readonly Validator $validator,
         private readonly View $view,
     ) {
@@ -42,10 +44,14 @@ final class LoginController
         $password = (string) $data['password'];
 
         if (!$this->authenticationService->attempt($email, $password)) {
+            $this->platformAuditLogger->log($request, 'auth.login_failed', newValues: ['email' => $email]);
+
             return $this->renderWithErrors(['auth' => ['Email hoac mat khau khong dung.']], $email);
         }
 
-        return Response::redirect('/system-admin/sites');
+        $this->platformAuditLogger->log($request, 'auth.login_success');
+
+        return Response::redirect('/system-admin/dashboard');
     }
 
     /** @param array<string, list<string>> $errors */

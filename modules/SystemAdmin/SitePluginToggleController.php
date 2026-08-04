@@ -9,6 +9,7 @@ use Core\Http\Request;
 use Core\Http\Response;
 use Core\PluginActivationService;
 use Core\PluginManager;
+use Core\Security\PlatformAuditLogger;
 use Core\SystemAdminAuth;
 
 /** POST /system-admin/sites/{id}/plugins/{key}/toggle - chi cho phep toggle plugin da THAT SU discover() duoc. */
@@ -19,6 +20,7 @@ final class SitePluginToggleController
         private readonly Database $database,
         private readonly PluginActivationService $pluginActivation,
         private readonly PluginManager $pluginManager,
+        private readonly PlatformAuditLogger $platformAuditLogger,
     ) {
     }
 
@@ -43,8 +45,10 @@ final class SitePluginToggleController
 
         if ($this->pluginActivation->isActive($siteId, $pluginKey)) {
             $this->pluginActivation->deactivate($siteId, $pluginKey);
+            $this->platformAuditLogger->log($request, 'site.plugin_deactivate', $siteId, 'site', $siteId, newValues: ['plugin_key' => $pluginKey]);
         } else {
             $this->pluginActivation->activate($siteId, $pluginKey);
+            $this->platformAuditLogger->log($request, 'site.plugin_activate', $siteId, 'site', $siteId, newValues: ['plugin_key' => $pluginKey]);
         }
 
         return Response::redirect("/system-admin/sites/{$siteId}/plugins");

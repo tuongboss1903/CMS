@@ -9,6 +9,7 @@ use Core\Database;
 use Core\Database\QueryException;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\Security\PlatformAuditLogger;
 use Core\SystemAdminAuth;
 use Core\ThemeManager;
 use Core\Validator;
@@ -21,6 +22,7 @@ final class SiteDomainAddController
         private readonly SystemAdminAuth $auth,
         private readonly Csrf $csrf,
         private readonly Database $database,
+        private readonly PlatformAuditLogger $platformAuditLogger,
         private readonly ThemeManager $themeManager,
         private readonly Validator $validator,
         private readonly View $view,
@@ -57,6 +59,8 @@ final class SiteDomainAddController
         } catch (QueryException $exception) {
             return $this->renderWithErrors($site, ['domain' => ['Domain da duoc su dung.']]);
         }
+
+        $this->platformAuditLogger->log($request, 'site.domain_add', $siteId, 'site', $siteId, newValues: ['domain' => $domain]);
 
         return Response::redirect("/system-admin/sites/{$siteId}/edit");
     }

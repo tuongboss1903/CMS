@@ -124,6 +124,39 @@ final class SystemAdminSiteManagementUiTest extends TestCase
             updated_at TIMESTAMP NULL
         )');
         $this->database->statement('CREATE UNIQUE INDEX uq_site_plugins_tenant_key ON site_plugins (tenant_id, plugin_key)');
+        $this->database->statement('CREATE TABLE users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name VARCHAR(150) NOT NULL,
+            email VARCHAR(190) NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT \'active\'
+        )');
+        $this->database->statement('CREATE TABLE audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id BIGINT NULL,
+            user_id BIGINT NULL,
+            event VARCHAR(100) NOT NULL,
+            auditable_type VARCHAR(20) NULL,
+            auditable_id BIGINT NULL,
+            old_values TEXT NULL,
+            new_values TEXT NULL,
+            ip_address VARCHAR(64) NULL,
+            user_agent VARCHAR(255) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )');
+        $this->database->statement('CREATE TABLE platform_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            platform_admin_id BIGINT NULL,
+            site_id BIGINT NULL,
+            event VARCHAR(100) NOT NULL,
+            auditable_type VARCHAR(20) NULL,
+            auditable_id BIGINT NULL,
+            old_values TEXT NULL,
+            new_values TEXT NULL,
+            ip_address VARCHAR(64) NULL,
+            user_agent VARCHAR(255) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )');
     }
 
     private function seedAdmin(string $email = 'root@platform.local', string $password = 'correct-password'): int
@@ -150,7 +183,7 @@ final class SystemAdminSiteManagementUiTest extends TestCase
 
     // ---- Login ----
 
-    public function testLoginSuccessRedirectsToSiteList(): void
+    public function testLoginSuccessRedirectsToDashboard(): void
     {
         $this->seedAdmin('root@platform.local', 'correct-password');
 
@@ -166,7 +199,10 @@ final class SystemAdminSiteManagementUiTest extends TestCase
         ));
 
         self::assertSame(302, $response->getStatusCode());
-        self::assertSame('/system-admin/sites', $response->getHeaders()['Location']);
+        self::assertSame('/system-admin/dashboard', $response->getHeaders()['Location']);
+
+        $log = $this->database->selectOne("SELECT event FROM platform_audit_logs WHERE event = 'auth.login_success'");
+        self::assertNotNull($log);
     }
 
     public function testLoginWrongPasswordRendersFormAgain(): void
@@ -498,5 +534,96 @@ final class SystemAdminSiteManagementUiTest extends TestCase
         ));
 
         self::assertSame(404, $response->getStatusCode());
+    }
+
+    // ---- Buoc 3: Dashboard tong & Audit Log xuyen-tenant ----
+
+    public function testDashboardShowsTotalsAcrossSites(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO sites (name, status) VALUES (?, ?)', ['Site A', 'active']);
+        $this->database->insert('INSERT INTO sites (name, status) VALUES (?, ?)', ['Site B', 'suspended']);
+        $this->database->insert('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', ['U', 'u@example.com', 'hash']);
+
+        $response = $this->router->dispatch(new Request('GET', '/system-admin/dashboard', 'system-admin.local'));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Tong so Site', $response->getBody());
+    }
+
+    public function testDashboardRedirectsToLoginWhenNotAuthenticated(): void
+    {
+        $response = $this->router->dispatch(new Request('GET', '/system-admin/dashboard', 'system-admin.local'));
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/system-admin/login', $response->getHeaders()['Location']);
+    }
+
+    public function testAuditLogListShowsCrossTenantEntries(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site A']);
+        $siteId = (int) $this->database->connection()->lastInsertId();
+        $this->database->insert(
+            'INSERT INTO audit_logs (tenant_id, event) VALUES (?, ?)',
+            [$siteId, 'page.create']
+        );
+
+        $response = $this->router->dispatch(new Request('GET', '/system-admin/audit-logs', 'system-admin.local'));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('page.create', $response->getBody());
+        self::assertStringContainsString('Site A', $response->getBody());
+    }
+
+    public function testAuditLogFilterBySiteExcludesOtherSites(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site A']);
+        $siteA = (int) $this->database->connection()->lastInsertId();
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site B']);
+        $siteB = (int) $this->database->connection()->lastInsertId();
+        $this->database->insert('INSERT INTO audit_logs (tenant_id, event) VALUES (?, ?)', [$siteA, 'page.create']);
+        $this->database->insert('INSERT INTO audit_logs (tenant_id, event) VALUES (?, ?)', [$siteB, 'media.upload']);
+
+        $response = $this->router->dispatch(new Request('GET', '/system-admin/audit-logs', 'system-admin.local', ['site_id' => (string) $siteA]));
+
+        self::assertStringContainsString('badge-neutral">page.create</span>', $response->getBody());
+        self::assertStringNotContainsString('badge-neutral">media.upload</span>', $response->getBody());
+    }
+
+    public function testPlatformAuditLogRecordsSiteSuspendAction(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site A']);
+        $siteId = (int) $this->database->connection()->lastInsertId();
+
+        $listPage = $this->router->dispatch(new Request('GET', '/system-admin/sites', 'system-admin.local'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $this->router->dispatch(new Request(
+            'POST',
+            "/system-admin/sites/{$siteId}/suspend",
+            'system-admin.local',
+            [],
+            ['_token' => $token]
+        ));
+
+        $response = $this->router->dispatch(new Request('GET', '/system-admin/platform-audit-logs', 'system-admin.local'));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('site.suspend', $response->getBody());
+
+        $log = $this->database->selectOne('SELECT platform_admin_id, site_id FROM platform_audit_logs WHERE event = ?', ['site.suspend']);
+        self::assertSame($adminId, (int) $log['platform_admin_id']);
+        self::assertSame($siteId, (int) $log['site_id']);
     }
 }

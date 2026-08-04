@@ -8,6 +8,7 @@ use Core\Csrf;
 use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\Security\PlatformAuditLogger;
 use Core\SystemAdminAuth;
 use Core\ThemeManager;
 use Core\Validator;
@@ -26,6 +27,7 @@ final class SiteUpdateController
         private readonly SystemAdminAuth $auth,
         private readonly Csrf $csrf,
         private readonly Database $database,
+        private readonly PlatformAuditLogger $platformAuditLogger,
         private readonly ThemeManager $themeManager,
         private readonly Validator $validator,
         private readonly View $view,
@@ -67,6 +69,15 @@ final class SiteUpdateController
         $this->database->statement(
             'UPDATE sites SET name = ?, theme_active = ? WHERE id = ?',
             [(string) $data['name'], $themeActive, $siteId]
+        );
+
+        $this->platformAuditLogger->log(
+            $request,
+            'site.update',
+            $siteId,
+            'site',
+            $siteId,
+            newValues: ['name' => (string) $data['name'], 'theme_active' => $themeActive]
         );
 
         return Response::redirect('/system-admin/sites');

@@ -7,6 +7,7 @@ namespace Modules\SystemAdmin;
 use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\Security\PlatformAuditLogger;
 use Core\SystemAdminAuth;
 
 /** POST /system-admin/sites/{id}/suspend - chan site (TenantResolverMiddleware se fail-closed 403 cho domain cua site nay). */
@@ -15,6 +16,7 @@ final class SiteSuspendController
     public function __construct(
         private readonly SystemAdminAuth $auth,
         private readonly Database $database,
+        private readonly PlatformAuditLogger $platformAuditLogger,
     ) {
     }
 
@@ -26,6 +28,7 @@ final class SiteSuspendController
 
         $siteId = (int) $request->routeParam('id');
         $this->database->statement('UPDATE sites SET status = ? WHERE id = ?', ['suspended', $siteId]);
+        $this->platformAuditLogger->log($request, 'site.suspend', $siteId, 'site', $siteId);
 
         return Response::redirect('/system-admin/sites');
     }

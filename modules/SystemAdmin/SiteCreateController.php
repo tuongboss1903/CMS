@@ -9,6 +9,7 @@ use Core\Database;
 use Core\Database\QueryException;
 use Core\Http\Request;
 use Core\Http\Response;
+use Core\Security\PlatformAuditLogger;
 use Core\SystemAdminAuth;
 use Core\Validator;
 use Core\View;
@@ -20,6 +21,7 @@ final class SiteCreateController
         private readonly SystemAdminAuth $auth,
         private readonly Csrf $csrf,
         private readonly Database $database,
+        private readonly PlatformAuditLogger $platformAuditLogger,
         private readonly Validator $validator,
         private readonly View $view,
     ) {
@@ -46,7 +48,7 @@ final class SiteCreateController
         $domain = \strtolower(\trim((string) $data['domain']));
 
         try {
-            $this->database->transaction(function (Database $db) use ($name, $domain): void {
+            $siteId = $this->database->transaction(function (Database $db) use ($name, $domain): int {
                 $db->insert('INSERT INTO sites (name) VALUES (?)', [$name]);
                 $siteId = (int) $db->connection()->lastInsertId();
 
@@ -54,10 +56,14 @@ final class SiteCreateController
                     'INSERT INTO site_domains (site_id, domain, is_primary) VALUES (?, ?, 1)',
                     [$siteId, $domain]
                 );
+
+                return $siteId;
             });
         } catch (QueryException $exception) {
             return $this->renderWithErrors(['domain' => ['Domain da duoc su dung.']], $data);
         }
+
+        $this->platformAuditLogger->log($request, 'site.create', $siteId, 'site', $siteId, newValues: ['name' => $name, 'domain' => $domain]);
 
         return Response::redirect('/system-admin/sites');
     }
