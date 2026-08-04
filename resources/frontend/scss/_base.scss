@@ -1,6 +1,7 @@
-/* ============================================================
-   Base reset + Typography
-   ============================================================ */
+// Base reset + Typography - port tu base.css cu (truoc day dung CHUNG voi Admin qua file rieng,
+// gio moi pipeline (Tailwind cho Admin, Sass cho Frontend) tu mang theo ban base cua rieng minh).
+@use 'mixins';
+
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 
@@ -27,19 +28,19 @@ h3 { font-size: 16px; }
 h4 { font-size: 14px; color: var(--color-text-secondary); }
 
 p { margin: 0 0 var(--space-4); color: var(--color-text-secondary); }
-a { color: var(--color-accent-text); text-decoration: none; transition: color var(--transition-fast); }
-a:hover { text-decoration: underline; }
+a {
+  color: var(--color-accent-text);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+
+  &:hover { text-decoration: underline; }
+}
 ul { margin: 0; padding: 0; list-style: none; }
 img { max-width: 100%; display: block; }
 button { font-family: inherit; }
 
-/* Focus-visible nhat quan cho moi phan tu tuong tac - chi hien khi dieu huong ban phim (Tab),
-   khong hien khi click chuot (":focus-visible" tu phan biet, khong can JS rieng). */
-a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
-textarea:focus-visible, [tabindex]:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-  border-radius: var(--radius-sm);
+a, button, input, select, textarea, [tabindex] {
+  @include mixins.focus-ring;
 }
 
 ::selection { background: var(--color-accent-soft); color: var(--color-accent-text); }
@@ -51,4 +52,14 @@ textarea:focus-visible, [tabindex]:focus-visible {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+code {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-accent-text);
 }

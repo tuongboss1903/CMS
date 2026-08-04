@@ -1,0 +1,80 @@
+@use '../mixins';
+
+.commerce-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--space-6);
+  align-items: start;
+  padding: var(--space-5) 0;
+
+  @include mixins.respond(tablet-sm) { grid-template-columns: 1fr; }
+}
+.order-summary {
+  @include mixins.panel;
+  position: sticky;
+  top: calc(72px + var(--space-5));
+  padding: var(--space-5);
+
+  h2 { font-size: 16px; margin-bottom: var(--space-4); }
+
+  @include mixins.respond(tablet-sm) { position: static; }
+}
+.order-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.order-summary-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.cart-item-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  margin-bottom: var(--space-3);
+}
+.cart-item-visual {
+  width: 56px; height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.cart-item-info { flex: 1; min-width: 0; }
+.cart-item-name { font-weight: 600; }
+.cart-item-price { font-size: 13px; color: var(--color-text-muted); }
+.cart-item-line-total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.payment-method-options { display: flex; flex-direction: column; gap: var(--space-2); }
+.payment-method-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+
+  &:has(input:checked) { border-color: var(--color-accent); background: var(--color-accent-soft); }
+
+  input { accent-color: var(--color-accent); }
+}

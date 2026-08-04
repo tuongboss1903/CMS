@@ -1,0 +1,16 @@
+@use '../mixins';
+
+.container { max-width: var(--container-max); margin: 0 auto; padding: 0 var(--space-5); }
+
+.card {
+  @include mixins.panel;
+  padding: var(--space-5);
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}

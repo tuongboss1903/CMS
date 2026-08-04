@@ -1,0 +1,7 @@
+// Bien SCSS (compile-time) - CHI cho dieu huong breakpoint/tinh toan trong file .scss.
+// Mau/spacing/radius/shadow KHONG dat o day - van la CSS Custom Property runtime trong
+// resources/shared/tokens.css (Light/Dark theme toggle qua public/assets/js/app.js ghi
+// [data-theme] len <html> - SCSS variable bien mat sau khi compile nen KHONG the doi runtime).
+$breakpoint-tablet: 992px;
+$breakpoint-tablet-sm: 900px;
+$breakpoint-mobile: 768px;

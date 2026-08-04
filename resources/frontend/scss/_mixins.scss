@@ -1,0 +1,42 @@
+@use 'variables' as v;
+
+/// Media query theo 1 trong 3 breakpoint da khai bao o _variables.scss - dung chung thay vi
+/// hard-code @media (max-width: ...px) lap lai o nhieu noi.
+@mixin respond($breakpoint) {
+  @if $breakpoint == tablet {
+    @media (max-width: v.$breakpoint-tablet) { @content; }
+  } @else if $breakpoint == tablet-sm {
+    @media (max-width: v.$breakpoint-tablet-sm) { @content; }
+  } @else if $breakpoint == mobile {
+    @media (max-width: v.$breakpoint-mobile) { @content; }
+  }
+}
+
+/// "Mat phang" (panel) dung chung cho card/product-card/cart-item-row/order-summary/... -
+/// nen + vien + radius + shadow giong nhau, chi khac padding/display tuy noi goi.
+@mixin panel {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/// Hover nang nhe + doi shadow - dung cho feature-card/product-card/media-card kieu Frontend.
+@mixin hover-lift {
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-border-subtle);
+  }
+}
+
+/// Focus ring nhat quan (giong nguyen tac base.css cu) - dung trong component tu viet moi.
+@mixin focus-ring {
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: var(--radius-sm);
+  }
+}

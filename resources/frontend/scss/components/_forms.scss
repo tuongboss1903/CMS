@@ -1,0 +1,66 @@
+// Form + Alert - port tu components.css cu. .field-error MOI bo sung (checkout/index.php da
+// dung class nay tu truoc nhung components.css cu chua tung dinh nghia - dong gap nho luon vi
+// dang port cung khu vuc).
+.field {
+  margin-bottom: var(--space-4);
+
+  label {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  input[type="text"], input[type="email"], input[type="password"], input[type="search"],
+  input[type="number"], select, textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px var(--color-accent-soft);
+    }
+  }
+}
+.field-error { color: var(--color-danger); font-size: 12.5px; margin: var(--space-1) 0 0; }
+
+.alert {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: 14px;
+  animation: alert-in var(--transition-base);
+
+  ul { margin: 0; padding-left: 18px; list-style: disc; }
+
+  &.is-dismissible { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  &.is-dismissing { animation: alert-out var(--transition-base) forwards; }
+}
+.alert-danger { background: var(--color-danger-soft); border: 1px solid rgba(239, 68, 68, 0.3); color: #FCA5A5; }
+.alert-success { background: var(--color-accent-soft); border: 1px solid var(--color-accent); color: var(--color-accent-text); }
+.alert-warning { background: var(--color-warning-soft); border: 1px solid rgba(245, 158, 11, 0.35); color: #FCD34D; }
+.alert-dismiss {
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; line-height: 1; color: inherit; opacity: 0.7;
+  padding: 0; flex-shrink: 0;
+
+  &:hover { opacity: 1; }
+}
+
+@keyframes alert-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes alert-out {
+  from { opacity: 1; max-height: 60px; margin-bottom: var(--space-4); }
+  to { opacity: 0; max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+}

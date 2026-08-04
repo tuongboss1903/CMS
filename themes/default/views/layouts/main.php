@@ -29,9 +29,6 @@
 <?php if (!empty($og_image_url)): ?>
     <meta property="og:image" content="<?= $this->e($og_image_url) ?>">
 <?php endif; ?>
-    <link rel="stylesheet" href="/assets/css/variables.css">
-    <link rel="stylesheet" href="/assets/css/base.css">
-    <link rel="stylesheet" href="/assets/css/components.css">
     <link rel="stylesheet" href="/assets/css/public.css">
 </head>
 <body class="site-public">

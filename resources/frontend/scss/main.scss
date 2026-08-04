@@ -1,0 +1,25 @@
+// Entry point Sass cho Frontend theme (Public-facing) - compile ra public/assets/css/public.css
+// qua `npm run build:frontend`. Admin/System Admin dung pipeline rieng (Tailwind, xem
+// resources/admin/tailwind.css) - 2 pipeline doc lap hoan toan, khong con dung chung
+// variables.css/base.css/components.css nhu truoc.
+@use 'tokens';
+@use 'base';
+@use 'components/buttons';
+@use 'components/forms';
+@use 'components/cards';
+@use 'components/nav';
+@use 'components/hero';
+@use 'components/features';
+@use 'components/showcase';
+@use 'components/page-content';
+@use 'pages/shop';
+@use 'pages/cart-checkout';
+
+.mt-0 { margin-top: 0; }
+.mb-0 { margin-bottom: 0; }
+.text-muted { color: var(--color-text-muted); }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
