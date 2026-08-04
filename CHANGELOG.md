@@ -95,6 +95,19 @@
 
 `vendor/bin/phpunit` toàn bộ suite trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64): **912 tests, 1931 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — không regression trên 869 test trước Phase 21. Đã kiểm tra thật qua Chrome (Claude in Chrome) trên toàn bộ Public/Admin/System Admin/Shop/Cart/Checkout, cả 2 theme Light/Dark, không phát hiện lỗi UI nào ngoài mục Fix ở trên (đã sửa).
 
+### Fix — CI GitHub Actions fail liên tục từ CMS-057 (line-ending CRLF/LF mismatch, không liên quan Phase 21)
+
+- Root cause (kiểm chứng bằng clone fresh + đối chiếu lịch sử 22 lần chạy CI): `.php-cs-fixer.php` gọi `->setLineEnding("\r\n")` nhưng nội dung THẬT lưu trong Git blob luôn là LF thuần (`git show HEAD:core/Application.php | grep -c $'\r'` = 0). Máy Windows có `core.autocrlf=true` tự convert LF→CRLF lúc checkout, khớp với CRLF mà config yêu cầu nên `php-cs-fixer fix --dry-run` **chạy sạch trên Windows** — nhưng CI (`ubuntu-latest`) checkout giữ nguyên LF, không khớp CRLF, **FAIL toàn bộ 540 file**. Xác nhận đây là lỗi **có từ trước**, không liên quan Phase 21: fail liên tục từ chính commit `CMS-057` (lúc thêm lint gate vào CI) đến trước lần sửa này, kể cả các commit merge cũ không liên quan.
+- Sửa `.php-cs-fixer.php` sang `->setLineEnding("\n")` (khớp LF đã lưu trong Git + Linux CI). Thêm `.gitattributes` (`* text=auto eol=lf`) để MỌI hệ điều hành checkout thống nhất LF cho file text, tránh loại lỗi này tái diễn trong tương lai bất kể `core.autocrlf` của từng máy dev.
+- Verified: `php-cs-fixer fix --dry-run` sạch (0/540), `phpstan analyse` 0 lỗi, `phpunit` 912 tests PASS — đúng chính xác 3 lệnh CI workflow chạy.
+
+### Fix — 2 test vô tình chỉ pass trên Windows (case-insensitive), fail trên Linux CI
+
+- Sau khi lint gate được sửa, CI **lần đầu tiên trong lịch sử repo** chạy được tới bước PHPUnit trên Linux — lộ ra 2 lỗi PSR-4/filesystem case-mismatch **có từ trước**, cùng mô hình lỗi đã ghi nhận ở CMS-056 (Ecommerce Plugin), chỉ ẩn trên Windows (NTFS không phân biệt hoa/thường) suốt quá trình phát triển.
+- `tests/Core/ThemeManagerTest.php` đọc fixture từ `Fixtures/Themes` (chữ hoa T) nhưng thư mục thật trước đó nằm trong `tests/Fixtures/themes/Alpha|Beta` (chữ thường, dùng CHUNG với 7 test View khác — `active`/`default`/`test-theme`). Tách riêng `Alpha`/`Beta` sang đúng `tests/Fixtures/Themes/` (chữ hoa, khớp `ThemeManagerTest::FIXTURE_PATH`), không đụng `tests/Fixtures/themes/` cũ (giữ nguyên cho các test View).
+- `tests/Fixtures/App/plugins/TestPlugin/PluginPingController.php` khai `namespace Tests\Fixtures\App\Plugins\TestPlugin` (chữ hoa "Plugins") nhưng thư mục thật là `tests/Fixtures/App/plugins/TestPlugin` (chữ thường) — PSR-4 không khớp, Composer tự bỏ qua class này khỏi autoload map (cảnh báo đã thấy từ lâu trong `composer dump-autoload`, trước đây nhầm là "không liên quan"). Trên Linux, autoload thất bại lúc `Container` resolve `PluginPingController` → 500, làm FAIL 2 test regression Plugin routing của `ApplicationTest` (`testPluginRouteIsLoadedAndReachable`, `testPluginRouteHasSessionStartedAndTenantResolved`). Đổi namespace về chữ thường `plugins` khớp đúng thư mục (đúng quy ước thư mục `plugins/` thật của dự án), sửa cả reference trong `routes.php`.
+- Verified: `composer dump-autoload` không còn cảnh báo PSR-4, `vendor/bin/phpunit` 912 tests PASS, `phpstan` 0 lỗi, `php-cs-fixer` sạch (0/540). **CI GitHub Actions PASS hoàn toàn lần đầu tiên trong lịch sử 22 lần chạy** (cả PHP 8.2 và 8.3, cả 3 bước lint/PHPStan/PHPUnit).
+
 ## [0.3.0] — 2026-08-17 — CMS-056: Ecommerce MVP & Plugin Architecture (PHASE 19) + Payment Gateway Integration (PHASE 20)
 
 ### Added
