@@ -142,6 +142,20 @@ final class AdminPageManagementUiTest extends TestCase
 
     // ---- List ----
 
+    public function testListFiltersByStatus(): void
+    {
+        $siteId = $this->seedSite();
+        $userId = $this->seedUser();
+        $this->seedPage($siteId, $userId, 'draft-page', 'draft');
+        $this->seedPage($siteId, $userId, 'published-page', 'published');
+        $this->actingAs($siteId, $userId, ['page.view']);
+
+        $response = $this->router->dispatch(new Request('GET', '/admin/pages', 'example.com', ['status' => 'published']));
+
+        self::assertStringContainsString('published-page', $response->getBody());
+        self::assertStringNotContainsString('draft-page', $response->getBody());
+    }
+
     public function testListShowsOnlyCurrentTenantPages(): void
     {
         $siteA = $this->seedSite('Site A');

@@ -13,6 +13,17 @@
     </div>
 </div>
 
+<?php $this->include('admin.partials.table_filter', [
+    'filter_action' => '/admin/media',
+    'filter_fields' => [
+        ['name' => 'q', 'label' => 'Tim theo ten file', 'type' => 'text', 'value' => $filters['q'] ?? ''],
+        ['name' => 'type', 'label' => 'Loai file', 'type' => 'select', 'value' => $filters['type'] ?? '', 'options' => [
+            ['value' => 'image/', 'label' => 'Hinh anh'],
+            ['value' => 'application/pdf', 'label' => 'PDF'],
+        ]],
+    ],
+]); ?>
+
 <div class="media-grid" data-view-panel="grid">
 <?php foreach ($media as $item): ?>
 <div class="media-card">

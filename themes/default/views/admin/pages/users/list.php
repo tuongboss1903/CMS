@@ -4,6 +4,18 @@
     <h1 class="mb-0">Quan ly User</h1>
     <a href="/admin/users/create" class="btn btn-primary">+ Tao user moi</a>
 </div>
+
+<?php $this->include('admin.partials.table_filter', [
+    'filter_action' => '/admin/users',
+    'filter_fields' => [
+        ['name' => 'q', 'label' => 'Tim theo ten/email', 'type' => 'text', 'value' => $filters['q'] ?? ''],
+        ['name' => 'status', 'label' => 'Trang thai', 'type' => 'select', 'value' => $filters['status'] ?? '', 'options' => [
+            ['value' => 'active', 'label' => 'Active'],
+            ['value' => 'locked', 'label' => 'Locked'],
+        ]],
+    ],
+]); ?>
+
 <div class="table-wrap">
 <table class="data-table">
 <thead>

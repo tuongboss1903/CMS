@@ -30,15 +30,35 @@ final class PageListController
             return Response::html('403 Forbidden', 403);
         }
 
+        $search = \trim((string) ($request->query('q') ?? ''));
+        $status = \trim((string) ($request->query('status') ?? ''));
+
+        $conditions = ['tenant_id = ?', 'deleted_at IS NULL'];
+        $bindings = [$this->tenantManager->id()];
+
+        if ($search !== '') {
+            $conditions[] = '(title LIKE ? OR slug LIKE ?)';
+            $bindings[] = '%' . $search . '%';
+            $bindings[] = '%' . $search . '%';
+        }
+
+        if ($status !== '') {
+            $conditions[] = 'status = ?';
+            $bindings[] = $status;
+        }
+
+        $where = \implode(' AND ', $conditions);
+
         $pages = $this->database->select(
-            'SELECT id, parent_id, title, slug, status, is_homepage, published_at
-             FROM pages WHERE tenant_id = ? AND deleted_at IS NULL ORDER BY id DESC',
-            [$this->tenantManager->id()]
+            "SELECT id, parent_id, title, slug, status, is_homepage, published_at
+             FROM pages WHERE {$where} ORDER BY id DESC",
+            $bindings
         );
 
         $html = $this->view->render('admin.pages.pages.list', [
             'pages' => $pages,
             'csrf_token' => $this->csrf->token(),
+            'filters' => ['q' => $search, 'status' => $status],
         ]);
 
         return Response::html($html);

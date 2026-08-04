@@ -4,6 +4,18 @@
     <h1 class="mb-0">Quan ly Page</h1>
     <a href="/admin/pages/create" class="btn btn-primary">+ Tao page moi</a>
 </div>
+
+<?php $this->include('admin.partials.table_filter', [
+    'filter_action' => '/admin/pages',
+    'filter_fields' => [
+        ['name' => 'q', 'label' => 'Tim theo tieu de/slug', 'type' => 'text', 'value' => $filters['q'] ?? ''],
+        ['name' => 'status', 'label' => 'Trang thai', 'type' => 'select', 'value' => $filters['status'] ?? '', 'options' => [
+            ['value' => 'draft', 'label' => 'Nhap'],
+            ['value' => 'published', 'label' => 'Da xuat ban'],
+        ]],
+    ],
+]); ?>
+
 <div class="table-wrap">
 <table class="data-table">
 <thead>

@@ -12,7 +12,7 @@
   /* Colors - Text */
   --color-text-primary: #E5E9F0;
   --color-text-secondary: #8B94A7;
-  --color-text-muted: #5C6577;
+  --color-text-muted: #6B7489;
 
   /* Colors - Accent (Emerald / Neon Tech Green) */
   --color-accent: #10B981;
@@ -47,19 +47,28 @@
   --radius-lg: 16px;
   --radius-full: 999px;
 
-  /* Shadow */
+  /* Shadow - thang do lop (resting -> elevated -> hover), phoi hop border thay vi thay the */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
   --shadow-glow: 0 0 24px rgba(16, 185, 129, 0.15);
+
+  /* Focus ring - dung chung cho input/button/nav de dam bao accessibility nhat quan */
+  --focus-ring: 0 0 0 3px var(--color-accent-soft);
+
+  /* Typography rhythm */
+  --leading-tight: 1.25;
+  --leading-normal: 1.6;
 
   /* Layout */
   --sidebar-width: 260px;
   --topbar-height: 64px;
   --container-max: 1200px;
 
-  /* Transition */
-  --transition-fast: 120ms ease;
-  --transition-base: 200ms ease;
+  /* Transition - cubic-bezier tao cam giac "nay" nhe thay vi linear/ease phang */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 120ms var(--ease-standard);
+  --transition-base: 200ms var(--ease-standard);
 }
 
 /* ============================================================
@@ -78,7 +87,7 @@
 
   --color-text-primary: #1A2333;
   --color-text-secondary: #566072;
-  --color-text-muted: #8993A4;
+  --color-text-muted: #6E7789;
 
   --color-accent: #0E9F6E;
   --color-accent-hover: #0C8A5F;
@@ -93,5 +102,6 @@
 
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
   --shadow-md: 0 4px 16px rgba(16, 24, 40, 0.10);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
   --shadow-glow: 0 0 24px rgba(14, 159, 110, 0.10);
 }

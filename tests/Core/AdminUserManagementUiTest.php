@@ -161,6 +161,20 @@ final class AdminUserManagementUiTest extends TestCase
 
     // ---- List ----
 
+    public function testListFiltersByStatus(): void
+    {
+        $siteId = $this->seedSite();
+        $roleId = $this->seedRole($siteId);
+        $this->seedUser($siteId, $roleId, 'locked-user@example.com', 'correct-password', 'locked');
+        $this->seedUser($siteId, $roleId, 'active-user@example.com', 'correct-password', 'active');
+        $this->actingAs($siteId, ['user.view']);
+
+        $response = $this->router->dispatch(new Request('GET', '/admin/users', 'example.com', ['status' => 'locked']));
+
+        self::assertStringContainsString('locked-user@example.com', $response->getBody());
+        self::assertStringNotContainsString('active-user@example.com', $response->getBody());
+    }
+
     public function testListShowsOnlyCurrentTenantUsers(): void
     {
         $siteA = $this->seedSite('Site A');

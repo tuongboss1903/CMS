@@ -35,6 +35,46 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Phase D (Polish): flash message tu dismiss (nut x hoac tu dong sau 5s cho alert-success),
+    // fade-out qua class .is-dismissing (xem @keyframes alert-out trong components.css).
+    document.querySelectorAll('[data-flash]').forEach(function (flash) {
+        var dismiss = function () {
+            if (flash.classList.contains('is-dismissing')) {
+                return;
+            }
+
+            flash.classList.add('is-dismissing');
+            flash.addEventListener('animationend', function () {
+                flash.remove();
+            }, { once: true });
+        };
+
+        var dismissBtn = flash.querySelector('[data-flash-dismiss]');
+
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', dismiss);
+        }
+
+        if (flash.classList.contains('alert-success')) {
+            window.setTimeout(dismiss, 5000);
+        }
+    });
+
+    // Phase D (Polish): trang thai loading tren nut submit de chan double-submit va cho nguoi
+    // dung biet thao tac dang duoc xu ly. Bo qua form[data-confirm] (da co luong rieng qua modal
+    // xac nhan - disable som se hien sai trang thai khi nguoi dung con dang can nhac/huy modal).
+    document.querySelectorAll('form:not([data-confirm])').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            var submitBtn = form.querySelector('button[type="submit"]');
+
+            if (submitBtn && !submitBtn.disabled) {
+                submitBtn.disabled = true;
+                submitBtn.setAttribute('data-loading-text', submitBtn.textContent);
+                submitBtn.textContent = 'Dang xu ly...';
+            }
+        });
+    });
+
     var sidebarToggle = document.querySelector('[data-sidebar-toggle]');
     var sidebar = document.querySelector('.admin-sidebar');
 
@@ -258,4 +298,31 @@ document.addEventListener('DOMContentLoaded', function () {
             draggedId = null;
         });
     }
+
+    // Phase C (Public UX): Quantity stepper o trang chi tiet San pham (shop.show) - chi tang/giam
+    // gia tri input[type=number] da co san, KHONG thay doi ten field/gia tri submit qua form.
+    document.querySelectorAll('.qty-stepper').forEach(function (stepper) {
+        var input = stepper.querySelector('input[type="number"]');
+        var decreaseBtn = stepper.querySelector('[data-qty-decrease]');
+        var increaseBtn = stepper.querySelector('[data-qty-increase]');
+
+        if (!input) {
+            return;
+        }
+
+        if (decreaseBtn) {
+            decreaseBtn.addEventListener('click', function () {
+                var min = parseInt(input.min, 10) || 1;
+                var value = parseInt(input.value, 10) || min;
+                input.value = Math.max(min, value - 1);
+            });
+        }
+
+        if (increaseBtn) {
+            increaseBtn.addEventListener('click', function () {
+                var value = parseInt(input.value, 10) || 1;
+                input.value = value + 1;
+            });
+        }
+    });
 });

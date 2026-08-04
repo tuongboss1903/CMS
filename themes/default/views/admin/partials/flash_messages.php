@@ -9,11 +9,11 @@
  */
 ?>
 <?php if (!empty($flash_success)): ?>
-<div class="alert alert-success"><?= $this->e((string) $flash_success) ?></div>
+<div class="alert alert-success is-dismissible" data-flash><span><?= $this->e((string) $flash_success) ?></span><button type="button" class="alert-dismiss" data-flash-dismiss aria-label="Dong thong bao">&times;</button></div>
 <?php endif; ?>
 <?php if (!empty($flash_warning)): ?>
-<div class="alert alert-warning"><?= $this->e((string) $flash_warning) ?></div>
+<div class="alert alert-warning is-dismissible" data-flash><span><?= $this->e((string) $flash_warning) ?></span><button type="button" class="alert-dismiss" data-flash-dismiss aria-label="Dong thong bao">&times;</button></div>
 <?php endif; ?>
 <?php if (!empty($flash_error)): ?>
-<div class="alert alert-danger"><?= $this->e((string) $flash_error) ?></div>
+<div class="alert alert-danger is-dismissible" data-flash><span><?= $this->e((string) $flash_error) ?></span><button type="button" class="alert-dismiss" data-flash-dismiss aria-label="Dong thong bao">&times;</button></div>
 <?php endif; ?>

@@ -36,12 +36,31 @@ final class UserListController
 
         $siteId = $this->tenantManager->id();
 
+        $search = \trim((string) ($request->query('q') ?? ''));
+        $status = \trim((string) ($request->query('status') ?? ''));
+
+        $conditions = ['user_site_roles.site_id = ?'];
+        $bindings = [$siteId];
+
+        if ($search !== '') {
+            $conditions[] = '(users.name LIKE ? OR users.email LIKE ?)';
+            $bindings[] = '%' . $search . '%';
+            $bindings[] = '%' . $search . '%';
+        }
+
+        if ($status !== '') {
+            $conditions[] = 'users.status = ?';
+            $bindings[] = $status;
+        }
+
+        $where = \implode(' AND ', $conditions);
+
         $users = $this->database->select(
-            'SELECT users.id, users.name, users.email, users.status
+            "SELECT users.id, users.name, users.email, users.status
              FROM users
              INNER JOIN user_site_roles ON user_site_roles.user_id = users.id
-             WHERE user_site_roles.site_id = ?',
-            [$siteId]
+             WHERE {$where}",
+            $bindings
         );
 
         $roles = $this->database->select(
@@ -53,6 +72,7 @@ final class UserListController
             'users' => $users,
             'roles' => $roles,
             'csrf_token' => $this->csrf->token(),
+            'filters' => ['q' => $search, 'status' => $status],
         ]);
 
         return Response::html($html);

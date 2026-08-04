@@ -50,7 +50,7 @@ final class AuthenticationService
         }
 
         $user = $this->database->selectOne(
-            'SELECT id, password, status FROM users WHERE email = ?',
+            'SELECT id, name, password, status FROM users WHERE email = ?',
             [$email]
         );
 
@@ -73,6 +73,7 @@ final class AuthenticationService
         $this->auth->login($userId, [
             'id' => $userId,
             'email' => $email,
+            'name' => (string) $user['name'],
         ]);
 
         $siteId = $this->tenantManager->id();

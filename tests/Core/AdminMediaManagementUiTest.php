@@ -185,11 +185,11 @@ final class AdminMediaManagementUiTest extends TestCase
         return (int) $this->database->connection()->lastInsertId();
     }
 
-    private function seedMedia(int $siteId, string $path, int $size = 100, string $mimeType = 'image/png'): int
+    private function seedMedia(int $siteId, string $path, int $size = 100, string $mimeType = 'image/png', string $fileName = 'existing.png'): int
     {
         $this->database->insert(
             'INSERT INTO media (tenant_id, file_name, path, mime_type, size, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)',
-            [$siteId, 'existing.png', $path, $mimeType, $size, 1]
+            [$siteId, $fileName, $path, $mimeType, $size, 1]
         );
 
         return (int) $this->database->connection()->lastInsertId();
@@ -238,6 +238,19 @@ final class AdminMediaManagementUiTest extends TestCase
     }
 
     // ---- List ----
+
+    public function testListFiltersByFileNameSearch(): void
+    {
+        $siteId = $this->seedSite();
+        $this->seedMedia($siteId, "{$siteId}/a.png", 100, 'image/png', 'holiday-photo.png');
+        $this->seedMedia($siteId, "{$siteId}/b.png", 100, 'image/png', 'invoice.pdf');
+        $this->actingAs($siteId, $this->seedUser(), ['media.view']);
+
+        $response = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com', ['q' => 'holiday']));
+
+        self::assertStringContainsString('holiday-photo.png', $response->getBody());
+        self::assertStringNotContainsString('invoice.pdf', $response->getBody());
+    }
 
     public function testListShowsOnlyCurrentTenantMedia(): void
     {
