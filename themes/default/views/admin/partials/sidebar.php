@@ -1,6 +1,7 @@
 <nav class="admin-nav">
     <div class="nav-group-label">Menu chinh</div>
     <a href="/admin/dashboard">Dashboard</a>
+    <a href="/admin/notifications">Thong bao<?php if (($unread_notifications_count ?? 0) > 0): ?> <span class="badge badge-danger"><?= $this->e((string) $unread_notifications_count) ?></span><?php endif; ?></a>
     <a href="/admin/users">Users</a>
     <a href="/admin/roles">Roles</a>
 

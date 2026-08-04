@@ -253,9 +253,31 @@ final class Application
                 ? (string) $currentUser['name']
                 : null;
 
+            // Buoc 5 (Notification UI, CMS-066): badge so thong bao chua doc cho sidebar.php -
+            // tinh 1 lan/request giong dung pattern current_user_name o tren (khong qua Module
+            // Service de tranh Core phu thuoc Module - chi truy van thang, cung nguyen tac). Bang
+            // "notifications" co the chua ton tai o fixture test cu chua migrate them (cung
+            // nguyen tac try/catch fallback da dung o Modules\Admin\DashboardController) - bat
+            // Throwable, fallback 0.
+            $unreadNotificationsCount = 0;
+            $userId = $session->isStarted() ? $session->get('auth.user_id') : null;
+
+            if ($userId !== null && $tenantManager->check()) {
+                try {
+                    $row = $c->get(Database::class)->selectOne(
+                        'SELECT COUNT(*) as c FROM notifications WHERE tenant_id = ? AND user_id = ? AND read_at IS NULL',
+                        [$tenantManager->id(), $userId]
+                    );
+                    $unreadNotificationsCount = (int) ($row['c'] ?? 0);
+                } catch (Throwable) {
+                    // Silent-fail co chu dich - xem docblock o tren.
+                }
+            }
+
             return new View($this->basePath . '/themes', $activeTheme, $defaultTheme, [
                 'extra_admin_menu_items' => $extraMenuItems,
                 'current_user_name' => $currentUserName,
+                'unread_notifications_count' => $unreadNotificationsCount,
             ]);
         });
 

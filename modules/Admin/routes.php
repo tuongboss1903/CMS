@@ -26,8 +26,11 @@ $router->get('/admin/comments', [\Modules\Admin\CommentListController::class, 'h
 $router->get('/admin/audit-logs', [\Modules\Admin\AuditLogController::class, 'handle']);
 $router->get('/admin/system-settings', [\Modules\Admin\SystemSettingListController::class, 'handle']);
 $router->get('/admin/plugins', [\Modules\Admin\PluginListController::class, 'handle']);
+$router->get('/admin/notifications', [\Modules\Admin\NotificationListController::class, 'handle']);
 
 $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], function (\Core\Router $router): void {
+    $router->post('/admin/notifications/read-all', [\Modules\Admin\NotificationMarkAllReadController::class, 'handle']);
+    $router->post('/admin/notifications/{id}/read', [\Modules\Admin\NotificationMarkReadController::class, 'handle']);
     $router->post('/admin/login', [\Modules\Admin\LoginController::class, 'handle']);
     $router->post('/admin/logout', [\Modules\Admin\LogoutController::class, 'handle']);
     $router->post('/admin/users', [\Modules\Admin\UserCreateController::class, 'handle']);
