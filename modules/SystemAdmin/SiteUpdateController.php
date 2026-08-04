@@ -9,16 +9,24 @@ use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
 use Core\SystemAdminAuth;
+use Core\ThemeManager;
 use Core\Validator;
 use Core\View;
 
-/** POST /system-admin/sites/{id} - sua ten site + theme_active. Khong sua status o day (xem Suspend/Activate). */
+/**
+ * POST /system-admin/sites/{id} - sua ten site + theme_active. Khong sua status o day (xem
+ * Suspend/Activate). theme_active PHAI khop 1 key da discover() duoc qua ThemeManager - Buoc 1
+ * truoc day nhan text tu do, co the lam site chay That gap ViewNotFoundException that
+ * (View::resolvePath() fallback default theme nhung neu gia tri sai dinh dang van co the gay loi
+ * khac) - Buoc 2 dong gap nay bang catalog that.
+ */
 final class SiteUpdateController
 {
     public function __construct(
         private readonly SystemAdminAuth $auth,
         private readonly Csrf $csrf,
         private readonly Database $database,
+        private readonly ThemeManager $themeManager,
         private readonly Validator $validator,
         private readonly View $view,
     ) {
@@ -52,6 +60,10 @@ final class SiteUpdateController
             ? (string) $data['theme_active']
             : null;
 
+        if ($themeActive !== null && $this->themeManager->find($themeActive) === null) {
+            return $this->renderWithErrors($siteId, ['theme_active' => ['Theme khong hop le.']], $data);
+        }
+
         $this->database->statement(
             'UPDATE sites SET name = ?, theme_active = ? WHERE id = ?',
             [(string) $data['name'], $themeActive, $siteId]
@@ -75,6 +87,7 @@ final class SiteUpdateController
         $html = $this->view->render('system_admin.pages.sites.edit', [
             'site' => $site,
             'domains' => $domains,
+            'themes' => $this->themeManager->discover(),
             'errors' => $errors,
             'old' => ['name' => (string) ($data['name'] ?? '')],
             'csrf_token' => $this->csrf->token(),

@@ -272,6 +272,11 @@ final class Application
         );
 
         $this->container->singleton(
+            ThemeManager::class,
+            fn (): ThemeManager => new ThemeManager($this->basePath . '/themes')
+        );
+
+        $this->container->singleton(
             ExceptionHandler::class,
             static fn (): ExceptionHandler => new ExceptionHandler()
         );

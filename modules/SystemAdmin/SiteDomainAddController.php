@@ -10,6 +10,7 @@ use Core\Database\QueryException;
 use Core\Http\Request;
 use Core\Http\Response;
 use Core\SystemAdminAuth;
+use Core\ThemeManager;
 use Core\Validator;
 use Core\View;
 
@@ -20,6 +21,7 @@ final class SiteDomainAddController
         private readonly SystemAdminAuth $auth,
         private readonly Csrf $csrf,
         private readonly Database $database,
+        private readonly ThemeManager $themeManager,
         private readonly Validator $validator,
         private readonly View $view,
     ) {
@@ -74,6 +76,7 @@ final class SiteDomainAddController
         $html = $this->view->render('system_admin.pages.sites.edit', [
             'site' => $site,
             'domains' => $domains,
+            'themes' => $this->themeManager->discover(),
             'errors' => $errors,
             'old' => ['name' => (string) $site['name']],
             'csrf_token' => $this->csrf->token(),

@@ -20,9 +20,15 @@
     </div>
     <div class="field">
         <label for="theme_active">Theme</label>
-        <input type="text" id="theme_active" name="theme_active" value="<?= $this->e((string) ($site['theme_active'] ?? '')) ?>" placeholder="default">
+        <select id="theme_active" name="theme_active">
+            <option value="">-- Dung theme mac dinh he thong --</option>
+            <?php foreach (($themes ?? []) as $theme): ?>
+            <option value="<?= $this->e($theme->key) ?>"<?= $theme->key === (string) ($site['theme_active'] ?? '') ? ' selected' : '' ?>><?= $this->e($theme->name) ?> (<?= $this->e($theme->version) ?>)</option>
+            <?php endforeach; ?>
+        </select>
     </div>
     <button type="submit" class="btn btn-primary">Luu</button>
+    <a href="/system-admin/sites/<?= $this->e((string) $site['id']) ?>/plugins" class="btn btn-secondary">Quan ly Plugin</a>
 </form>
 
 <h2>Domain</h2>

@@ -4,38 +4,54 @@ declare(strict_types=1);
 
 namespace Tests\Core;
 
+use Core\Cache;
+use Core\Cache\CacheDriver;
+use Core\Cache\FileCacheDriver;
 use Core\Config;
 use Core\Container;
 use Core\Database;
 use Core\Http\Request;
 use Core\ModuleManager;
+use Core\PluginManager;
 use Core\Router;
 use Core\Session;
+use Core\ThemeManager;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Integration test cho SystemAdmin module (Buoc 1 Super Admin - Site/Tenant Management) - cung
- * pattern AdminUserManagementUiTest (ModuleManager tro modules/ that, khong qua Application::boot()
- * nen KHONG can TenantResolverMiddleware - dung y thiet ke that su cua module nay).
+ * Integration test cho SystemAdmin module (Buoc 1 Super Admin - Site/Tenant Management, Buoc 2 -
+ * Module/Plugin/Theme Catalog) - cung pattern AdminUserManagementUiTest (ModuleManager tro
+ * modules/ that, khong qua Application::boot() nen KHONG can TenantResolverMiddleware - dung y
+ * thiet ke that su cua module nay). Cache/PluginManager/ThemeManager dang ky vao Container theo
+ * dung pattern ApplicationPluginActivationIntegrationTest (FileCacheDriver tro thu muc tam rieng
+ * cho tung test run, xoa sach o tearDown).
  */
 final class SystemAdminSiteManagementUiTest extends TestCase
 {
     private const REAL_MODULES_PATH = __DIR__ . '/../../modules';
+    private const REAL_PLUGINS_PATH = __DIR__ . '/../../plugins';
     private const REAL_THEMES_PATH = __DIR__ . '/../../themes';
 
     private Container $container;
     private Router $router;
     private Database $database;
     private Session $session;
+    private string $cachePath;
 
     protected function setUp(): void
     {
         $config = new Config(__DIR__ . '/../Fixtures/config');
+        $this->cachePath = \sys_get_temp_dir() . '/cms-test-system-admin-' . \uniqid('', true);
 
         $this->container = new Container();
         $this->container->instance(Config::class, $config);
         $this->container->singleton(Database::class, static fn (Container $c): Database => new Database($c->get(Config::class)));
         $this->container->singleton(Session::class, static fn (Container $c): Session => new Session($c->get(Config::class)));
+        $this->container->singleton(CacheDriver::class, fn (): FileCacheDriver => new FileCacheDriver($this->cachePath));
+        $this->container->singleton(Cache::class, static fn (Container $c): Cache => new Cache($c->get(CacheDriver::class)));
+        $this->container->singleton(ModuleManager::class, static fn (): ModuleManager => new ModuleManager(self::REAL_MODULES_PATH));
+        $this->container->singleton(PluginManager::class, static fn (): PluginManager => new PluginManager(self::REAL_PLUGINS_PATH));
+        $this->container->singleton(ThemeManager::class, static fn (): ThemeManager => new ThemeManager(self::REAL_THEMES_PATH));
         $this->container->singleton(
             \Core\View::class,
             static fn (): \Core\View => new \Core\View(self::REAL_THEMES_PATH, 'default', 'default')
@@ -48,8 +64,7 @@ final class SystemAdminSiteManagementUiTest extends TestCase
 
         $this->migrate();
 
-        $moduleManager = new ModuleManager(self::REAL_MODULES_PATH);
-        $moduleManager->boot($this->router, ['system_admin']);
+        $this->container->get(ModuleManager::class)->boot($this->router, ['system_admin']);
     }
 
     protected function tearDown(): void
@@ -59,6 +74,19 @@ final class SystemAdminSiteManagementUiTest extends TestCase
         }
 
         $_SESSION = [];
+
+        if (\is_dir($this->cachePath)) {
+            $this->removeDirectory($this->cachePath);
+        }
+    }
+
+    private function removeDirectory(string $path): void
+    {
+        foreach (\glob($path . '/*') ?: [] as $file) {
+            \is_dir($file) ? $this->removeDirectory($file) : @\unlink($file);
+        }
+
+        @\rmdir($path);
     }
 
     private function migrate(): void
@@ -87,6 +115,15 @@ final class SystemAdminSiteManagementUiTest extends TestCase
             is_primary BOOLEAN NOT NULL DEFAULT 0
         )');
         $this->database->statement('CREATE UNIQUE INDEX uq_site_domains_domain ON site_domains (domain)');
+        $this->database->statement('CREATE TABLE site_plugins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id BIGINT NOT NULL,
+            plugin_key VARCHAR(100) NOT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT 0,
+            activated_at TIMESTAMP NULL,
+            updated_at TIMESTAMP NULL
+        )');
+        $this->database->statement('CREATE UNIQUE INDEX uq_site_plugins_tenant_key ON site_plugins (tenant_id, plugin_key)');
     }
 
     private function seedAdmin(string $email = 'root@platform.local', string $password = 'correct-password'): int
@@ -311,5 +348,155 @@ final class SystemAdminSiteManagementUiTest extends TestCase
         ));
 
         self::assertSame(419, $response->getStatusCode());
+    }
+
+    // ---- Buoc 2: Module/Plugin/Theme Catalog ----
+
+    public function testModuleListShowsDiscoveredModules(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $response = $this->router->dispatch(new Request('GET', '/system-admin/modules', 'system-admin.local'));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('system_admin', $response->getBody());
+    }
+
+    public function testThemeListShowsDiscoveredThemes(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $response = $this->router->dispatch(new Request('GET', '/system-admin/themes', 'system-admin.local'));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('default', $response->getBody());
+    }
+
+    public function testUpdateSiteWithInvalidThemeRendersFormAgain(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site A']);
+        $siteId = (int) $this->database->connection()->lastInsertId();
+
+        $editPage = $this->router->dispatch(new Request('GET', "/system-admin/sites/{$siteId}/edit", 'system-admin.local'));
+        $token = $this->extractCsrfToken($editPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/system-admin/sites/{$siteId}",
+            'system-admin.local',
+            [],
+            ['name' => 'Site A', 'theme_active' => 'theme-khong-ton-tai', '_token' => $token]
+        ));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Theme khong hop le.', $response->getBody());
+
+        $row = $this->database->selectOne('SELECT theme_active FROM sites WHERE id = ?', [$siteId]);
+        self::assertNull($row['theme_active']);
+    }
+
+    public function testUpdateSiteWithValidThemeSavesThemeActive(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site A']);
+        $siteId = (int) $this->database->connection()->lastInsertId();
+
+        $editPage = $this->router->dispatch(new Request('GET', "/system-admin/sites/{$siteId}/edit", 'system-admin.local'));
+        $token = $this->extractCsrfToken($editPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/system-admin/sites/{$siteId}",
+            'system-admin.local',
+            [],
+            ['name' => 'Site A', 'theme_active' => 'default', '_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $row = $this->database->selectOne('SELECT theme_active FROM sites WHERE id = ?', [$siteId]);
+        self::assertSame('default', $row['theme_active']);
+    }
+
+    public function testSitePluginListShowsEcommercePluginInactiveByDefault(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site A']);
+        $siteId = (int) $this->database->connection()->lastInsertId();
+
+        $response = $this->router->dispatch(new Request('GET', "/system-admin/sites/{$siteId}/plugins", 'system-admin.local'));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Ecommerce MVP', $response->getBody());
+        self::assertStringContainsString('Dang tat', $response->getBody());
+    }
+
+    public function testSitePluginToggleActivatesThenDeactivates(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site A']);
+        $siteId = (int) $this->database->connection()->lastInsertId();
+
+        $listPage = $this->router->dispatch(new Request('GET', "/system-admin/sites/{$siteId}/plugins", 'system-admin.local'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/system-admin/sites/{$siteId}/plugins/ecommerce/toggle",
+            'system-admin.local',
+            [],
+            ['_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $row = $this->database->selectOne('SELECT is_active FROM site_plugins WHERE tenant_id = ? AND plugin_key = ?', [$siteId, 'ecommerce']);
+        self::assertSame(1, (int) $row['is_active']);
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/system-admin/sites/{$siteId}/plugins/ecommerce/toggle",
+            'system-admin.local',
+            [],
+            ['_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $row = $this->database->selectOne('SELECT is_active FROM site_plugins WHERE tenant_id = ? AND plugin_key = ?', [$siteId, 'ecommerce']);
+        self::assertSame(0, (int) $row['is_active']);
+    }
+
+    public function testSitePluginToggleUnknownKeyReturns404(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site A']);
+        $siteId = (int) $this->database->connection()->lastInsertId();
+
+        $listPage = $this->router->dispatch(new Request('GET', "/system-admin/sites/{$siteId}/plugins", 'system-admin.local'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/system-admin/sites/{$siteId}/plugins/khong-ton-tai/toggle",
+            'system-admin.local',
+            [],
+            ['_token' => $token]
+        ));
+
+        self::assertSame(404, $response->getStatusCode());
     }
 }

@@ -9,6 +9,7 @@ use Core\Database;
 use Core\Http\Request;
 use Core\Http\Response;
 use Core\SystemAdminAuth;
+use Core\ThemeManager;
 use Core\View;
 
 /** GET /system-admin/sites/{id}/edit - form sua site + quan ly domain phu. */
@@ -18,6 +19,7 @@ final class SiteShowEditController
         private readonly SystemAdminAuth $auth,
         private readonly Csrf $csrf,
         private readonly Database $database,
+        private readonly ThemeManager $themeManager,
         private readonly View $view,
     ) {
     }
@@ -43,6 +45,7 @@ final class SiteShowEditController
         $html = $this->view->render('system_admin.pages.sites.edit', [
             'site' => $site,
             'domains' => $domains,
+            'themes' => $this->themeManager->discover(),
             'errors' => [],
             'old' => ['name' => (string) $site['name']],
             'csrf_token' => $this->csrf->token(),
