@@ -4,6 +4,7 @@
     <a href="/system-admin/sites">Sites</a>
     <a href="/system-admin/modules">Modules</a>
     <a href="/system-admin/themes">Themes</a>
+    <a href="/system-admin/plans">Goi dich vu</a>
 
     <div class="nav-group-label">Audit Log</div>
     <a href="/system-admin/audit-logs">Audit Log (Site)</a>

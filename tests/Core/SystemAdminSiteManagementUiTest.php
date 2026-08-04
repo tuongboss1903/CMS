@@ -99,6 +99,18 @@ final class SystemAdminSiteManagementUiTest extends TestCase
             status VARCHAR(20) NOT NULL DEFAULT \'active\'
         )');
         $this->database->statement('CREATE UNIQUE INDEX uq_platform_admins_email ON platform_admins (email)');
+        $this->database->statement('CREATE TABLE plans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            `key` VARCHAR(50) NOT NULL,
+            name VARCHAR(150) NOT NULL,
+            price_vnd BIGINT NOT NULL DEFAULT 0,
+            billing_cycle VARCHAR(20) NOT NULL DEFAULT \'monthly\',
+            max_users INT NULL,
+            max_storage_mb INT NULL,
+            max_products INT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT 1
+        )');
+        $this->database->statement('CREATE UNIQUE INDEX uq_plans_key ON plans (`key`)');
         $this->database->statement('CREATE TABLE sites (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name VARCHAR(150) NOT NULL,
@@ -625,5 +637,136 @@ final class SystemAdminSiteManagementUiTest extends TestCase
         $log = $this->database->selectOne('SELECT platform_admin_id, site_id FROM platform_audit_logs WHERE event = ?', ['site.suspend']);
         self::assertSame($adminId, (int) $log['platform_admin_id']);
         self::assertSame($siteId, (int) $log['site_id']);
+    }
+
+    // ---- Buoc 4: Subscription/Goi dich vu ----
+
+    public function testCreatePlanSuccessRedirectsToList(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $formPage = $this->router->dispatch(new Request('GET', '/system-admin/plans/create', 'system-admin.local'));
+        $token = $this->extractCsrfToken($formPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/system-admin/plans',
+            'system-admin.local',
+            [],
+            [
+                'key' => 'basic', 'name' => 'Co ban', 'price_vnd' => '99000', 'billing_cycle' => 'monthly',
+                'max_users' => '5', 'max_storage_mb' => '500', 'max_products' => '', '_token' => $token,
+            ]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/system-admin/plans', $response->getHeaders()['Location']);
+
+        $plan = $this->database->selectOne('SELECT max_users, max_storage_mb, max_products FROM plans WHERE `key` = ?', ['basic']);
+        self::assertNotNull($plan);
+        self::assertSame(5, (int) $plan['max_users']);
+        self::assertSame(500, (int) $plan['max_storage_mb']);
+        self::assertNull($plan['max_products']);
+    }
+
+    public function testCreatePlanDuplicateKeyRendersFormAgain(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO plans (`key`, name) VALUES (?, ?)', ['basic', 'Co ban']);
+
+        $formPage = $this->router->dispatch(new Request('GET', '/system-admin/plans/create', 'system-admin.local'));
+        $token = $this->extractCsrfToken($formPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/system-admin/plans',
+            'system-admin.local',
+            [],
+            ['key' => 'basic', 'name' => 'Trung key', '_token' => $token]
+        ));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Key da duoc su dung.', $response->getBody());
+    }
+
+    public function testTogglePlanActiveFlipsState(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO plans (`key`, name, is_active) VALUES (?, ?, 1)', ['basic', 'Co ban']);
+        $planId = (int) $this->database->connection()->lastInsertId();
+
+        $listPage = $this->router->dispatch(new Request('GET', '/system-admin/plans', 'system-admin.local'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/system-admin/plans/{$planId}/toggle",
+            'system-admin.local',
+            [],
+            ['_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $row = $this->database->selectOne('SELECT is_active FROM plans WHERE id = ?', [$planId]);
+        self::assertSame(0, (int) $row['is_active']);
+    }
+
+    public function testAssignPlanToSiteSavesPlanId(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO plans (`key`, name) VALUES (?, ?)', ['basic', 'Co ban']);
+        $planId = (int) $this->database->connection()->lastInsertId();
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site A']);
+        $siteId = (int) $this->database->connection()->lastInsertId();
+
+        $editPage = $this->router->dispatch(new Request('GET', "/system-admin/sites/{$siteId}/edit", 'system-admin.local'));
+        $token = $this->extractCsrfToken($editPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/system-admin/sites/{$siteId}",
+            'system-admin.local',
+            [],
+            ['name' => 'Site A', 'plan_id' => (string) $planId, '_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $row = $this->database->selectOne('SELECT plan_id FROM sites WHERE id = ?', [$siteId]);
+        self::assertSame($planId, (int) $row['plan_id']);
+    }
+
+    public function testAssignInvalidPlanToSiteRendersFormAgain(): void
+    {
+        $adminId = $this->seedAdmin();
+        $this->actingAsSuperAdmin($adminId);
+
+        $this->database->insert('INSERT INTO sites (name) VALUES (?)', ['Site A']);
+        $siteId = (int) $this->database->connection()->lastInsertId();
+
+        $editPage = $this->router->dispatch(new Request('GET', "/system-admin/sites/{$siteId}/edit", 'system-admin.local'));
+        $token = $this->extractCsrfToken($editPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/system-admin/sites/{$siteId}",
+            'system-admin.local',
+            [],
+            ['name' => 'Site A', 'plan_id' => '999999', '_token' => $token]
+        ));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Goi dich vu khong hop le.', $response->getBody());
+
+        $row = $this->database->selectOne('SELECT plan_id FROM sites WHERE id = ?', [$siteId]);
+        self::assertNull($row['plan_id']);
     }
 }

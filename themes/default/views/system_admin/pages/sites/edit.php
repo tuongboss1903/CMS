@@ -27,8 +27,18 @@
             <?php endforeach; ?>
         </select>
     </div>
+    <div class="field">
+        <label for="plan_id">Goi dich vu</label>
+        <select id="plan_id" name="plan_id">
+            <option value="">-- Khong gan goi --</option>
+            <?php foreach (($plans ?? []) as $plan): ?>
+            <option value="<?= $this->e((string) $plan['id']) ?>"<?= (int) $plan['id'] === (int) ($site['plan_id'] ?? 0) ? ' selected' : '' ?>><?= $this->e((string) $plan['name']) ?><?= $plan['is_active'] ? '' : ' (da an)' ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
     <button type="submit" class="btn btn-primary">Luu</button>
     <a href="/system-admin/sites/<?= $this->e((string) $site['id']) ?>/plugins" class="btn btn-secondary">Quan ly Plugin</a>
+    <a href="/system-admin/plans" class="btn btn-secondary">Quan ly Goi dich vu</a>
 </form>
 
 <h2>Domain</h2>

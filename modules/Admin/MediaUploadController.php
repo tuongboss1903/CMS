@@ -86,6 +86,11 @@ final class MediaUploadController
         $mimeType = $detectedMimeType;
 
         $siteId = $this->tenantManager->id();
+
+        if ($this->exceedsStorageQuota($siteId, $size)) {
+            return Response::redirect('/admin/media');
+        }
+
         $originalName = (string) $file['name'];
         $extension = \pathinfo($originalName, PATHINFO_EXTENSION);
         $uniqueName = \uniqid('media_', true) . ($extension !== '' ? '.' . $extension : '');
@@ -127,5 +132,35 @@ final class MediaUploadController
         }
 
         return Response::redirect('/admin/media');
+    }
+
+    /**
+     * Buoc 4 (Subscription/Goi dich vu, CMS-065): site khong gan goi hoac goi khong dat
+     * max_storage_mb (NULL = khong gioi han) thi KHONG bi chan - zero-regression cho moi site
+     * hien co (plan_id mac dinh NULL tu truoc gio). Bang "plans" co the chua ton tai o fixture
+     * test cu chua migrate them (cung nguyen tac try/catch fallback da dung o
+     * Modules\Admin\DashboardController::fetchAnalyticsSummary()) - bat Throwable, coi nhu
+     * khong gioi han thay vi lam vo request upload.
+     */
+    private function exceedsStorageQuota(int|string|null $siteId, int $uploadSize): bool
+    {
+        try {
+            $row = $this->database->selectOne(
+                'SELECT sites.storage_used_bytes, plans.max_storage_mb
+                    FROM sites LEFT JOIN plans ON plans.id = sites.plan_id
+                    WHERE sites.id = ?',
+                [$siteId]
+            );
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if ($row === null || $row['max_storage_mb'] === null) {
+            return false;
+        }
+
+        $limitBytes = (int) $row['max_storage_mb'] * 1024 * 1024;
+
+        return ((int) $row['storage_used_bytes'] + $uploadSize) > $limitBytes;
     }
 }

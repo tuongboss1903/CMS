@@ -49,9 +49,19 @@ final class SiteUpdateController
 
         $data = $request->all();
 
+        /*
+         * Validator::validate() chi coi 'nullable' la "bo qua" khi gia tri === null, khong phai
+         * chuoi rong '' (select "-- Khong gan goi --" trong form that gui '', khong bao gio null) -
+         * chuan hoa truoc de rule 'integer' khong bi fail sai khi Super Admin chu dong bo gan plan.
+         */
+        if (($data['plan_id'] ?? null) === '') {
+            $data['plan_id'] = null;
+        }
+
         $result = $this->validator->validate($data, [
             'name' => 'required|string',
             'theme_active' => 'nullable|string',
+            'plan_id' => 'nullable|integer',
         ]);
 
         if ($result->fails()) {
@@ -66,9 +76,17 @@ final class SiteUpdateController
             return $this->renderWithErrors($siteId, ['theme_active' => ['Theme khong hop le.']], $data);
         }
 
+        $planId = \array_key_exists('plan_id', $data) && $data['plan_id'] !== null
+            ? (int) $data['plan_id']
+            : null;
+
+        if ($planId !== null && $this->database->selectOne('SELECT id FROM plans WHERE id = ?', [$planId]) === null) {
+            return $this->renderWithErrors($siteId, ['plan_id' => ['Goi dich vu khong hop le.']], $data);
+        }
+
         $this->database->statement(
-            'UPDATE sites SET name = ?, theme_active = ? WHERE id = ?',
-            [(string) $data['name'], $themeActive, $siteId]
+            'UPDATE sites SET name = ?, theme_active = ?, plan_id = ? WHERE id = ?',
+            [(string) $data['name'], $themeActive, $planId, $siteId]
         );
 
         $this->platformAuditLogger->log(
@@ -77,7 +95,7 @@ final class SiteUpdateController
             $siteId,
             'site',
             $siteId,
-            newValues: ['name' => (string) $data['name'], 'theme_active' => $themeActive]
+            newValues: ['name' => (string) $data['name'], 'theme_active' => $themeActive, 'plan_id' => $planId]
         );
 
         return Response::redirect('/system-admin/sites');
@@ -89,7 +107,7 @@ final class SiteUpdateController
      */
     private function renderWithErrors(int $siteId, array $errors, array $data): Response
     {
-        $site = $this->database->selectOne('SELECT id, name, status, theme_active FROM sites WHERE id = ?', [$siteId]);
+        $site = $this->database->selectOne('SELECT id, name, status, theme_active, plan_id FROM sites WHERE id = ?', [$siteId]);
         $domains = $this->database->select(
             'SELECT id, domain, is_primary FROM site_domains WHERE site_id = ? ORDER BY is_primary DESC, id ASC',
             [$siteId]
@@ -99,6 +117,7 @@ final class SiteUpdateController
             'site' => $site,
             'domains' => $domains,
             'themes' => $this->themeManager->discover(),
+            'plans' => $this->database->select('SELECT id, name, is_active FROM plans ORDER BY price_vnd ASC, id ASC'),
             'errors' => $errors,
             'old' => ['name' => (string) ($data['name'] ?? '')],
             'csrf_token' => $this->csrf->token(),

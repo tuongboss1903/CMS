@@ -31,7 +31,7 @@ final class SiteShowEditController
         }
 
         $siteId = (int) $request->routeParam('id');
-        $site = $this->database->selectOne('SELECT id, name, status, theme_active FROM sites WHERE id = ?', [$siteId]);
+        $site = $this->database->selectOne('SELECT id, name, status, theme_active, plan_id FROM sites WHERE id = ?', [$siteId]);
 
         if ($site === null) {
             return Response::html('404 Not Found', 404);
@@ -46,6 +46,7 @@ final class SiteShowEditController
             'site' => $site,
             'domains' => $domains,
             'themes' => $this->themeManager->discover(),
+            'plans' => $this->database->select('SELECT id, name, is_active FROM plans ORDER BY price_vnd ASC, id ASC'),
             'errors' => [],
             'old' => ['name' => (string) $site['name']],
             'csrf_token' => $this->csrf->token(),

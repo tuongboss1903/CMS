@@ -57,6 +57,10 @@ final class UserCreateController
         $roleId = (int) $data['role_id'];
         $siteId = $this->tenantManager->id();
 
+        if ($this->exceedsUserQuota($siteId)) {
+            return $this->renderWithErrors(['plan' => ['Da dat gioi han so User theo goi dich vu hien tai.']], $data);
+        }
+
         try {
             $this->database->transaction(function (Database $db) use ($name, $email, $password, $roleId, $siteId): int {
                 $role = $db->selectOne(
@@ -113,5 +117,35 @@ final class UserCreateController
         ]);
 
         return Response::html($html);
+    }
+
+    /**
+     * Buoc 4 (Subscription/Goi dich vu, CMS-065): site khong gan goi hoac goi khong dat
+     * max_users (NULL = khong gioi han) thi KHONG bi chan - zero-regression cho moi site hien co.
+     * Bang "plans" co the chua ton tai o fixture test cu chua migrate them (cung nguyen tac
+     * try/catch fallback da dung o Modules\Admin\DashboardController::fetchAnalyticsSummary()) -
+     * bat Throwable, coi nhu khong gioi han thay vi lam vo request tao user.
+     */
+    private function exceedsUserQuota(int|string|null $siteId): bool
+    {
+        try {
+            $row = $this->database->selectOne(
+                'SELECT plans.max_users FROM sites LEFT JOIN plans ON plans.id = sites.plan_id WHERE sites.id = ?',
+                [$siteId]
+            );
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if ($row === null || $row['max_users'] === null) {
+            return false;
+        }
+
+        $currentUserCount = (int) ($this->database->selectOne(
+            'SELECT COUNT(*) as c FROM users INNER JOIN user_site_roles ON user_site_roles.user_id = users.id WHERE user_site_roles.site_id = ?',
+            [$siteId]
+        )['c'] ?? 0);
+
+        return $currentUserCount >= (int) $row['max_users'];
     }
 }
