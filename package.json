@@ -1,0 +1,16 @@
+{
+  "name": "cms-da-website-assets",
+  "private": true,
+  "description": "Build pipeline CSS cho CMS da website - Tailwind CSS cho Admin/System Admin, Sass (SCSS) cho Frontend theme. Khong lien quan backend PHP thuan (xem CLAUDE.md).",
+  "scripts": {
+    "build:admin": "tailwindcss -i ./resources/admin/tailwind.css -o ./public/assets/css/admin.css --minify",
+    "watch:admin": "tailwindcss -i ./resources/admin/tailwind.css -o ./public/assets/css/admin.css --watch",
+    "build:frontend": "sass resources/frontend/scss/main.scss:public/assets/css/public.css --style=compressed --no-source-map",
+    "watch:frontend": "sass resources/frontend/scss/main.scss:public/assets/css/public.css --watch --no-source-map",
+    "build": "npm run build:admin && npm run build:frontend"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.13",
+    "sass": "^1.79.4"
+  }
+}
