@@ -13,5 +13,5 @@ return (new PhpCsFixer\Config())
         'trailing_comma_in_multiline' => true,
         'line_ending' => false,
     ])
-    ->setLineEnding("\r\n")
+    ->setLineEnding("\n")
     ->setFinder($finder);

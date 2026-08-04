@@ -1,0 +1,16 @@
+# Chuan hoa line ending LF cho toan bo file text, bat ke he dieu hanh checkout (Windows/Linux/
+# macOS). Ly do: .php-cs-fixer.php yeu cau LF (khop noi dung da luu trong Git) va CI chay tren
+# ubuntu-latest (Linux, giu nguyen LF khi checkout) - neu khong co file nay, may Windows co
+# core.autocrlf=true se tu convert LF->CRLF luc checkout, khien `php-cs-fixer fix --dry-run`
+# CHAY SACH tren Windows nhung FAIL tren CI Linux (dung y loi da xay ra tu CMS-057 den truoc
+# lan sua nay - CI fail lien tuc ma khong ai phat hien vi chi lo ra tren Linux).
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
