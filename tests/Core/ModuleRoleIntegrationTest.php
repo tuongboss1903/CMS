@@ -142,6 +142,11 @@ final class ModuleRoleIntegrationTest extends TestCase
         $this->session->set('auth.permissions', $permissions);
     }
 
+    private function csrfToken(): string
+    {
+        return (new \Core\Csrf($this->session))->token();
+    }
+
     public function testListRolesReturnsSystemAndTenantRoles(): void
     {
         $siteA = $this->seedSite();
@@ -166,7 +171,7 @@ final class ModuleRoleIntegrationTest extends TestCase
             '/roles',
             'example.com',
             [],
-            ['name' => 'Editor']
+            ['name' => 'Editor', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(201, $response->getStatusCode());
@@ -187,7 +192,7 @@ final class ModuleRoleIntegrationTest extends TestCase
             '/roles',
             'example.com',
             [],
-            ['name' => 'Editor']
+            ['name' => 'Editor', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -204,7 +209,7 @@ final class ModuleRoleIntegrationTest extends TestCase
             "/roles/{$systemRoleId}",
             'example.com',
             [],
-            ['name' => 'Hacked']
+            ['name' => 'Hacked', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(403, $response->getStatusCode());
@@ -221,7 +226,7 @@ final class ModuleRoleIntegrationTest extends TestCase
             "/roles/{$roleId}",
             'example.com',
             [],
-            ['name' => 'Senior Editor']
+            ['name' => 'Senior Editor', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -241,7 +246,7 @@ final class ModuleRoleIntegrationTest extends TestCase
             "/roles/{$roleB}",
             'example.com',
             [],
-            ['name' => 'Hacked']
+            ['name' => 'Hacked', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -253,7 +258,7 @@ final class ModuleRoleIntegrationTest extends TestCase
         $systemRoleId = $this->seedRole(null, 'Admin');
         $this->actingAs($siteA, ['role.delete']);
 
-        $response = $this->router->dispatch(new Request('DELETE', "/roles/{$systemRoleId}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/roles/{$systemRoleId}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(403, $response->getStatusCode());
     }
@@ -265,7 +270,7 @@ final class ModuleRoleIntegrationTest extends TestCase
         $this->seedUserWithRole($siteA, $roleId);
         $this->actingAs($siteA, ['role.delete']);
 
-        $response = $this->router->dispatch(new Request('DELETE', "/roles/{$roleId}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/roles/{$roleId}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(409, $response->getStatusCode());
     }
@@ -282,7 +287,7 @@ final class ModuleRoleIntegrationTest extends TestCase
             "/roles/{$systemRoleId}/permissions",
             'example.com',
             [],
-            ['permission_id' => $permissionId]
+            ['permission_id' => $permissionId, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(403, $response->getStatusCode());
@@ -300,7 +305,7 @@ final class ModuleRoleIntegrationTest extends TestCase
             "/roles/{$roleId}/permissions",
             'example.com',
             [],
-            ['permission_id' => $permissionId]
+            ['permission_id' => $permissionId, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());

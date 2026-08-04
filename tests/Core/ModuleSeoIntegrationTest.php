@@ -131,6 +131,11 @@ final class ModuleSeoIntegrationTest extends TestCase
         $this->session->set('auth.permissions', $permissions);
     }
 
+    private function csrfToken(): string
+    {
+        return (new \Core\Csrf($this->session))->token();
+    }
+
     // ---- GET ----
 
     public function testGetReturnsNullWhenNoMetaYet(): void
@@ -238,7 +243,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             "/seo/page/{$pageId}",
             'example.com',
             [],
-            ['title' => 'New Title', 'description' => 'New Description']
+            ['title' => 'New Title', 'description' => 'New Description', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -265,7 +270,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             "/seo/page/{$pageId}",
             'example.com',
             [],
-            ['title' => 'Updated Title']
+            ['title' => 'Updated Title', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -294,7 +299,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             "/seo/page/{$pageId}",
             'example.com',
             [],
-            ['title' => 'X']
+            ['title' => 'X', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -317,7 +322,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             "/seo/page/{$pageId}",
             'example.com',
             [],
-            ['og_title' => 'OG Title', 'og_description' => 'OG Desc', 'is_index' => false, 'is_follow' => false]
+            ['og_title' => 'OG Title', 'og_description' => 'OG Desc', 'is_index' => false, 'is_follow' => false, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -341,7 +346,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             '/seo/post/1',
             'example.com',
             [],
-            ['title' => 'x']
+            ['title' => 'x', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -357,7 +362,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             '/seo/page/999999',
             'example.com',
             [],
-            ['title' => 'x']
+            ['title' => 'x', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -375,7 +380,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             "/seo/page/{$pageInB}",
             'example.com',
             [],
-            ['title' => 'Hacked']
+            ['title' => 'Hacked', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -393,7 +398,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             "/seo/page/{$pageId}",
             'example.com',
             [],
-            ['og_image_id' => $mediaId]
+            ['og_image_id' => $mediaId, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -415,7 +420,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             "/seo/page/{$pageId}",
             'example.com',
             [],
-            ['og_image_id' => 999999]
+            ['og_image_id' => 999999, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -440,7 +445,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             "/seo/page/{$pageInA}",
             'example.com',
             [],
-            ['og_image_id' => $mediaInB]
+            ['og_image_id' => $mediaInB, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -457,7 +462,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             "/seo/page/{$pageId}",
             'example.com',
             [],
-            ['title' => 'x']
+            ['title' => 'x', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(403, $response->getStatusCode());
@@ -474,7 +479,7 @@ final class ModuleSeoIntegrationTest extends TestCase
             "/seo/page/{$pageId}",
             'example.com',
             [],
-            ['schema_type' => 'Article', 'schema_data' => ['headline' => 'Hello', 'wordCount' => 100]]
+            ['schema_type' => 'Article', 'schema_data' => ['headline' => 'Hello', 'wordCount' => 100], '_token' => $this->csrfToken()]
         ));
 
         $row = $this->database->selectOne(

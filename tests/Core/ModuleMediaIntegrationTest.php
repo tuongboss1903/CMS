@@ -185,6 +185,11 @@ final class ModuleMediaIntegrationTest extends TestCase
         $this->session->set('auth.permissions', $permissions);
     }
 
+    private function csrfToken(): string
+    {
+        return (new \Core\Csrf($this->session))->token();
+    }
+
     /** @return array{name: string, type: string, tmp_name: string, error: int, size: int} */
     private function fakeUploadedFile(string $originalName, string $mimeType, string $content): array
     {
@@ -250,7 +255,7 @@ final class ModuleMediaIntegrationTest extends TestCase
             '/media',
             'example.com',
             [],
-            [],
+            ['_token' => $this->csrfToken()],
             [],
             [],
             ['file' => $file]
@@ -285,7 +290,7 @@ final class ModuleMediaIntegrationTest extends TestCase
             '/media',
             'example.com',
             [],
-            [],
+            ['_token' => $this->csrfToken()],
             [],
             [],
             ['file' => $file]
@@ -306,7 +311,7 @@ final class ModuleMediaIntegrationTest extends TestCase
             '/media',
             'example.com',
             [],
-            [],
+            ['_token' => $this->csrfToken()],
             [],
             [],
             ['file' => $file]
@@ -331,7 +336,7 @@ final class ModuleMediaIntegrationTest extends TestCase
             '/media',
             'example.com',
             [],
-            [],
+            ['_token' => $this->csrfToken()],
             [],
             [],
             ['file' => $file]
@@ -356,7 +361,7 @@ final class ModuleMediaIntegrationTest extends TestCase
             "/media/{$mediaId}",
             'example.com',
             [],
-            ['alt_text' => 'Mo ta anh', 'title' => 'Tieu de', 'caption' => 'Chu thich']
+            ['alt_text' => 'Mo ta anh', 'title' => 'Tieu de', 'caption' => 'Chu thich', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -379,7 +384,7 @@ final class ModuleMediaIntegrationTest extends TestCase
             "/media/{$mediaInB}",
             'example.com',
             [],
-            ['alt_text' => 'Hacked']
+            ['alt_text' => 'Hacked', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -396,7 +401,7 @@ final class ModuleMediaIntegrationTest extends TestCase
             "/media/{$mediaId}",
             'example.com',
             [],
-            ['alt_text' => 'x']
+            ['alt_text' => 'x', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(403, $response->getStatusCode());
@@ -416,7 +421,7 @@ final class ModuleMediaIntegrationTest extends TestCase
             '/media',
             'example.com',
             [],
-            [],
+            ['_token' => $this->csrfToken()],
             [],
             [],
             ['file' => $file]
@@ -427,7 +432,7 @@ final class ModuleMediaIntegrationTest extends TestCase
         self::assertFileExists($fullPath);
         self::assertSame(\strlen('delete-me-bytes'), $this->storageUsedBytes($siteId));
 
-        $response = $this->router->dispatch(new Request('DELETE', "/media/{$uploaded['id']}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/media/{$uploaded['id']}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(200, $response->getStatusCode());
 
@@ -444,7 +449,7 @@ final class ModuleMediaIntegrationTest extends TestCase
         $mediaInB = $this->seedMedia($siteB, "{$siteB}/x.png", 100);
         $this->actingAs($siteA, $this->seedUser(), ['media.delete']);
 
-        $response = $this->router->dispatch(new Request('DELETE', "/media/{$mediaInB}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/media/{$mediaInB}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(404, $response->getStatusCode());
 
@@ -458,7 +463,7 @@ final class ModuleMediaIntegrationTest extends TestCase
         $mediaId = $this->seedMedia($siteId, "{$siteId}/x.png", 100);
         $this->actingAs($siteId, $this->seedUser(), []);
 
-        $response = $this->router->dispatch(new Request('DELETE', "/media/{$mediaId}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/media/{$mediaId}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(403, $response->getStatusCode());
     }
@@ -469,7 +474,7 @@ final class ModuleMediaIntegrationTest extends TestCase
         $mediaId = $this->seedMedia($siteId, "{$siteId}/already-gone.png", 100);
         $this->actingAs($siteId, $this->seedUser(), ['media.delete']);
 
-        $response = $this->router->dispatch(new Request('DELETE', "/media/{$mediaId}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/media/{$mediaId}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(200, $response->getStatusCode());
 

@@ -147,6 +147,11 @@ final class ModuleMenuIntegrationTest extends TestCase
         $this->session->set('auth.permissions', $permissions);
     }
 
+    private function csrfToken(): string
+    {
+        return (new \Core\Csrf($this->session))->token();
+    }
+
     // ---- List / tenant isolation ----
 
     public function testListReturnsOnlyCurrentTenantMenus(): void
@@ -187,7 +192,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             '/menus',
             'example.com',
             [],
-            ['name' => 'Header', 'location_key' => 'header']
+            ['name' => 'Header', 'location_key' => 'header', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(201, $response->getStatusCode());
@@ -207,7 +212,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             '/menus',
             'example.com',
             [],
-            ['name' => 'Header 2', 'location_key' => 'header']
+            ['name' => 'Header 2', 'location_key' => 'header', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -224,7 +229,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menus/{$menuId}",
             'example.com',
             [],
-            ['name' => 'Header Renamed']
+            ['name' => 'Header Renamed', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -244,7 +249,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menus/{$footerId}",
             'example.com',
             [],
-            ['location_key' => 'header']
+            ['location_key' => 'header', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -262,7 +267,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menus/{$menuInB}",
             'example.com',
             [],
-            ['name' => 'Hacked']
+            ['name' => 'Hacked', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -275,7 +280,7 @@ final class ModuleMenuIntegrationTest extends TestCase
         $itemId = $this->seedMenuItem($menuId, label: 'Home');
         $this->actingAs($siteId, ['menu.delete']);
 
-        $response = $this->router->dispatch(new Request('DELETE', "/menus/{$menuId}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/menus/{$menuId}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(200, $response->getStatusCode());
         self::assertNull($this->database->selectOne('SELECT id FROM menus WHERE id = ?', [$menuId]));
@@ -288,7 +293,7 @@ final class ModuleMenuIntegrationTest extends TestCase
         $menuId = $this->seedMenu($siteId);
         $this->actingAs($siteId, []);
 
-        $response = $this->router->dispatch(new Request('DELETE', "/menus/{$menuId}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/menus/{$menuId}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(403, $response->getStatusCode());
     }
@@ -333,7 +338,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menus/{$menuId}/items",
             'example.com',
             [],
-            ['label' => 'About', 'type' => 'page', 'reference_id' => $pageId]
+            ['label' => 'About', 'type' => 'page', 'reference_id' => $pageId, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(201, $response->getStatusCode());
@@ -353,7 +358,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menus/{$menuId}/items",
             'example.com',
             [],
-            ['label' => 'About', 'type' => 'page', 'reference_id' => 999999]
+            ['label' => 'About', 'type' => 'page', 'reference_id' => 999999, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -370,7 +375,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menus/{$menuId}/items",
             'example.com',
             [],
-            ['label' => 'Google', 'type' => 'custom', 'url' => 'https://google.com']
+            ['label' => 'Google', 'type' => 'custom', 'url' => 'https://google.com', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(201, $response->getStatusCode());
@@ -390,7 +395,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menus/{$menuId}/items",
             'example.com',
             [],
-            ['label' => 'Google', 'type' => 'custom']
+            ['label' => 'Google', 'type' => 'custom', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -408,7 +413,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menus/{$menuInB}/items",
             'example.com',
             [],
-            ['label' => 'Hacked', 'type' => 'custom', 'url' => '/x']
+            ['label' => 'Hacked', 'type' => 'custom', 'url' => '/x', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -428,7 +433,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menu-items/{$itemId}",
             'example.com',
             [],
-            ['label' => 'New Label', 'sort_order' => 5]
+            ['label' => 'New Label', 'sort_order' => 5, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -449,7 +454,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menu-items/{$itemId}",
             'example.com',
             [],
-            ['parent_id' => $itemId]
+            ['parent_id' => $itemId, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -468,7 +473,7 @@ final class ModuleMenuIntegrationTest extends TestCase
             "/menu-items/{$itemInB}",
             'example.com',
             [],
-            ['label' => 'Hacked']
+            ['label' => 'Hacked', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -485,7 +490,7 @@ final class ModuleMenuIntegrationTest extends TestCase
         $siblingId = $this->seedMenuItem($menuId, label: 'Sibling');
         $this->actingAs($siteId, ['menu.update']);
 
-        $response = $this->router->dispatch(new Request('DELETE', "/menu-items/{$parentId}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/menu-items/{$parentId}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(200, $response->getStatusCode());
         self::assertNull($this->database->selectOne('SELECT id FROM menu_items WHERE id = ?', [$parentId]));
@@ -500,7 +505,7 @@ final class ModuleMenuIntegrationTest extends TestCase
         $itemId = $this->seedMenuItem($menuId);
         $this->actingAs($siteId, []);
 
-        $response = $this->router->dispatch(new Request('DELETE', "/menu-items/{$itemId}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/menu-items/{$itemId}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(403, $response->getStatusCode());
     }

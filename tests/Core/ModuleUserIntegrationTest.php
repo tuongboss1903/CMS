@@ -135,6 +135,11 @@ final class ModuleUserIntegrationTest extends TestCase
         $this->session->set('auth.permissions', $permissions);
     }
 
+    private function csrfToken(): string
+    {
+        return (new \Core\Csrf($this->session))->token();
+    }
+
     public function testListUsersReturnsOnlyUsersOfCurrentTenant(): void
     {
         $siteA = $this->seedSite('Site A');
@@ -165,7 +170,7 @@ final class ModuleUserIntegrationTest extends TestCase
             '/users',
             'example.com',
             [],
-            ['name' => 'New User', 'email' => 'new@example.com', 'password' => 'password123', 'role_id' => $roleA]
+            ['name' => 'New User', 'email' => 'new@example.com', 'password' => 'password123', 'role_id' => $roleA, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(201, $response->getStatusCode());
@@ -197,7 +202,7 @@ final class ModuleUserIntegrationTest extends TestCase
             '/users',
             'example.com',
             [],
-            ['name' => 'New User', 'email' => 'new@example.com', 'password' => 'password123', 'role_id' => 999999]
+            ['name' => 'New User', 'email' => 'new@example.com', 'password' => 'password123', 'role_id' => 999999, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -222,7 +227,7 @@ final class ModuleUserIntegrationTest extends TestCase
             '/users',
             'example.com',
             [],
-            ['name' => 'New User', 'email' => 'existing@example.com', 'password' => 'password123', 'role_id' => $roleA]
+            ['name' => 'New User', 'email' => 'existing@example.com', 'password' => 'password123', 'role_id' => $roleA, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -241,13 +246,13 @@ final class ModuleUserIntegrationTest extends TestCase
 
         $this->actingAs($siteA, ['user.lock']);
 
-        $lockResponse = $this->router->dispatch(new Request('POST', "/users/{$userId}/lock", 'example.com'));
+        $lockResponse = $this->router->dispatch(new Request('POST', "/users/{$userId}/lock", 'example.com', [], ['_token' => $this->csrfToken()]));
         self::assertSame(200, $lockResponse->getStatusCode());
 
         $locked = $this->database->selectOne('SELECT status FROM users WHERE id = ?', [$userId]);
         self::assertSame('locked', $locked['status']);
 
-        $unlockResponse = $this->router->dispatch(new Request('POST', "/users/{$userId}/unlock", 'example.com'));
+        $unlockResponse = $this->router->dispatch(new Request('POST', "/users/{$userId}/unlock", 'example.com', [], ['_token' => $this->csrfToken()]));
         self::assertSame(200, $unlockResponse->getStatusCode());
 
         $unlocked = $this->database->selectOne('SELECT status FROM users WHERE id = ?', [$userId]);
@@ -278,7 +283,7 @@ final class ModuleUserIntegrationTest extends TestCase
             "/users/{$userInSiteB}",
             'example.com',
             [],
-            ['name' => 'Hacked Name']
+            ['name' => 'Hacked Name', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
