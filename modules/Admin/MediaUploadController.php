@@ -57,11 +57,33 @@ final class MediaUploadController
             return Response::redirect('/admin/media');
         }
 
-        $mimeType = (string) $file['type'];
+        $claimedMimeType = (string) $file['type'];
 
-        if (!\in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
+        if (!\in_array($claimedMimeType, self::ALLOWED_MIME_TYPES, true)) {
             return Response::redirect('/admin/media');
         }
+
+        /**
+         * Khong tin $file['type'] (Content-Type client tu khai bao, gia mao duoc) - doc lai magic
+         * byte that qua finfo_file() de xac dinh mime type that, dong bo Modules\Media\UploadMediaController.
+         */
+        $detectedMimeType = false;
+        $tmpNameForDetection = (string) $file['tmp_name'];
+
+        if (\is_readable($tmpNameForDetection)) {
+            $finfo = \finfo_open(FILEINFO_MIME_TYPE);
+            $detectedMimeType = $finfo !== false ? \finfo_file($finfo, $tmpNameForDetection) : false;
+
+            if ($finfo !== false) {
+                \finfo_close($finfo);
+            }
+        }
+
+        if ($detectedMimeType === false || !\in_array($detectedMimeType, self::ALLOWED_MIME_TYPES, true)) {
+            return Response::redirect('/admin/media');
+        }
+
+        $mimeType = $detectedMimeType;
 
         $siteId = $this->tenantManager->id();
         $originalName = (string) $file['name'];

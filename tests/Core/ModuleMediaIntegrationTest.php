@@ -26,6 +26,9 @@ final class ModuleMediaIntegrationTest extends TestCase
 {
     private const REAL_MODULES_PATH = __DIR__ . '/../../modules';
 
+    /** PNG 1x1 that (magic byte hop le, base64) - can thiet vi UploadMediaController gio xac minh mime qua finfo_file(), khong con chap nhan byte gia tuy y. */
+    private const REAL_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
     private Container $container;
     private Router $router;
     private Database $database;
@@ -190,6 +193,11 @@ final class ModuleMediaIntegrationTest extends TestCase
         return (new \Core\Csrf($this->session))->token();
     }
 
+    private function realPngBytes(): string
+    {
+        return (string) \base64_decode(self::REAL_PNG_BASE64, true);
+    }
+
     /** @return array{name: string, type: string, tmp_name: string, error: int, size: int} */
     private function fakeUploadedFile(string $originalName, string $mimeType, string $content): array
     {
@@ -248,7 +256,8 @@ final class ModuleMediaIntegrationTest extends TestCase
         $userId = $this->seedUser();
         $this->actingAs($siteId, $userId, ['media.upload']);
 
-        $file = $this->fakeUploadedFile('photo.png', 'image/png', 'fake-image-bytes');
+        $pngBytes = $this->realPngBytes();
+        $file = $this->fakeUploadedFile('photo.png', 'image/png', $pngBytes);
 
         $response = $this->router->dispatch(new Request(
             'POST',
@@ -265,7 +274,7 @@ final class ModuleMediaIntegrationTest extends TestCase
         $decoded = \json_decode($response->getBody(), true);
         self::assertTrue($decoded['success']);
         self::assertSame('photo.png', $decoded['data']['file_name']);
-        self::assertSame(\strlen('fake-image-bytes'), $decoded['data']['size']);
+        self::assertSame(\strlen($pngBytes), $decoded['data']['size']);
 
         $row = $this->database->selectOne('SELECT * FROM media WHERE id = ?', [$decoded['data']['id']]);
         self::assertNotNull($row);
@@ -273,9 +282,9 @@ final class ModuleMediaIntegrationTest extends TestCase
 
         $fullPath = $this->storageDir . '/' . $decoded['data']['path'];
         self::assertFileExists($fullPath);
-        self::assertSame('fake-image-bytes', \file_get_contents($fullPath));
+        self::assertSame($pngBytes, \file_get_contents($fullPath));
 
-        self::assertSame(\strlen('fake-image-bytes'), $this->storageUsedBytes($siteId));
+        self::assertSame(\strlen($pngBytes), $this->storageUsedBytes($siteId));
     }
 
     public function testUploadMissingPermissionReturns403(): void
@@ -305,6 +314,34 @@ final class ModuleMediaIntegrationTest extends TestCase
         $this->actingAs($siteId, $this->seedUser(), ['media.upload']);
 
         $file = $this->fakeUploadedFile('script.exe', 'application/x-msdownload', 'x');
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/media',
+            'example.com',
+            [],
+            ['_token' => $this->csrfToken()],
+            [],
+            [],
+            ['file' => $file]
+        ));
+
+        self::assertSame(422, $response->getStatusCode());
+
+        $count = $this->database->selectOne('SELECT COUNT(*) as c FROM media WHERE tenant_id = ?', [$siteId]);
+        self::assertSame(0, (int) $count['c']);
+    }
+
+    /**
+     * Content-Type khai bao "image/png" nhung noi dung that la text/plain (khong phai magic byte
+     * PNG hop le) - phai bi tu choi qua finfo_file(), khong duoc tin $file['type'] client tu khai.
+     */
+    public function testUploadRejectsContentThatDoesNotMatchClaimedMimeType(): void
+    {
+        $siteId = $this->seedSite();
+        $this->actingAs($siteId, $this->seedUser(), ['media.upload']);
+
+        $file = $this->fakeUploadedFile('fake.png', 'image/png', 'this is plain text, not a real png');
 
         $response = $this->router->dispatch(new Request(
             'POST',
@@ -415,7 +452,8 @@ final class ModuleMediaIntegrationTest extends TestCase
         $userId = $this->seedUser();
         $this->actingAs($siteId, $userId, ['media.upload', 'media.delete']);
 
-        $file = $this->fakeUploadedFile('to-delete.png', 'image/png', 'delete-me-bytes');
+        $pngBytes = $this->realPngBytes();
+        $file = $this->fakeUploadedFile('to-delete.png', 'image/png', $pngBytes);
         $uploadResponse = $this->router->dispatch(new Request(
             'POST',
             '/media',
@@ -430,7 +468,7 @@ final class ModuleMediaIntegrationTest extends TestCase
         $fullPath = $this->storageDir . '/' . $uploaded['path'];
 
         self::assertFileExists($fullPath);
-        self::assertSame(\strlen('delete-me-bytes'), $this->storageUsedBytes($siteId));
+        self::assertSame(\strlen($pngBytes), $this->storageUsedBytes($siteId));
 
         $response = $this->router->dispatch(new Request('DELETE', "/media/{$uploaded['id']}", 'example.com', [], ['_token' => $this->csrfToken()]));
 

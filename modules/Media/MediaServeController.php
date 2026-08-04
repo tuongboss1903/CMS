@@ -65,6 +65,7 @@ final class MediaServeController
         $etag = '"' . \md5($tenantId . '|' . $media['path'] . '|' . $media['size']) . '"';
 
         return (new Response($contents, 200, ['Content-Type' => (string) $media['mime_type']]))
+            ->withHeader('X-Content-Type-Options', 'nosniff')
             ->withHeader('ETag', $etag)
             ->withHeader('Last-Modified', $lastModified)
             ->withCache(86400);

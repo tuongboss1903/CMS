@@ -84,9 +84,9 @@ final class UploadMediaController
             ], 422);
         }
 
-        $mimeType = (string) $file['type'];
+        $claimedMimeType = (string) $file['type'];
 
-        if (!\in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
+        if (!\in_array($claimedMimeType, self::ALLOWED_MIME_TYPES, true)) {
             return Response::json([
                 'success' => false,
                 'data' => null,
@@ -94,6 +94,35 @@ final class UploadMediaController
                 'errors' => [],
             ], 422);
         }
+
+        /**
+         * Khong tin $file['type'] (Content-Type client tu khai bao, gia mao duoc) - doc lai magic
+         * byte that qua finfo_file() de xac dinh mime type that. Neu khong khop 1 trong 4 dinh
+         * dang cho phep (vd file .exe/.html gia danh "image/png" o Content-Type header), tu choi
+         * truoc khi move vao storage - chan MIME confusion khi phuc vu lai qua MediaServeController.
+         */
+        $detectedMimeType = false;
+        $tmpNameForDetection = (string) $file['tmp_name'];
+
+        if (\is_readable($tmpNameForDetection)) {
+            $finfo = \finfo_open(FILEINFO_MIME_TYPE);
+            $detectedMimeType = $finfo !== false ? \finfo_file($finfo, $tmpNameForDetection) : false;
+
+            if ($finfo !== false) {
+                \finfo_close($finfo);
+            }
+        }
+
+        if ($detectedMimeType === false || !\in_array($detectedMimeType, self::ALLOWED_MIME_TYPES, true)) {
+            return Response::json([
+                'success' => false,
+                'data' => null,
+                'message' => 'Noi dung file khong khop dinh dang khai bao.',
+                'errors' => [],
+            ], 422);
+        }
+
+        $mimeType = $detectedMimeType;
 
         $siteId = $this->tenantManager->id();
         $originalName = (string) $file['name'];

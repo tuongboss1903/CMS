@@ -28,6 +28,9 @@ final class AdminMediaManagementUiTest extends TestCase
     private const REAL_MODULES_PATH = __DIR__ . '/../../modules';
     private const REAL_THEMES_PATH = __DIR__ . '/../../themes';
 
+    /** PNG 1x1 that (magic byte hop le, base64) - can thiet vi MediaUploadController gio xac minh mime qua finfo_file(), khong con chap nhan byte gia tuy y. */
+    private const REAL_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
     private Container $container;
     private Router $router;
     private Database $database;
@@ -207,6 +210,11 @@ final class AdminMediaManagementUiTest extends TestCase
         return $matches[1] ?? '';
     }
 
+    private function realPngBytes(): string
+    {
+        return (string) \base64_decode(self::REAL_PNG_BASE64, true);
+    }
+
     /** @return array{name: string, type: string, tmp_name: string, error: int, size: int} */
     private function fakeUploadedFile(string $originalName, string $mimeType, string $content): array
     {
@@ -267,7 +275,8 @@ final class AdminMediaManagementUiTest extends TestCase
         $listPage = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com'));
         $token = $this->extractCsrfToken($listPage->getBody());
 
-        $file = $this->fakeUploadedFile('photo.png', 'image/png', 'fake-image-bytes');
+        $pngBytes = $this->realPngBytes();
+        $file = $this->fakeUploadedFile('photo.png', 'image/png', $pngBytes);
 
         $response = $this->router->dispatch(new Request(
             'POST',
@@ -281,7 +290,7 @@ final class AdminMediaManagementUiTest extends TestCase
         ));
 
         self::assertSame(302, $response->getStatusCode());
-        self::assertSame(\strlen('fake-image-bytes'), $this->storageUsedBytes($siteId));
+        self::assertSame(\strlen($pngBytes), $this->storageUsedBytes($siteId));
 
         $row = $this->database->selectOne('SELECT tenant_id, path FROM media WHERE tenant_id = ?', [$siteId]);
         self::assertNotNull($row);

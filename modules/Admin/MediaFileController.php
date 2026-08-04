@@ -56,6 +56,7 @@ final class MediaFileController
             return Response::html('404 Not Found', 404);
         }
 
-        return new Response($contents, 200, ['Content-Type' => (string) $media['mime_type']]);
+        return (new Response($contents, 200, ['Content-Type' => (string) $media['mime_type']]))
+            ->withHeader('X-Content-Type-Options', 'nosniff');
     }
 }
