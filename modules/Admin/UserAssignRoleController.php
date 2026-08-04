@@ -15,6 +15,10 @@ use Core\Validator;
  * POST /admin/users/{id}/role - copy logic tu Modules\User\AssignRoleController. Khong co
  * route/form rieng de hien thi loi (form nam ngay trong list.php) - loi/validate fail deu
  * redirect ve /admin/users (khong co trang rieng de render lai).
+ *
+ * CHI chap nhan Tenant Role (tenant_id = site hien tai) - KHONG cho gan System Role
+ * (tenant_id NULL) qua endpoint nay, tranh leo thang dac quyen (Security Fix, dong bo
+ * Modules\User\AssignRoleController).
  */
 final class UserAssignRoleController
 {
@@ -57,7 +61,7 @@ final class UserAssignRoleController
         $roleId = (int) $data['role_id'];
 
         $role = $this->database->selectOne(
-            'SELECT id FROM roles WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)',
+            'SELECT id FROM roles WHERE id = ? AND tenant_id = ?',
             [$roleId, $siteId]
         );
 

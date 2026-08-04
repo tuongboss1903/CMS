@@ -14,6 +14,11 @@ use Core\Validator;
 /**
  * POST /users/{id}/role - chi doi role cua user DA thuoc tenant hien tai (khong tao moi
  * user_site_roles - viec do thuoc CreateUserController, xem Final Design CMS-037).
+ *
+ * CHI chap nhan Tenant Role (tenant_id = site hien tai) - KHONG cho gan System Role
+ * (tenant_id NULL, vd "Admin" toan quyen tao o bin/bootstrap.php) qua endpoint nay, tranh
+ * leo thang dac quyen: "user.assign_role" la quyen hep (doi role trong pham vi tenant),
+ * khong duoc phep cap toan quyen he thong (Security Fix).
  */
 final class AssignRoleController
 {
@@ -71,7 +76,7 @@ final class AssignRoleController
         $roleId = (int) $data['role_id'];
 
         $role = $this->database->selectOne(
-            'SELECT id FROM roles WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)',
+            'SELECT id FROM roles WHERE id = ? AND tenant_id = ?',
             [$roleId, $siteId]
         );
 

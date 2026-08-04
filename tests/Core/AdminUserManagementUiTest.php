@@ -117,6 +117,13 @@ final class AdminUserManagementUiTest extends TestCase
         return (int) $this->database->connection()->lastInsertId();
     }
 
+    private function seedSystemRole(string $name = 'Admin'): int
+    {
+        $this->database->insert('INSERT INTO roles (tenant_id, name) VALUES (NULL, ?)', [$name]);
+
+        return (int) $this->database->connection()->lastInsertId();
+    }
+
     private function seedUser(
         int $siteId,
         int $roleId,
@@ -387,6 +394,34 @@ final class AdminUserManagementUiTest extends TestCase
             [$userId, $siteId]
         );
         self::assertSame($roleB, (int) $row['role_id']);
+    }
+
+    public function testAssignSystemRoleIsRejected(): void
+    {
+        $siteId = $this->seedSite();
+        $roleA = $this->seedRole($siteId, 'editor');
+        $userId = $this->seedUser($siteId, $roleA);
+        $systemRoleId = $this->seedSystemRole();
+        $this->actingAs($siteId, ['user.assign_role', 'user.view']);
+
+        $listPage = $this->router->dispatch(new Request('GET', '/admin/users', 'example.com'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/admin/users/{$userId}/role",
+            'example.com',
+            [],
+            ['role_id' => (string) $systemRoleId, '_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $row = $this->database->selectOne(
+            'SELECT role_id FROM user_site_roles WHERE user_id = ? AND site_id = ?',
+            [$userId, $siteId]
+        );
+        self::assertSame($roleA, (int) $row['role_id']);
     }
 
     // ---- Authorization ----

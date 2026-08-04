@@ -288,4 +288,30 @@ final class ModuleUserIntegrationTest extends TestCase
 
         self::assertSame(404, $response->getStatusCode());
     }
+
+    public function testAssignRoleRejectsSystemRole(): void
+    {
+        $siteA = $this->seedSite('Site A');
+        $roleA = $this->seedRole($siteA, 'editor');
+        $userId = $this->seedUser($siteA, $roleA);
+        $systemRoleId = $this->seedRole(null, 'Admin');
+
+        $this->actingAs($siteA, ['user.assign_role']);
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/users/{$userId}/role",
+            'example.com',
+            [],
+            ['role_id' => $systemRoleId, '_token' => $this->csrfToken()]
+        ));
+
+        self::assertSame(422, $response->getStatusCode());
+
+        $row = $this->database->selectOne(
+            'SELECT role_id FROM user_site_roles WHERE user_id = ? AND site_id = ?',
+            [$userId, $siteA]
+        );
+        self::assertSame($roleA, (int) $row['role_id']);
+    }
 }
