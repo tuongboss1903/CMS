@@ -123,7 +123,7 @@ final class MenuItemUpdateController
             }
         }
 
-        if (\array_key_exists('parent_id', $data) && $data['parent_id'] !== null && $data['parent_id'] !== '') {
+        if (\array_key_exists('parent_id', $data) && $data['parent_id'] !== null) {
             $parentId = (int) $data['parent_id'];
 
             if ($parentId === $itemId) {
@@ -136,7 +136,7 @@ final class MenuItemUpdateController
 
             $fields[] = 'parent_id = ?';
             $bindings[] = $parentId;
-        } elseif (\array_key_exists('parent_id', $data) && ($data['parent_id'] === null || $data['parent_id'] === '')) {
+        } elseif (\array_key_exists('parent_id', $data)) {
             $fields[] = 'parent_id = ?';
             $bindings[] = null;
         }

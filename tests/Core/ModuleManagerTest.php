@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Core;
 
-use Core\Container;
 use Core\Http\Request;
 use Core\Module\CircularModuleDependencyException;
 use Core\Module\ModuleException;

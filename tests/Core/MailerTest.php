@@ -123,7 +123,7 @@ final class MailerTest extends TestCase
 
     public function testMailerSendReturnsFalseWhenDriverThrows(): void
     {
-        $throwingDriver = new class implements MailerDriver {
+        $throwingDriver = new class () implements MailerDriver {
             public function send(string $to, string $subject, string $html, string $text): bool
             {
                 throw new RuntimeException('Driver loi gia lap');

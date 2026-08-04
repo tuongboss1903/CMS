@@ -6,6 +6,8 @@ use Core\Middleware\AnalyticsTrackingMiddleware;
 use Core\Middleware\CsrfMiddleware;
 use Core\Middleware\LocaleDetectionMiddleware;
 
+/** @var \Core\Router $router */
+
 /**
  * Phase 13 (i18n, CMS-050): 2 route "/" va "/{slug}" van giu nguyen KHONG prefix (fallback locale
  * mac dinh qua Query String/Session/Cookie/config - LocaleDetectionMiddleware gan vao ca 2 de doc

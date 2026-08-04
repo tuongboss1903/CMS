@@ -1,1 +1,2 @@
-<?php $this->extend('layouts.master'); $this->section('content'); ?>CHILD-CONTENT<?php $this->endSection(); ?>
+<?php $this->extend('layouts.master');
+$this->section('content'); ?>CHILD-CONTENT<?php $this->endSection(); ?>

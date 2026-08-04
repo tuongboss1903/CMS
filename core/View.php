@@ -145,7 +145,12 @@ final class View
         return $html;
     }
 
-    /** @param array<string, mixed> $data */
+    /**
+     * @param array<string, mixed> $data
+     * @phpstan-impure Template include() co the goi $this->extend()/section() va thay doi state
+     *     ($layout/$sections) - PHPStan khong thay duoc side effect nay vi no xay ra trong file
+     *     .php duoc include dong, khong phai than method body.
+     */
     private function renderTemplate(string $template, array $data): string
     {
         $path = $this->resolvePath($template);

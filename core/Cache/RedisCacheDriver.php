@@ -85,7 +85,7 @@ final class RedisCacheDriver implements CacheDriver
                 throw new CacheException('Xac thuc Redis that bai (sai password).');
             }
 
-            if (!$redis->select((int) ($this->config['database'] ?? 0))) {
+            if (!$redis->select($this->config['database'])) {
                 throw new CacheException('Khong the chon Redis database index.');
             }
         } catch (RedisException $exception) {

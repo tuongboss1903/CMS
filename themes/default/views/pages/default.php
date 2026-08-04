@@ -94,12 +94,12 @@ $renderBlock = function (array $block) {
     }
 };
 
-foreach ($content['blocks'] as $block) {
-    if (\is_array($block)) {
-        $renderBlock($block);
+    foreach ($content['blocks'] as $block) {
+        if (\is_array($block)) {
+            $renderBlock($block);
+        }
     }
-}
-?>
+    ?>
 </div>
 <?php elseif (\is_array($content ?? null) && isset($content['html'])): ?>
 <div class="page-body">

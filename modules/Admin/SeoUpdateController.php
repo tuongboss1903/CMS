@@ -150,8 +150,8 @@ final class SeoUpdateController
                     $fields['og_image_id'] ?? null,
                     $fields['og_title'] ?? null,
                     $fields['og_description'] ?? null,
-                    $fields['is_index'] ?? 1,
-                    $fields['is_follow'] ?? 1,
+                    $fields['is_index'],
+                    $fields['is_follow'],
                     $fields['schema_type'] ?? null,
                     $fields['schema_data'] ?? null,
                 ]

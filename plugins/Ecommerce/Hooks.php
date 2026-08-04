@@ -9,6 +9,8 @@ use Core\Router;
 use Core\TenantManager;
 use Modules\Admin\NotificationService;
 
+/** @var \Core\Hook $hook */
+
 /**
  * Phase 19 (Ecommerce MVP, CMS-056). PluginManager::boot() require file nay voi DUY NHAT $hook
  * trong scope (xem core/PluginManager.php::boot()) - moi dependency khac (Router/TenantManager/
@@ -27,7 +29,7 @@ $hook->action('plugin.routes.register', static function (Router $router): void {
     require __DIR__ . '/routes.php';
 });
 
-$hook->filter('admin.menu.items', static function (array $items, ?TenantManager $tenantManager = null, ?PluginActivationService $pluginActivation = null) : array {
+$hook->filter('admin.menu.items', static function (array $items, ?TenantManager $tenantManager = null, ?PluginActivationService $pluginActivation = null): array {
     if ($tenantManager === null || $pluginActivation === null || !$tenantManager->check()) {
         return $items;
     }

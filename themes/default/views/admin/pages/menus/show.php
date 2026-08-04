@@ -149,17 +149,19 @@ $flatten = function (array $nodes, int $depth = 0) use (&$flatten): array {
 
                 <?php if (!empty($node['children'])): ?>
                 <ul class="menu-tree-children">
-                    <?php foreach ($node['children'] as $child) { $renderNode($child); } ?>
+                    <?php foreach ($node['children'] as $child) {
+                        $renderNode($child);
+                    } ?>
                 </ul>
                 <?php endif; ?>
             </li>
             <?php
         };
 
-        foreach ($tree as $rootNode) {
-            $renderNode($rootNode);
-        }
-        ?>
+foreach ($tree as $rootNode) {
+    $renderNode($rootNode);
+}
+?>
     </ul>
     <?php if (empty($tree)): ?>
     <div class="empty-state">Chua co menu item nao.</div>

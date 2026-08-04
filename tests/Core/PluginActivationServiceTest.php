@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Core;
 
 use Core\Cache;
-use Core\Cache\CacheDriver;
 use Core\Cache\FileCacheDriver;
 use Core\Config;
 use Core\Database;

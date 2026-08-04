@@ -36,18 +36,18 @@
     <h2 style="font-size:16px; margin-top:0;">Luot xem 7 ngay gan day</h2>
     <?php
     $maxViews = \max(1, \max(\array_column($daily_views, 'views')));
-    $barWidth = 40;
-    $gap = 16;
-    $chartHeight = 120;
-    $chartWidth = \count($daily_views) * ($barWidth + $gap);
-    ?>
+$barWidth = 40;
+$gap = 16;
+$chartHeight = 120;
+$chartWidth = \count($daily_views) * ($barWidth + $gap);
+?>
     <svg viewBox="0 0 <?= $this->e((string) $chartWidth) ?> <?= $this->e((string) ($chartHeight + 20)) ?>" width="100%" height="140" role="img" aria-label="Bieu do luot xem 7 ngay gan day">
         <?php foreach ($daily_views as $index => $day): ?>
         <?php
-        $barHeight = (int) \round(($day['views'] / $maxViews) * $chartHeight);
-        $x = $index * ($barWidth + $gap);
-        $y = $chartHeight - $barHeight;
-        ?>
+    $barHeight = (int) \round(($day['views'] / $maxViews) * $chartHeight);
+            $x = $index * ($barWidth + $gap);
+            $y = $chartHeight - $barHeight;
+            ?>
         <rect x="<?= $this->e((string) $x) ?>" y="<?= $this->e((string) $y) ?>" width="<?= $this->e((string) $barWidth) ?>" height="<?= $this->e((string) $barHeight) ?>" fill="var(--color-primary, #2563eb)" rx="3"></rect>
         <text x="<?= $this->e((string) ($x + $barWidth / 2)) ?>" y="<?= $this->e((string) ($chartHeight + 14)) ?>" text-anchor="middle" font-size="10" fill="currentColor"><?= $this->e(\substr((string) $day['date'], 5)) ?></text>
         <?php endforeach; ?>

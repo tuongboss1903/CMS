@@ -1,0 +1,18 @@
+parameters:
+    level: 5
+    paths:
+        - app
+        - core
+        - database
+        - modules
+        - plugins
+    excludePaths:
+        - vendor/*
+        - storage/*
+    tmpDir: storage/phpstan
+    ignoreErrors:
+        -
+            # RateLimitMiddleware la placeholder co chu dich (Owner Decision CMS-023, xem docblock
+            # class) - $rateLimiter duoc inject de Module tuong lai tu goi truc tiep, khong phai bug.
+            message: '#Property Core\\Middleware\\RateLimitMiddleware::\$rateLimiter is never read, only written\.#'
+            path: core/Middleware/RateLimitMiddleware.php

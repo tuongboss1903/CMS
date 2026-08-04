@@ -14,8 +14,8 @@
         'processing' => ['shipped' => 'Da giao van chuyen', 'cancelled' => 'Huy don'],
         'shipped' => ['completed' => 'Hoan tat'],
     ];
-    $available = $transitions[$order['status']] ?? [];
-    ?>
+$available = $transitions[$order['status']] ?? [];
+?>
     <?php foreach ($available as $nextStatus => $label): ?>
     <form method="POST" action="/admin/orders/<?= $this->e((string) $order['id']) ?>/status" style="display:inline;">
         <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
