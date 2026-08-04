@@ -6,6 +6,7 @@ namespace Modules\Page\Actions;
 
 use Core\Database;
 use Core\Database\QueryException;
+use Core\Security\HtmlSanitizer;
 use Core\TenantManager;
 use Core\Validator;
 
@@ -21,6 +22,7 @@ final class CreatePageAction
         private readonly Database $database,
         private readonly TenantManager $tenantManager,
         private readonly Validator $validator,
+        private readonly HtmlSanitizer $htmlSanitizer,
     ) {
     }
 
@@ -49,8 +51,8 @@ final class CreatePageAction
 
         $title = (string) $data['title'];
         $slug = (string) $data['slug'];
-        $content = \array_key_exists('content', $data) && $data['content'] !== null
-            ? \json_encode($data['content'])
+        $content = \array_key_exists('content', $data) && \is_array($data['content'])
+            ? \json_encode($this->htmlSanitizer->sanitizeContentArray($data['content']))
             : null;
         $template = \array_key_exists('template', $data) && $data['template'] !== null && $data['template'] !== ''
             ? (string) $data['template']

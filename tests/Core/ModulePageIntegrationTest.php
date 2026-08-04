@@ -130,6 +130,11 @@ final class ModulePageIntegrationTest extends TestCase
         $this->session->set('auth.permissions', $permissions);
     }
 
+    private function csrfToken(): string
+    {
+        return (new \Core\Csrf($this->session))->token();
+    }
+
     // ---- Create ----
 
     public function testCreatePageSuccess(): void
@@ -143,7 +148,7 @@ final class ModulePageIntegrationTest extends TestCase
             '/pages',
             'example.com',
             [],
-            ['title' => 'About Us', 'slug' => 'about-us', 'content' => ['blocks' => ['hello']]]
+            ['title' => 'About Us', 'slug' => 'about-us', 'content' => ['blocks' => ['hello']], '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(201, $response->getStatusCode());
@@ -163,7 +168,7 @@ final class ModulePageIntegrationTest extends TestCase
             '/pages',
             'example.com',
             [],
-            ['title' => 'About Us', 'slug' => 'about-us', 'content' => ['blocks' => ['hello']]]
+            ['title' => 'About Us', 'slug' => 'about-us', 'content' => ['blocks' => ['hello']], '_token' => $this->csrfToken()]
         ));
 
         $decoded = \json_decode($response->getBody(), true);
@@ -184,7 +189,7 @@ final class ModulePageIntegrationTest extends TestCase
             '/pages',
             'example.com',
             [],
-            ['title' => 'About Us Again', 'slug' => 'about-us']
+            ['title' => 'About Us Again', 'slug' => 'about-us', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -201,7 +206,7 @@ final class ModulePageIntegrationTest extends TestCase
             '/pages',
             'example.com',
             [],
-            ['title' => 'Child', 'slug' => 'child', 'parent_id' => 999999]
+            ['title' => 'Child', 'slug' => 'child', 'parent_id' => 999999, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -220,7 +225,7 @@ final class ModulePageIntegrationTest extends TestCase
             '/pages',
             'example.com',
             [],
-            ['title' => 'Child', 'slug' => 'child', 'parent_id' => $parentInSiteB]
+            ['title' => 'Child', 'slug' => 'child', 'parent_id' => $parentInSiteB, '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -251,7 +256,7 @@ final class ModulePageIntegrationTest extends TestCase
         $pageId = $this->seedPage($siteId, $userId, 'to-delete');
         $this->actingAs($siteId, $userId, ['page.view', 'page.delete']);
 
-        $this->router->dispatch(new Request('DELETE', "/pages/{$pageId}", 'example.com'));
+        $this->router->dispatch(new Request('DELETE', "/pages/{$pageId}", 'example.com', [], ['_token' => $this->csrfToken()]));
         $response = $this->router->dispatch(new Request('GET', '/pages', 'example.com'));
 
         $decoded = \json_decode($response->getBody(), true);
@@ -272,7 +277,7 @@ final class ModulePageIntegrationTest extends TestCase
             "/pages/{$pageId}",
             'example.com',
             [],
-            ['title' => 'Updated Title']
+            ['title' => 'Updated Title', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -293,7 +298,7 @@ final class ModulePageIntegrationTest extends TestCase
             "/pages/{$pageInB}",
             'example.com',
             [],
-            ['title' => 'Hacked']
+            ['title' => 'Hacked', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -306,13 +311,13 @@ final class ModulePageIntegrationTest extends TestCase
         $pageId = $this->seedPage($siteId, $userId);
         $this->actingAs($siteId, $userId, ['page.update', 'page.delete']);
 
-        $this->router->dispatch(new Request('DELETE', "/pages/{$pageId}", 'example.com'));
+        $this->router->dispatch(new Request('DELETE', "/pages/{$pageId}", 'example.com', [], ['_token' => $this->csrfToken()]));
         $response = $this->router->dispatch(new Request(
             'PATCH',
             "/pages/{$pageId}",
             'example.com',
             [],
-            ['title' => 'Should Fail']
+            ['title' => 'Should Fail', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -327,7 +332,7 @@ final class ModulePageIntegrationTest extends TestCase
         $pageId = $this->seedPage($siteId, $userId);
         $this->actingAs($siteId, $userId, ['page.delete']);
 
-        $response = $this->router->dispatch(new Request('DELETE', "/pages/{$pageId}", 'example.com'));
+        $response = $this->router->dispatch(new Request('DELETE', "/pages/{$pageId}", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(200, $response->getStatusCode());
 
@@ -350,7 +355,7 @@ final class ModulePageIntegrationTest extends TestCase
             "/pages/{$pageId}/publish",
             'example.com',
             [],
-            ['status' => 'published']
+            ['status' => 'published', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -371,7 +376,7 @@ final class ModulePageIntegrationTest extends TestCase
             "/pages/{$pageId}/publish",
             'example.com',
             [],
-            ['status' => 'not-a-real-status']
+            ['status' => 'not-a-real-status', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(422, $response->getStatusCode());
@@ -384,13 +389,13 @@ final class ModulePageIntegrationTest extends TestCase
         $pageId = $this->seedPage($siteId, $userId);
         $this->actingAs($siteId, $userId, ['page.publish']);
 
-        $this->router->dispatch(new Request('POST', "/pages/{$pageId}/publish", 'example.com', [], ['status' => 'published']));
+        $this->router->dispatch(new Request('POST', "/pages/{$pageId}/publish", 'example.com', [], ['status' => 'published', '_token' => $this->csrfToken()]));
         $firstRow = $this->database->selectOne('SELECT published_at FROM pages WHERE id = ?', [$pageId]);
 
         \sleep(1);
 
-        $this->router->dispatch(new Request('POST', "/pages/{$pageId}/publish", 'example.com', [], ['status' => 'draft']));
-        $this->router->dispatch(new Request('POST', "/pages/{$pageId}/publish", 'example.com', [], ['status' => 'published']));
+        $this->router->dispatch(new Request('POST', "/pages/{$pageId}/publish", 'example.com', [], ['status' => 'draft', '_token' => $this->csrfToken()]));
+        $this->router->dispatch(new Request('POST', "/pages/{$pageId}/publish", 'example.com', [], ['status' => 'published', '_token' => $this->csrfToken()]));
         $secondRow = $this->database->selectOne('SELECT published_at FROM pages WHERE id = ?', [$pageId]);
 
         self::assertSame($firstRow['published_at'], $secondRow['published_at']);
@@ -408,7 +413,7 @@ final class ModulePageIntegrationTest extends TestCase
 
         $this->actingAs($siteId, $userId, ['page.update']);
 
-        $response = $this->router->dispatch(new Request('POST', "/pages/{$newHomepage}/homepage", 'example.com'));
+        $response = $this->router->dispatch(new Request('POST', "/pages/{$newHomepage}/homepage", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         self::assertSame(200, $response->getStatusCode());
 
@@ -431,7 +436,7 @@ final class ModulePageIntegrationTest extends TestCase
         $pageA = $this->seedPage($siteA, $userId, 'page-a');
         $this->actingAs($siteA, $userId, ['page.update']);
 
-        $this->router->dispatch(new Request('POST', "/pages/{$pageA}/homepage", 'example.com'));
+        $this->router->dispatch(new Request('POST', "/pages/{$pageA}/homepage", 'example.com', [], ['_token' => $this->csrfToken()]));
 
         $stillHomepageB = $this->database->selectOne('SELECT is_homepage FROM pages WHERE id = ?', [$homepageB]);
         self::assertSame(1, (int) $stillHomepageB['is_homepage']);

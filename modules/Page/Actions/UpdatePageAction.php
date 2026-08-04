@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Page\Actions;
 
 use Core\Database;
+use Core\Security\HtmlSanitizer;
 use Core\TenantManager;
 use Core\Validator;
 
@@ -18,6 +19,7 @@ final class UpdatePageAction
         private readonly Database $database,
         private readonly TenantManager $tenantManager,
         private readonly Validator $validator,
+        private readonly HtmlSanitizer $htmlSanitizer,
     ) {
     }
 
@@ -65,9 +67,9 @@ final class UpdatePageAction
             $bindings[] = (string) $data['slug'];
         }
 
-        if (\array_key_exists('content', $data) && $data['content'] !== null) {
+        if (\array_key_exists('content', $data) && \is_array($data['content'])) {
             $fields[] = 'content = ?';
-            $bindings[] = \json_encode($data['content']);
+            $bindings[] = \json_encode($this->htmlSanitizer->sanitizeContentArray($data['content']));
         }
 
         if (\array_key_exists('template', $data) && $data['template'] !== null) {
