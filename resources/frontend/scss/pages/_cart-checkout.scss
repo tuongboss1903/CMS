@@ -1,5 +1,15 @@
 @use '../mixins';
 
+// .page-content .container mac dinh max-width: 760px (danh cho trang van ban thong thuong nhu
+// pages/default.php) - Cart/Checkout tai su dung CUNG wrapper .page-content > .container nen bi
+// bop hep theo, don ten san pham vao 1 cot rat nho trong .cart-item-row (visual 56px co dinh +
+// gia tien nowrap + nut Xoa deu chiem cho truoc). Mo rong RIENG cho trang co .commerce-layout
+// (:has() da dung san o .payment-method-option ben duoi, cung ho tro trinh duyet) - khong anh
+// huong .container cua cac trang page-content khac (404/default/search).
+.page-content:has(.commerce-layout) .container {
+  max-width: var(--container-max);
+}
+
 .commerce-layout {
   display: grid;
   grid-template-columns: 1fr 340px;
