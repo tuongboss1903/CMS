@@ -4,7 +4,7 @@
 <p class="text-muted">Bật/tắt plugin cho tenant hiện tại.</p>
 <div class="table-wrap">
 <table class="data-table">
-<thead><tr><th>Tên</th><th>Key</th><th>Phiên bản</th><th>Trạng thái</th><th></th></tr></thead>
+<thead><tr><th scope="col">Tên</th><th scope="col">Key</th><th scope="col">Phiên bản</th><th scope="col">Trạng thái</th><th scope="col"></th></tr></thead>
 <tbody>
 <?php foreach ($plugins as $plugin): ?>
 <tr>

@@ -46,8 +46,8 @@
         <label for="template">Template (tuỳ chọn)</label>
         <input type="text" id="template" name="template" value="<?= $this->e($old['template'] ?? '') ?>" placeholder="default">
     </div>
-    <div class="field">
-        <label>Nội dung theo ngôn ngữ</label>
+    <fieldset class="field">
+        <legend>Nội dung theo ngôn ngữ</legend>
         <div class="editor-mode-toggle">
             <button type="button" class="btn btn-secondary btn-sm" data-locale-tab="vi">Tiếng Việt (gốc)</button>
             <button type="button" class="btn btn-secondary btn-sm" data-locale-tab="en">English</button>
@@ -78,7 +78,7 @@
             <textarea id="translation-en-content" name="translations[en][content]" rows="8"><?= $this->e($translations['en']['content'] ?? '') ?></textarea>
         </div>
         </div>
-    </div>
+    </fieldset>
     <div class="flex gap-2">
         <button type="submit" class="btn btn-primary">Cập nhật</button>
         <a href="/admin/pages" class="btn btn-secondary">Huỷ</a>

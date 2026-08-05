@@ -5,7 +5,7 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Tieu de</th><th>Slug</th><th>Trang thai SEO</th><th>Hanh dong</th></tr>
+<tr><th scope="col">Tieu de</th><th scope="col">Slug</th><th scope="col">Trang thai SEO</th><th scope="col">Hanh dong</th></tr>
 </thead>
 <tbody>
 <?php foreach ($pages as $page): ?>

@@ -72,12 +72,14 @@
     }
 
     function fieldsHtmlFor(block, index) {
+        var idPrefix = 'block-' + index + '-';
+
         if (block.type === 'heading') {
             return ''
-                + '<div class="field mb-0"><label>Nội dung tiêu đề</label>'
-                + '<input type="text" data-field="text" value="' + escapeHtml(block.text) + '"></div>'
-                + '<div class="field mb-0"><label>Cấp độ</label>'
-                + '<select data-field="level">'
+                + '<div class="field mb-0"><label for="' + idPrefix + 'text">Nội dung tiêu đề</label>'
+                + '<input type="text" id="' + idPrefix + 'text" data-field="text" value="' + escapeHtml(block.text) + '"></div>'
+                + '<div class="field mb-0"><label for="' + idPrefix + 'level">Cấp độ</label>'
+                + '<select id="' + idPrefix + 'level" data-field="level">'
                 + [2, 3, 4].map(function (lvl) {
                     return '<option value="' + lvl + '"' + (Number(block.level) === lvl ? ' selected' : '') + '>H' + lvl + '</option>';
                 }).join('')
@@ -85,31 +87,31 @@
         }
 
         if (block.type === 'paragraph') {
-            return '<div class="field mb-0"><label>Nội dung đoạn văn</label>'
-                + '<textarea data-field="text" rows="3">' + escapeHtml(block.text) + '</textarea></div>';
+            return '<div class="field mb-0"><label for="' + idPrefix + 'text">Nội dung đoạn văn</label>'
+                + '<textarea id="' + idPrefix + 'text" data-field="text" rows="3">' + escapeHtml(block.text) + '</textarea></div>';
         }
 
         if (block.type === 'image') {
             return ''
-                + '<div class="field mb-0"><label>Chọn ảnh</label>'
-                + '<select data-field="media_id">' + imageOptions(block.media_id) + '</select></div>'
-                + '<div class="field mb-0"><label>Văn bản thay thế (Alt)</label>'
-                + '<input type="text" data-field="alt" value="' + escapeHtml(block.alt) + '"></div>';
+                + '<div class="field mb-0"><label for="' + idPrefix + 'media">Chọn ảnh</label>'
+                + '<select id="' + idPrefix + 'media" data-field="media_id">' + imageOptions(block.media_id) + '</select></div>'
+                + '<div class="field mb-0"><label for="' + idPrefix + 'alt">Văn bản thay thế (Alt)</label>'
+                + '<input type="text" id="' + idPrefix + 'alt" data-field="alt" value="' + escapeHtml(block.alt) + '"></div>';
         }
 
         if (block.type === 'hero') {
             return ''
-                + '<div class="field mb-0"><label>Tiêu đề chính</label><input type="text" data-field="headline" value="' + escapeHtml(block.headline) + '"></div>'
-                + '<div class="field mb-0"><label>Tiêu đề phụ</label><input type="text" data-field="subheadline" value="' + escapeHtml(block.subheadline) + '"></div>'
-                + '<div class="field mb-0"><label>Nhãn nút CTA</label><input type="text" data-field="cta_label" value="' + escapeHtml(block.cta_label) + '"></div>'
-                + '<div class="field mb-0"><label>URL nút CTA</label><input type="text" data-field="cta_url" value="' + escapeHtml(block.cta_url) + '"></div>';
+                + '<div class="field mb-0"><label for="' + idPrefix + 'headline">Tiêu đề chính</label><input type="text" id="' + idPrefix + 'headline" data-field="headline" value="' + escapeHtml(block.headline) + '"></div>'
+                + '<div class="field mb-0"><label for="' + idPrefix + 'subheadline">Tiêu đề phụ</label><input type="text" id="' + idPrefix + 'subheadline" data-field="subheadline" value="' + escapeHtml(block.subheadline) + '"></div>'
+                + '<div class="field mb-0"><label for="' + idPrefix + 'cta_label">Nhãn nút CTA</label><input type="text" id="' + idPrefix + 'cta_label" data-field="cta_label" value="' + escapeHtml(block.cta_label) + '"></div>'
+                + '<div class="field mb-0"><label for="' + idPrefix + 'cta_url">URL nút CTA</label><input type="text" id="' + idPrefix + 'cta_url" data-field="cta_url" value="' + escapeHtml(block.cta_url) + '"></div>';
         }
 
         if (block.type === 'cta') {
             return ''
-                + '<div class="field mb-0"><label>Tiêu đề chính</label><input type="text" data-field="headline" value="' + escapeHtml(block.headline) + '"></div>'
-                + '<div class="field mb-0"><label>Nhãn nút</label><input type="text" data-field="button_label" value="' + escapeHtml(block.button_label) + '"></div>'
-                + '<div class="field mb-0"><label>URL nút</label><input type="text" data-field="button_url" value="' + escapeHtml(block.button_url) + '"></div>';
+                + '<div class="field mb-0"><label for="' + idPrefix + 'headline">Tiêu đề chính</label><input type="text" id="' + idPrefix + 'headline" data-field="headline" value="' + escapeHtml(block.headline) + '"></div>'
+                + '<div class="field mb-0"><label for="' + idPrefix + 'button_label">Nhãn nút</label><input type="text" id="' + idPrefix + 'button_label" data-field="button_label" value="' + escapeHtml(block.button_label) + '"></div>'
+                + '<div class="field mb-0"><label for="' + idPrefix + 'button_url">URL nút</label><input type="text" id="' + idPrefix + 'button_url" data-field="button_url" value="' + escapeHtml(block.button_url) + '"></div>';
         }
 
         if (block.type === 'feature_grid') {

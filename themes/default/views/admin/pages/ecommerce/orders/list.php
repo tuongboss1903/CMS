@@ -10,7 +10,7 @@ $orderStatusLabels = [
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Mã đơn</th><th>Khách hàng</th><th>Tổng tiền</th><th>Trạng thái</th><th>Thời gian</th><th></th></tr>
+<tr><th scope="col">Mã đơn</th><th scope="col">Khách hàng</th><th scope="col">Tổng tiền</th><th scope="col">Trạng thái</th><th scope="col">Thời gian</th><th scope="col"></th></tr>
 </thead>
 <tbody>
 <?php foreach ($orders as $order): ?>

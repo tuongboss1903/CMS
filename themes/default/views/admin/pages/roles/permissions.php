@@ -29,7 +29,7 @@ foreach ($unassigned as $permission) {
 <div class="permission-matrix-wrap">
 <table class="permission-matrix">
 <thead>
-<tr><th>Permission</th><th class="permission-cell">Trạng thái</th><th class="permission-cell">Thao tác</th></tr>
+<tr><th scope="col">Permission</th><th scope="col" class="permission-cell">Trạng thái</th><th scope="col" class="permission-cell">Thao tác</th></tr>
 </thead>
 <tbody>
 <?php foreach ($allRows as $row): ?>

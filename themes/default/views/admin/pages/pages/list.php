@@ -19,7 +19,7 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Tiêu đề</th><th>Slug</th><th>Trạng thái</th><th>Trang chủ</th><th>Hành động</th></tr>
+<tr><th scope="col">Tiêu đề</th><th scope="col">Slug</th><th scope="col">Trạng thái</th><th scope="col">Trang chủ</th><th scope="col">Hành động</th></tr>
 </thead>
 <tbody>
 <?php foreach ($pages as $page): ?>

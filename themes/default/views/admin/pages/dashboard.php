@@ -59,7 +59,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
     <div class="table-wrap">
     <table class="data-table">
     <thead>
-    <tr><th>Đường dẫn</th><th>Lượt xem</th></tr>
+    <tr><th scope="col">Đường dẫn</th><th scope="col">Lượt xem</th></tr>
     </thead>
     <tbody>
     <?php foreach ($top_pages as $page): ?>
@@ -93,7 +93,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
         <h2 style="font-size:16px; margin-top:0;">Audit Log gần đây</h2>
         <div class="table-wrap">
         <table class="data-table">
-        <thead><tr><th>Sự kiện</th><th>Thời gian</th></tr></thead>
+        <thead><tr><th scope="col">Sự kiện</th><th scope="col">Thời gian</th></tr></thead>
         <tbody>
         <?php foreach ($recent_audit_logs as $log): ?>
         <tr>
@@ -129,7 +129,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
     <div class="table-wrap">
     <table class="data-table">
     <thead>
-    <tr><th>Loại</th><th>Nội dung</th><th>Thời gian</th></tr>
+    <tr><th scope="col">Loại</th><th scope="col">Nội dung</th><th scope="col">Thời gian</th></tr>
     </thead>
     <tbody>
     <?php foreach ($activity as $item): ?>

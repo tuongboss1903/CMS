@@ -34,7 +34,7 @@ $available = $transitions[$order['status']] ?? [];
 
 <div class="table-wrap">
 <table class="data-table">
-<thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th></tr></thead>
+<thead><tr><th scope="col">Sản phẩm</th><th scope="col">Đơn giá</th><th scope="col">Số lượng</th><th scope="col">Thành tiền</th></tr></thead>
 <tbody>
 <?php foreach ($items as $item): ?>
 <tr>
@@ -52,7 +52,7 @@ $available = $transitions[$order['status']] ?? [];
     <h2 style="font-size:16px; margin-top:0;">Lịch sử thanh toán</h2>
     <div class="table-wrap">
     <table class="data-table">
-    <thead><tr><th>Cổng thanh toán</th><th>Trạng thái</th><th>Số tiền</th><th>Mã giao dịch</th><th>Thời gian</th></tr></thead>
+    <thead><tr><th scope="col">Cổng thanh toán</th><th scope="col">Trạng thái</th><th scope="col">Số tiền</th><th scope="col">Mã giao dịch</th><th scope="col">Thời gian</th></tr></thead>
     <tbody>
     <?php foreach ($payments as $payment): ?>
     <tr>

@@ -11,7 +11,7 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Người gửi</th><th>Trang</th><th>Nội dung</th><th>Thời gian</th><th>Thao tác</th></tr>
+<tr><th scope="col">Người gửi</th><th scope="col">Trang</th><th scope="col">Nội dung</th><th scope="col">Thời gian</th><th scope="col">Thao tác</th></tr>
 </thead>
 <tbody>
 <?php foreach ($comments as $comment): ?>

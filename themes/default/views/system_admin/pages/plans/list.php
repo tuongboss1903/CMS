@@ -8,7 +8,7 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Key</th><th>Tên</th><th>Giá (VND)</th><th>Chu kỳ</th><th>Giới hạn</th><th>Số Site</th><th>Trạng thái</th><th>Hành động</th></tr>
+<tr><th scope="col">Key</th><th scope="col">Tên</th><th scope="col">Giá (VND)</th><th scope="col">Chu kỳ</th><th scope="col">Giới hạn</th><th scope="col">Số Site</th><th scope="col">Trạng thái</th><th scope="col">Hành động</th></tr>
 </thead>
 <tbody>
 <?php foreach ($plans as $plan): ?>

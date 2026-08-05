@@ -19,7 +19,7 @@ $eventOptions = \array_map(
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Thời gian</th><th>Super Admin</th><th>Sự kiện</th><th>Site</th><th>IP</th><th>Chi tiết</th></tr>
+<tr><th scope="col">Thời gian</th><th scope="col">Super Admin</th><th scope="col">Sự kiện</th><th scope="col">Site</th><th scope="col">IP</th><th scope="col">Chi tiết</th></tr>
 </thead>
 <tbody>
 <?php foreach ($logs as $log): ?>

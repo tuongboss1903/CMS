@@ -140,6 +140,17 @@
     font-weight: 500;
     color: var(--color-text-secondary);
   }
+  /* Nhom nhieu control lien quan (vd toggle Rich Text/Block Builder) - dung <fieldset>/<legend>
+     thay vi <label> khong gan "for" (WCAG 1.3.1/4.1.2: label phai gan dung 1 control). */
+  fieldset.field { border: 0; }
+  .field legend {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    padding: 0;
+  }
   .field input[type="text"],
   .field input[type="email"],
   .field input[type="password"],

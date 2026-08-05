@@ -8,7 +8,7 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Plugin</th><th>Phiên bản</th><th>Mô tả</th><th>Trạng thái</th><th>Hành động</th></tr>
+<tr><th scope="col">Plugin</th><th scope="col">Phiên bản</th><th scope="col">Mô tả</th><th scope="col">Trạng thái</th><th scope="col">Hành động</th></tr>
 </thead>
 <tbody>
 <?php foreach ($plugins as $plugin): ?>

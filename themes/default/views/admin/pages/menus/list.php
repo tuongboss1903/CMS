@@ -21,7 +21,7 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Tên Menu</th><th>Vị trí hiển thị</th><th>Hành động</th></tr>
+<tr><th scope="col">Tên Menu</th><th scope="col">Vị trí hiển thị</th><th scope="col">Hành động</th></tr>
 </thead>
 <tbody>
 <?php foreach ($menus as $menu): ?>

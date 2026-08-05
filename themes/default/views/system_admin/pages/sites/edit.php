@@ -44,7 +44,7 @@
 <h2>Domain</h2>
 <div class="table-wrap">
 <table class="data-table">
-<thead><tr><th>Domain</th><th>Chính</th><th>Hành động</th></tr></thead>
+<thead><tr><th scope="col">Domain</th><th scope="col">Chính</th><th scope="col">Hành động</th></tr></thead>
 <tbody>
 <?php foreach ($domains as $domain): ?>
 <tr>

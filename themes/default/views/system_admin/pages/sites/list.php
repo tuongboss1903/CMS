@@ -22,7 +22,7 @@ $siteStatusLabels = ['active' => 'Đang hoạt động', 'maintenance' => 'Bảo
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Tên Site</th><th>Domain</th><th>Theme</th><th>Trạng thái</th><th>Hành động</th></tr>
+<tr><th scope="col">Tên Site</th><th scope="col">Domain</th><th scope="col">Theme</th><th scope="col">Trạng thái</th><th scope="col">Hành động</th></tr>
 </thead>
 <tbody>
 <?php foreach ($sites as $site): ?>

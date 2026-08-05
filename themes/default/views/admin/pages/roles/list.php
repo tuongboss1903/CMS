@@ -7,7 +7,7 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Tên</th><th>Loại</th><th>Hành động</th></tr>
+<tr><th scope="col">Tên</th><th scope="col">Loại</th><th scope="col">Hành động</th></tr>
 </thead>
 <tbody>
 <?php foreach ($roles as $role): ?>

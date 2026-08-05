@@ -28,7 +28,7 @@
 <h2>Hoạt động gần đây (xuyên site)</h2>
 <div class="table-wrap">
 <table class="data-table">
-<thead><tr><th>Nguồn</th><th>Site</th><th>Sự kiện</th><th>Thời gian</th></tr></thead>
+<thead><tr><th scope="col">Nguồn</th><th scope="col">Site</th><th scope="col">Sự kiện</th><th scope="col">Thời gian</th></tr></thead>
 <tbody>
 <?php foreach ($activity as $item): ?>
 <tr>

@@ -9,7 +9,7 @@
     <div class="table-wrap">
     <table class="data-table">
     <thead>
-    <tr><th>Key</th><th>Giá trị</th><th></th></tr>
+    <tr><th scope="col">Key</th><th scope="col">Giá trị</th><th scope="col"></th></tr>
     </thead>
     <tbody>
     <?php foreach ($items as $item): ?>

@@ -19,7 +19,7 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Tên</th><th>Email</th><th>Trạng thái</th><th>Hành động</th></tr>
+<tr><th scope="col">Tên</th><th scope="col">Email</th><th scope="col">Trạng thái</th><th scope="col">Hành động</th></tr>
 </thead>
 <tbody>
 <?php foreach ($users as $user): ?>

@@ -12,7 +12,7 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Trạng thái</th><th>Tiêu đề</th><th>Nội dung</th><th>Thời gian</th><th>Hành động</th></tr>
+<tr><th scope="col">Trạng thái</th><th scope="col">Tiêu đề</th><th scope="col">Nội dung</th><th scope="col">Thời gian</th><th scope="col">Hành động</th></tr>
 </thead>
 <tbody>
 <?php foreach ($notifications as $notification): ?>

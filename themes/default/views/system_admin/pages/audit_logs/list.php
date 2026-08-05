@@ -26,7 +26,7 @@ $siteOptions = \array_map(
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Thời gian</th><th>Site</th><th>Sự kiện</th><th>Người dùng ID</th><th>Đối tượng</th><th>IP</th></tr>
+<tr><th scope="col">Thời gian</th><th scope="col">Site</th><th scope="col">Sự kiện</th><th scope="col">Người dùng ID</th><th scope="col">Đối tượng</th><th scope="col">IP</th></tr>
 </thead>
 <tbody>
 <?php foreach ($logs as $log): ?>

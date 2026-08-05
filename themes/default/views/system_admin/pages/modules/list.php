@@ -6,7 +6,7 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Key</th><th>Tên</th><th>Phiên bản</th><th>Phụ thuộc</th></tr>
+<tr><th scope="col">Key</th><th scope="col">Tên</th><th scope="col">Phiên bản</th><th scope="col">Phụ thuộc</th></tr>
 </thead>
 <tbody>
 <?php foreach ($modules as $module): ?>

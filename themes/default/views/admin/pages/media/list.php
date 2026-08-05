@@ -87,7 +87,7 @@
 <div class="table-wrap is-hidden" data-view-panel="list">
 <table class="data-table media-list-table">
 <thead>
-<tr><th></th><th>Tên file</th><th>Loại</th><th>Dung lượng</th><th></th></tr>
+<tr><th scope="col"></th><th scope="col">Tên file</th><th scope="col">Loại</th><th scope="col">Dung lượng</th><th scope="col"></th></tr>
 </thead>
 <tbody>
 <?php foreach ($media as $item): ?>
