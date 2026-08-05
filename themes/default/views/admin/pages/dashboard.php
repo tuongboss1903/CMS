@@ -77,7 +77,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
                 $x = $index * ($barWidth + $gap);
                 $y = $chartHeight - $barHeight;
                 ?>
-            <rect x="<?= $this->e((string) $x) ?>" y="<?= $this->e((string) $y) ?>" width="<?= $this->e((string) $barWidth) ?>" height="<?= $this->e((string) $barHeight) ?>" fill="var(--color-primary, #2563eb)" rx="3"></rect>
+            <rect x="<?= $this->e((string) $x) ?>" y="<?= $this->e((string) $y) ?>" width="<?= $this->e((string) $barWidth) ?>" height="<?= $this->e((string) $barHeight) ?>" fill="var(--color-accent, #10B981)" rx="3"></rect>
             <text x="<?= $this->e((string) ($x + $barWidth / 2)) ?>" y="<?= $this->e((string) ($chartHeight + 14)) ?>" text-anchor="middle" font-size="10" fill="currentColor"><?= $this->e(\substr((string) $day['date'], 5)) ?></text>
             <?php endforeach; ?>
         </svg>
@@ -182,13 +182,6 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
     </tbody>
     </table>
     </div>
-</div>
-
-<div class="card">
-    <form method="POST" action="/admin/logout">
-        <input type="hidden" name="_token" value="<?= $this->e($csrf_token ?? '') ?>">
-        <button type="submit" class="btn btn-secondary"><?php $this->include('admin.partials.icon', ['name' => 'logout']); ?> Đăng xuất</button>
-    </form>
 </div>
 </div>
 <?php $this->endSection(); ?>

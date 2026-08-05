@@ -44,6 +44,7 @@ final class UserShowEditController
         }
 
         $html = $this->view->render('admin.pages.users.edit', [
+            'breadcrumb_items' => [['label' => 'Người dùng', 'url' => '/admin/users'], ['label' => 'Sửa']],
             'user' => $user,
             'errors' => [],
             'old' => ['name' => $user['name'], 'email' => $user['email']],

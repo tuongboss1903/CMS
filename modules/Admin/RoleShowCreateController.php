@@ -27,6 +27,7 @@ final class RoleShowCreateController
         }
 
         $html = $this->view->render('admin.pages.roles.create', [
+            'breadcrumb_items' => [['label' => 'Vai trò & Phân quyền', 'url' => '/admin/roles'], ['label' => 'Tạo mới']],
             'errors' => [],
             'old' => ['name' => ''],
             'csrf_token' => $this->csrf->token(),

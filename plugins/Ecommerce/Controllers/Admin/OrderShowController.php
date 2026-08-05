@@ -51,7 +51,7 @@ final class OrderShowController
             'order' => $order,
             'items' => $items,
             'payments' => $this->fetchPayments($orderId),
-            'breadcrumb_items' => [['label' => 'Don hang', 'url' => '/admin/orders'], ['label' => (string) $order['order_number']]],
+            'breadcrumb_items' => [['label' => 'Đơn hàng', 'url' => '/admin/orders'], ['label' => (string) $order['order_number']]],
             'csrf_token' => $this->csrf->token(),
         ]);
 

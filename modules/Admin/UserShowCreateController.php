@@ -36,6 +36,7 @@ final class UserShowCreateController
         );
 
         $html = $this->view->render('admin.pages.users.create', [
+            'breadcrumb_items' => [['label' => 'Người dùng', 'url' => '/admin/users'], ['label' => 'Tạo mới']],
             'roles' => $roles,
             'errors' => [],
             'old' => ['name' => '', 'email' => '', 'role_id' => ''],

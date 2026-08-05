@@ -43,7 +43,7 @@ final class ProductListController
 
         $html = $this->view->render('admin.pages.ecommerce.products.list', [
             'products' => $products,
-            'breadcrumb_items' => [['label' => 'San pham']],
+            'breadcrumb_items' => [['label' => 'Sản phẩm']],
             'csrf_token' => $this->csrf->token(),
         ]);
 

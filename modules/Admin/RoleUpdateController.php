@@ -76,6 +76,7 @@ final class RoleUpdateController
     private function renderWithErrors(int $roleId, array $errors, array $data): Response
     {
         $html = $this->view->render('admin.pages.roles.edit', [
+            'breadcrumb_items' => [['label' => 'Vai trò & Phân quyền', 'url' => '/admin/roles'], ['label' => 'Sửa']],
             'role' => ['id' => $roleId],
             'errors' => $errors,
             'old' => ['name' => (string) ($data['name'] ?? '')],

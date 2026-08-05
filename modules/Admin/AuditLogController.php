@@ -80,6 +80,7 @@ final class AuditLogController
         );
 
         $html = $this->view->render('admin.pages.audit_logs.list', [
+            'breadcrumb_items' => [['label' => 'Nhật ký hoạt động']],
             'logs' => $logs,
             'available_events' => \array_map(static fn (array $row): string => (string) $row['event'], $eventRows),
             'filters' => ['event' => $event, 'date_from' => $dateFrom, 'date_to' => $dateTo],

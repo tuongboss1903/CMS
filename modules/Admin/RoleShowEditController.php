@@ -49,6 +49,7 @@ final class RoleShowEditController
         }
 
         $html = $this->view->render('admin.pages.roles.edit', [
+            'breadcrumb_items' => [['label' => 'Vai trò & Phân quyền', 'url' => '/admin/roles'], ['label' => 'Sửa']],
             'role' => $role,
             'errors' => [],
             'old' => ['name' => $role['name']],

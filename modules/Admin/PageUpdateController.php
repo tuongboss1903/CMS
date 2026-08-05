@@ -174,6 +174,7 @@ final class PageUpdateController
         }
 
         $html = $this->view->render('admin.pages.pages.edit', [
+            'breadcrumb_items' => [['label' => 'Trang nội dung', 'url' => '/admin/pages'], ['label' => 'Sửa']],
             'page' => ['id' => $pageId],
             'parents' => $parents,
             'images' => $images,

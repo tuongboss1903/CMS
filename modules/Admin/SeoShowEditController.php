@@ -64,6 +64,7 @@ final class SeoShowEditController
         );
 
         $html = $this->view->render('admin.pages.seo.edit', [
+            'breadcrumb_items' => [['label' => 'SEO', 'url' => '/admin/seo'], ['label' => 'Sửa SEO']],
             'page' => $page,
             'meta' => $meta,
             'schema_data_text' => $schemaDataText,

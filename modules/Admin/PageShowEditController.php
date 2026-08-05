@@ -67,6 +67,7 @@ final class PageShowEditController
         $editorMode = \is_array($content) && isset($content['blocks']) ? 'block' : 'quill';
 
         $html = $this->view->render('admin.pages.pages.edit', [
+            'breadcrumb_items' => [['label' => 'Trang nội dung', 'url' => '/admin/pages'], ['label' => 'Sửa']],
             'page' => $page,
             'parents' => $parents,
             'images' => $images,

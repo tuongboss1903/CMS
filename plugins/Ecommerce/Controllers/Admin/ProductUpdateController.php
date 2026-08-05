@@ -95,7 +95,7 @@ final class ProductUpdateController
             'product' => ['id' => $productId],
             'errors' => $errors,
             'old' => $data,
-            'breadcrumb_items' => [['label' => 'San pham', 'url' => '/admin/products'], ['label' => 'Sua']],
+            'breadcrumb_items' => [['label' => 'Sản phẩm', 'url' => '/admin/products'], ['label' => 'Sửa']],
             'csrf_token' => $this->csrf->token(),
         ]);
 

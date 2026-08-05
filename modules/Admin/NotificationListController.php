@@ -63,7 +63,7 @@ final class NotificationListController
             'total_pages' => $totalPages,
             'total' => $total,
             'csrf_token' => $this->csrf->token(),
-            'breadcrumb_items' => [['label' => 'Thong bao']],
+            'breadcrumb_items' => [['label' => 'Thông báo']],
         ]);
 
         return Response::html($html);

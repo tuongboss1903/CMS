@@ -47,6 +47,7 @@ final class RoleListController
         }, $rows);
 
         $html = $this->view->render('admin.pages.roles.list', [
+            'breadcrumb_items' => [['label' => 'Vai trò & Phân quyền']],
             'roles' => $roles,
             'csrf_token' => $this->csrf->token(),
         ]);

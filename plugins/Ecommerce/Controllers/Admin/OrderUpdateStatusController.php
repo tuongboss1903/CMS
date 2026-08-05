@@ -52,7 +52,7 @@ final class OrderUpdateStatusController
             }
         }
 
-        $this->session->flash('flash_success', 'Da cap nhat trang thai don hang.');
+        $this->session->flash('flash_success', 'Đã cập nhật trạng thái đơn hàng.');
 
         return Response::redirect("/admin/orders/{$orderId}");
     }

@@ -47,6 +47,7 @@ final class PageShowCreateController
         }
 
         $html = $this->view->render('admin.pages.pages.create', [
+            'breadcrumb_items' => [['label' => 'Trang nội dung', 'url' => '/admin/pages'], ['label' => 'Tạo mới']],
             'parents' => $parents,
             'images' => $images,
             'editor_mode' => 'quill',

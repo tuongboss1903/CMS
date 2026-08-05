@@ -205,8 +205,8 @@ final class AdminSeoManagementUiTest extends TestCase
         $response = $this->router->dispatch(new Request('GET', '/admin/seo', 'example.com'));
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('Da cau hinh', $response->getBody());
-        self::assertStringContainsString('Chua cau hinh', $response->getBody());
+        self::assertStringContainsString('Đã cấu hình', $response->getBody());
+        self::assertStringContainsString('Chưa cấu hình', $response->getBody());
     }
 
     public function testListMissingPermissionReturns403Html(): void

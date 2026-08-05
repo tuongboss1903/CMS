@@ -38,6 +38,7 @@ final class SettingShowEditController
         );
 
         $html = $this->view->render('admin.pages.settings.edit', [
+            'breadcrumb_items' => [['label' => 'Cài đặt chung']],
             'settings' => $this->settings->get(),
             'images' => $images,
             'csrf_token' => $this->csrf->token(),

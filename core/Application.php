@@ -289,11 +289,25 @@ final class Application
                 // Silent-fail co chu dich - xem docblock o tren.
             }
 
+            // Token CSRF dung chung cho form Dang xuat o Admin Topbar (moi trang Admin deu render
+            // topbar.php) - cung nguyen tac silent-fail nhu current_user_name: chi sinh khi Session
+            // da start (khong ep start Session cho request khong can, vd trang public/API).
+            $csrfToken = '';
+
+            if ($session->isStarted()) {
+                try {
+                    $csrfToken = $c->get(Csrf::class)->token();
+                } catch (Throwable) {
+                    // Silent-fail co chu dich - xem docblock o tren.
+                }
+            }
+
             return new View($this->basePath . '/themes', $activeTheme, $defaultTheme, [
                 'extra_admin_menu_items' => $extraMenuItems,
                 'current_user_name' => $currentUserName,
                 'unread_notifications_count' => $unreadNotificationsCount,
                 'current_path' => $currentPath,
+                'csrf_token' => $csrfToken,
             ]);
         });
 

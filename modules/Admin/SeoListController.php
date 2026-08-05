@@ -44,6 +44,7 @@ final class SeoListController
         );
 
         $html = $this->view->render('admin.pages.seo.list', [
+            'breadcrumb_items' => [['label' => 'SEO']],
             'pages' => $pages,
         ]);
 

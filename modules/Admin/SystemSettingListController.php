@@ -52,6 +52,7 @@ final class SystemSettingListController
         }
 
         $html = $this->view->render('admin.pages.system_settings.list', [
+            'breadcrumb_items' => [['label' => 'Cấu hình hệ thống']],
             'grouped' => $grouped,
             'csrf_token' => $this->csrf->token(),
         ]);

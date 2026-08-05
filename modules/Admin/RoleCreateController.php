@@ -68,6 +68,7 @@ final class RoleCreateController
     private function renderWithErrors(array $errors, array $data): Response
     {
         $html = $this->view->render('admin.pages.roles.create', [
+            'breadcrumb_items' => [['label' => 'Vai trò & Phân quyền', 'url' => '/admin/roles'], ['label' => 'Tạo mới']],
             'errors' => $errors,
             'old' => ['name' => (string) ($data['name'] ?? '')],
             'csrf_token' => $this->csrf->token(),

@@ -34,7 +34,7 @@ final class CartAddController
             return Response::redirect('/shop');
         }
 
-        $this->session->flash('flash_success', 'Da them vao gio hang.');
+        $this->session->flash('flash_success', 'Đã thêm vào giỏ hàng.');
 
         return Response::redirect('/cart');
     }

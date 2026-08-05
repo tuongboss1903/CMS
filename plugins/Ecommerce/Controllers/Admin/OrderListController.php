@@ -43,7 +43,7 @@ final class OrderListController
 
         $html = $this->view->render('admin.pages.ecommerce.orders.list', [
             'orders' => $orders,
-            'breadcrumb_items' => [['label' => 'Don hang']],
+            'breadcrumb_items' => [['label' => 'Đơn hàng']],
             'csrf_token' => $this->csrf->token(),
         ]);
 

@@ -13,7 +13,7 @@ $paymentStatusLabels = ['completed' => 'Thành công', 'failed' => 'Thất bại
     <p><strong>Khách hàng:</strong> <?= $this->e((string) $order['guest_name']) ?> (<?= $this->e((string) $order['guest_email']) ?>)</p>
     <p><strong>Địa chỉ giao hàng:</strong> <?= $this->e((string) ($order['shipping_address'] ?? '-')) ?></p>
     <p><strong>Trạng thái:</strong> <span class="badge badge-neutral"><?= $this->e($orderStatusLabels[$order['status']] ?? (string) $order['status']) ?></span></p>
-    <p><strong>Tổng tiền:</strong> <?= $this->e((string) $order['total_amount']) ?></p>
+    <p><strong>Tổng tiền:</strong> <?= $this->e(\number_format((float) $order['total_amount'], 0, ',', '.')) ?> đ</p>
 
     <?php
     $transitions = [
@@ -39,9 +39,9 @@ $available = $transitions[$order['status']] ?? [];
 <?php foreach ($items as $item): ?>
 <tr>
     <td><?= $this->e((string) $item['product_name_snapshot']) ?></td>
-    <td><?= $this->e((string) $item['unit_price']) ?></td>
+    <td><?= $this->e(\number_format((float) $item['unit_price'], 0, ',', '.')) ?> đ</td>
     <td><?= $this->e((string) $item['quantity']) ?></td>
-    <td><?= $this->e((string) $item['subtotal']) ?></td>
+    <td><?= $this->e(\number_format((float) $item['subtotal'], 0, ',', '.')) ?> đ</td>
 </tr>
 <?php endforeach; ?>
 </tbody>
@@ -58,7 +58,7 @@ $available = $transitions[$order['status']] ?? [];
     <tr>
         <td><?= $this->e((string) $payment['driver']) ?></td>
         <td><span class="badge <?= $payment['status'] === 'completed' ? 'badge-success' : ($payment['status'] === 'failed' ? 'badge-danger' : 'badge-neutral') ?>"><?= $this->e($paymentStatusLabels[$payment['status']] ?? (string) $payment['status']) ?></span></td>
-        <td><?= $this->e((string) $payment['amount']) ?></td>
+        <td><?= $this->e(\number_format((float) $payment['amount'], 0, ',', '.')) ?> đ</td>
         <td><code><?= $this->e((string) ($payment['transaction_ref'] ?? '-')) ?></code></td>
         <td class="text-muted"><?= $this->e((string) $payment['created_at']) ?></td>
     </tr>

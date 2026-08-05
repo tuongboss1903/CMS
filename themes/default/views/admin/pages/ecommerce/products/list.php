@@ -7,14 +7,21 @@
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th scope="col">Tên</th><th scope="col">Slug</th><th scope="col">Giá</th><th scope="col">Tồn kho</th><th scope="col">Trạng thái</th><th scope="col">Hành động</th></tr>
+<tr><th scope="col">Ảnh</th><th scope="col">Tên</th><th scope="col">Slug</th><th scope="col">Giá</th><th scope="col">Tồn kho</th><th scope="col">Trạng thái</th><th scope="col">Hành động</th></tr>
 </thead>
 <tbody>
 <?php foreach ($products as $product): ?>
 <tr>
+    <td>
+        <?php if (!empty($product['image_path'])): ?>
+        <img src="/media/<?= $this->e(\basename((string) $product['image_path'])) ?>" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:var(--radius-sm);">
+        <?php else: ?>
+        <span class="text-muted">—</span>
+        <?php endif; ?>
+    </td>
     <td><?= $this->e((string) $product['name']) ?></td>
     <td><code><?= $this->e((string) $product['slug']) ?></code></td>
-    <td><?= $this->e((string) $product['price']) ?></td>
+    <td><?= $this->e(\number_format((float) $product['price'], 0, ',', '.')) ?> đ</td>
     <td><?= $this->e((string) $product['stock_quantity']) ?></td>
     <td><span class="badge <?= $product['status'] === 'published' ? 'badge-success' : 'badge-neutral' ?>"><?= $product['status'] === 'published' ? 'Đã xuất bản' : 'Bản nháp' ?></span></td>
     <td>
@@ -29,7 +36,7 @@
 </tr>
 <?php endforeach; ?>
 <?php if (empty($products)): ?>
-<tr><td colspan="6" class="empty-state">Chưa có sản phẩm nào.</td></tr>
+<tr><td colspan="7" class="empty-state">Chưa có sản phẩm nào.</td></tr>
 <?php endif; ?>
 </tbody>
 </table>

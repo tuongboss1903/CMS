@@ -66,6 +66,7 @@ final class RoleShowPermissionsController
         }
 
         $html = $this->view->render('admin.pages.roles.permissions', [
+            'breadcrumb_items' => [['label' => 'Vai trò & Phân quyền', 'url' => '/admin/roles'], ['label' => 'Quản lý quyền']],
             'role' => $role,
             'isSystem' => $role['tenant_id'] === null,
             'assigned' => $assigned,

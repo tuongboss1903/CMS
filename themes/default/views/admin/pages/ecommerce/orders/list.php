@@ -17,7 +17,7 @@ $orderStatusLabels = [
 <tr>
     <td><code><?= $this->e((string) $order['order_number']) ?></code></td>
     <td><?= $this->e((string) $order['guest_name']) ?><br><span class="text-muted"><?= $this->e((string) $order['guest_email']) ?></span></td>
-    <td><?= $this->e((string) $order['total_amount']) ?></td>
+    <td><?= $this->e(\number_format((float) $order['total_amount'], 0, ',', '.')) ?> đ</td>
     <td><span class="badge badge-neutral"><?= $this->e($orderStatusLabels[$order['status']] ?? (string) $order['status']) ?></span></td>
     <td class="text-muted"><?= $this->e((string) $order['created_at']) ?></td>
     <td><a href="/admin/orders/<?= $this->e((string) $order['id']) ?>" class="btn btn-secondary btn-sm">Xem</a></td>

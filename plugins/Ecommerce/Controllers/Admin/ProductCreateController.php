@@ -83,7 +83,7 @@ final class ProductCreateController
         $html = $this->view->render('admin.pages.ecommerce.products.create', [
             'errors' => $errors,
             'old' => $data,
-            'breadcrumb_items' => [['label' => 'San pham', 'url' => '/admin/products'], ['label' => 'Them moi']],
+            'breadcrumb_items' => [['label' => 'Sản phẩm', 'url' => '/admin/products'], ['label' => 'Thêm mới']],
             'csrf_token' => $this->csrf->token(),
         ]);
 

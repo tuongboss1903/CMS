@@ -94,6 +94,7 @@ final class UserUpdateController
     private function renderWithErrors(int $userId, array $errors, array $data): Response
     {
         $html = $this->view->render('admin.pages.users.edit', [
+            'breadcrumb_items' => [['label' => 'Người dùng', 'url' => '/admin/users'], ['label' => 'Sửa']],
             'user' => ['id' => $userId],
             'errors' => $errors,
             'old' => [

@@ -69,6 +69,7 @@ final class UserListController
         );
 
         $html = $this->view->render('admin.pages.users.list', [
+            'breadcrumb_items' => [['label' => 'Người dùng']],
             'users' => $users,
             'roles' => $roles,
             'csrf_token' => $this->csrf->token(),

@@ -56,6 +56,7 @@ final class PageListController
         );
 
         $html = $this->view->render('admin.pages.pages.list', [
+            'breadcrumb_items' => [['label' => 'Trang nội dung']],
             'pages' => $pages,
             'csrf_token' => $this->csrf->token(),
             'filters' => ['q' => $search, 'status' => $status],

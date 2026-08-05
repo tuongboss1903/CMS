@@ -36,6 +36,7 @@ final class MenuListController
         );
 
         $html = $this->view->render('admin.pages.menus.list', [
+            'breadcrumb_items' => [['label' => 'Menu điều hướng']],
             'menus' => $menus,
             'csrf_token' => $this->csrf->token(),
         ]);

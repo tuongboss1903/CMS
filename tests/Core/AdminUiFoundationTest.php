@@ -6,6 +6,7 @@ namespace Tests\Core;
 
 use Core\Config;
 use Core\Container;
+use Core\Csrf;
 use Core\Database;
 use Core\Http\Request;
 use Core\ModuleManager;
@@ -41,9 +42,21 @@ final class AdminUiFoundationTest extends TestCase
         $this->container->singleton(Database::class, static fn (Container $c): Database => new Database($c->get(Config::class)));
         $this->container->singleton(Session::class, static fn (Container $c): Session => new Session($c->get(Config::class)));
         $this->container->singleton(TenantManager::class, static fn (): TenantManager => new TenantManager());
-        $this->container->singleton(
+        // KHONG dung singleton() cho View::class o day - test nay dispatch() nhieu "request" mo
+        // phong (login/dashboard/logout) qua CHUNG 1 Container, khac production (1 Container/that
+        // MOI request that - xem Application::registerCoreServices()). globalData cua View chua
+        // csrf_token doc tai thoi diem resolve; Auth::login() CHU DICH xoay token khi dang nhap
+        // (chong fixation - xem Auth::login()), nen phai resolve View MOI cho moi dispatch() de
+        // globalData phan anh dung session HIEN TAI, giong nhu moi request that se co Container
+        // (va View) rieng.
+        $this->container->bind(
             View::class,
-            static fn (): View => new View(self::REAL_THEMES_PATH, 'default', 'default')
+            // globalData 'csrf_token' mirror dung Application::registerCoreServices() that - Admin
+            // Topbar (dropdown Dang xuat) doc csrf_token qua globalData, khong qua tung Controller
+            // truyen rieng nua.
+            static fn (Container $c): View => new View(self::REAL_THEMES_PATH, 'default', 'default', [
+                'csrf_token' => $c->get(Csrf::class)->token(),
+            ])
         );
 
         $this->router = new Router($this->container);

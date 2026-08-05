@@ -5,6 +5,10 @@
 <style>
 #editor { background: #fff; color: #111; border-radius: 0 0 var(--radius-md) var(--radius-md); min-height: 240px; }
 .ql-toolbar.ql-snow { border-radius: var(--radius-md) var(--radius-md) 0 0; background: #fff; }
+/* #editor luon nen trang co dinh (khong doi theo dark mode) - h1-h4 KHONG duoc ke thua
+   color: var(--color-text-primary) toan cuc (o dark mode la mau gan trang, phat hien qua kiem
+   tra trinh duyet that: tieu de trong noi dung gan nhu vo hinh tren nen trang). */
+#editor h1, #editor h2, #editor h3, #editor h4, #editor h5, #editor h6 { color: #111; }
 </style>
 <?php $this->endSection(); ?>
 

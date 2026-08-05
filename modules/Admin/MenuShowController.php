@@ -57,6 +57,7 @@ final class MenuShowController
         );
 
         $html = $this->view->render('admin.pages.menus.show', [
+            'breadcrumb_items' => [['label' => 'Menu điều hướng', 'url' => '/admin/menus'], ['label' => (string) $menu['name']]],
             'menu' => $menu,
             'tree' => $this->buildTree($items),
             'pages' => $pages,

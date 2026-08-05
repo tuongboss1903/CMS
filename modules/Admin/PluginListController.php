@@ -55,7 +55,7 @@ final class PluginListController
 
         $html = $this->view->render('admin.pages.plugins.list', [
             'plugins' => $plugins,
-            'breadcrumb_items' => [['label' => 'Plugins']],
+            'breadcrumb_items' => [['label' => 'Plugin']],
             'csrf_token' => $this->csrf->token(),
         ]);
 

@@ -55,6 +55,7 @@ final class CommentListController
         );
 
         $html = $this->view->render('admin.pages.comments.list', [
+            'breadcrumb_items' => [['label' => 'Bình luận']],
             'comments' => $comments,
             'status' => $status,
             'csrf_token' => $this->csrf->token(),

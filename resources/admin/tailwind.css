@@ -74,6 +74,20 @@
     font-size: var(--text-xs);
     color: var(--color-accent-text);
   }
+
+  /* select mac dinh - .field select (o tren, @layer components) tu ghi de khi nam trong form co
+     nhan/spacing rieng; rule nay phu cho select DUNG DOC LAP ngoai .field (vd select doi vai tro
+     inline trong .table-actions o users/list.php) truoc do khong co CSS nao khop, hien thi UA
+     mac dinh (nen trang) lech han giao dien toi. */
+  select {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    padding: 6px 10px;
+  }
 }
 
 @layer components {
@@ -813,12 +827,48 @@
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; font-size: var(--text-sm);
   }
+
+  /* Dropdown Đăng xuất o Admin Topbar - truoc do "Đăng xuất" chi ton tai o day Dashboard, khong
+     truy cap duoc tu bat ky trang Admin nao khac. */
+  .user-menu-dropdown { position: relative; }
+  .user-menu-trigger {
+    display: flex; align-items: center; gap: var(--space-3);
+    background: none; border: none; padding: 4px; border-radius: var(--radius-md);
+    cursor: pointer; color: inherit; font: inherit;
+  }
+  .user-menu-trigger:hover, .user-menu-trigger[aria-expanded="true"] { background: var(--color-bg-elevated); }
+  .user-menu-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 180px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-2);
+    z-index: 50;
+  }
+  .user-menu-panel.is-open { display: block; }
+  .user-menu-item {
+    display: flex; align-items: center; gap: var(--space-2);
+    width: 100%; background: none; border: none; cursor: pointer;
+    padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm);
+    color: var(--color-danger, var(--color-text-primary)); font-size: var(--text-sm); font-weight: 500;
+    text-align: left;
+  }
+  .user-menu-item:hover { background: var(--color-bg-elevated); }
   .admin-content { padding: var(--space-6); flex: 1; }
 
   /* Man rat rong (Design Audit Phase 10) - khong gioi han truoc do, bang du lieu gian het chieu
      ngang tren man 27"+, cot dau/cuoi cach nhau qua xa de quet mat. */
   @media (min-width: 1440px) {
-    .admin-content { max-width: 1400px; margin: 0 auto; }
+    /* width:100% bat buoc o day - .admin-content la flex item cua .admin-main (flex-direction:
+       column), margin:0 auto tren flex item se KHONG stretch full chieu ngang nhu block thuong
+       (phat hien qua kiem tra trinh duyet that: moi trang co noi dung hep - vd bang it cot - bi
+       co lai theo do rong noi dung thay vi lap day 1400px roi moi canh giua). */
+    .admin-content { max-width: 1400px; width: 100%; margin: 0 auto; }
   }
 
   .sidebar-toggle { display: none; }

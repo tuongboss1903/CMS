@@ -51,7 +51,7 @@ final class ProductShowEditController
             'product' => $product,
             'errors' => [],
             'old' => $product,
-            'breadcrumb_items' => [['label' => 'San pham', 'url' => '/admin/products'], ['label' => 'Sua']],
+            'breadcrumb_items' => [['label' => 'Sản phẩm', 'url' => '/admin/products'], ['label' => 'Sửa']],
             'csrf_token' => $this->csrf->token(),
         ]);
 

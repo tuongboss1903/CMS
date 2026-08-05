@@ -71,6 +71,7 @@ final class MediaListController
         );
 
         $html = $this->view->render('admin.pages.media.list', [
+            'breadcrumb_items' => [['label' => 'Media']],
             'media' => $media,
             'folders' => $folders,
             'csrf_token' => $this->csrf->token(),
