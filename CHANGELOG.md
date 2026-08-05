@@ -192,6 +192,14 @@
 - `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — **927 tests, 1988 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — tăng 9 test so với baseline 918 trước Phase 22 (6 ở CMS-075, 3 ở CMS-076). `php-cs-fixer fix --dry-run` sạch (0/550), `phpstan analyse` 0 lỗi — cả 3 lệnh chạy lại sau MỖI phase (không chỉ 1 lần cuối), khớp đúng workflow CI.
 - **Chưa kiểm tra trực quan qua trình duyệt thật** trong phiên này — dev server cục bộ (`php -S`) trả 404 cho route Admin vì cần cấu hình domain/tenant đầy đủ theo `SETUP_LOCAL.md` (TenantResolverMiddleware fail-closed), không thiết lập lại trong phiên này. Chỉ xác nhận qua code review + test tự động — khuyến nghị kiểm tra trực quan trước khi merge/deploy.
 
+#### Fix — 2 lỗi thị giác thật phát hiện qua kiểm tra trình duyệt thật (buổi sau, cùng Phase 22)
+
+- Dựng lại local (`php -S localhost:8080 -t public`, dùng domain `localhost:8080` đã có sẵn trong `site_domains` từ trước — không cần sửa hosts file), đăng nhập Admin thật qua Claude in Chrome, rà trực tiếp Dashboard/Media (bulk-select)/Plugin (Switch)/Users create (grid 2 cột + lỗi tại chỗ)/sidebar rail 901–1200px (mô phỏng qua iframe vì `resize_window` không hoạt động trong sandbox này)/mobile off-canvas 390px/fade-edge bảng/Modal animation/Empty State icon, cả Light lẫn Dark theme.
+- **Tooltip `[data-tooltip]` (CMS-079) bị trình duyệt cắt mất hoàn toàn** trên `sidebar-toggle`/`theme-toggle` — 2 nút nằm sát mép trên `.admin-topbar` (~14px từ đỉnh viewport), trong khi tooltip mặc định hiện PHÍA TRÊN phần tử (cần ~29px không gian) → luôn bị clip ngoài viewport, không bao giờ hiển thị được cho người dùng thật dù CSS "đúng" khi xét độc lập. Thêm biến thể `.tooltip-bottom` (hiện bên dưới), áp cho cả 2 nút.
+- **`.toast-stack` (CMS-079, `top: var(--space-5)` = 24px) đè thẳng lên `.admin-topbar`** (cũng `position: sticky; top: 0`, cao `--topbar-height` = 64px) — Toast che mất theme-toggle/tên user/avatar mỗi khi có flash message. Sửa `top: calc(var(--topbar-height) + var(--space-4))` để Toast luôn nằm dưới Topbar.
+- Cả 2 lỗi đều **không thể phát hiện qua code review hay PHPUnit** — chỉ lộ ra khi mở thật trong Chrome và zoom vào vùng Topbar; không có test tự động nào kiểm tra vị trí render tuyệt đối của phần tử `position: fixed`/`::after`.
+- Verified: `vendor/bin/phpunit` 927/927 PASS, `php-cs-fixer fix --dry-run` sạch. CI GitHub Actions PASS (commit `3340a72`).
+
 ## [0.3.0] — 2026-08-17 — CMS-056: Ecommerce MVP & Plugin Architecture (PHASE 19) + Payment Gateway Integration (PHASE 20)
 
 ### Added
