@@ -301,6 +301,10 @@
     background: rgba(0, 0, 0, 0.6);
     align-items: center; justify-content: center;
     z-index: 100;
+    /* Gutter 2 ben - khong co dong nay thi .modal (width:100%) cham thang vao canh man hinh
+       tren vien man hinh hep (~375-390px, dien thoai) vi .modal-overlay khong co padding. */
+    padding: var(--space-4);
+    box-sizing: border-box;
   }
   .modal-overlay.is-open { display: flex; }
   .modal {
@@ -309,6 +313,10 @@
     border-radius: var(--radius-lg);
     padding: var(--space-5);
     width: 100%; max-width: 480px;
+    /* Modal noi dung dai (vd danh sach nhieu Thu muc, form Menu Item nhieu field) khong bi tran
+       qua vien man hinh o vien man hinh thap - cuon rieng ben trong modal thay vi vo layout. */
+    max-height: calc(100vh - var(--space-8));
+    overflow-y: auto;
   }
   .media-dropzone {
     border: 2px dashed var(--color-border);
@@ -380,7 +388,10 @@
   /* ===== Table Filter ===== */
   .table-filter { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-4); }
   .table-filter .field { margin-bottom: 0; min-width: 160px; }
-  .table-filter .table-filter-tabs { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
+  /* Tach khoi selector long ".table-filter .table-filter-tabs" (chi ap dung khi nam BEN TRONG
+     .table-filter) - cac trang dung .table-filter-tabs DUNG DOC LAP (comments/list.php,
+     media/list.php Folder tabs) truoc do khong nhan duoc display:flex/gap/wrap. */
+  .table-filter-tabs { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
 
   /* ===== Permission Matrix ===== */
   .permission-matrix-wrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
