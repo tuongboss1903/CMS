@@ -13,9 +13,11 @@ use Core\Validator;
 
 /**
  * POST /admin/roles/{id}/permissions - copy logic tu Modules\Role\AssignPermissionController
- * (idempotent INSERT, khong transaction - dung 1 INSERT). Owner Decision #1 CMS-047: chi gan,
- * khong go. Loi validate/permission khong hop le -> redirect im lang ve lai trang permissions
- * (hanh dong khong pha huy, cung tien le UserAssignRoleController CMS-046).
+ * (idempotent INSERT, khong transaction - dung 1 INSERT). Loi validate/permission khong hop le ->
+ * redirect im lang ve lai trang permissions (hanh dong khong pha huy, cung tien le
+ * UserAssignRoleController CMS-046). Chieu nguoc lai (go permission) xem
+ * RoleRevokePermissionController - Owner Decision #1 CMS-047 cu (chi gan, khong go) da duoc thay
+ * the boi yeu cau nang cap UX moi nhat.
  */
 final class RoleAssignPermissionsController
 {

@@ -42,6 +42,13 @@ final class MediaDeleteController
             return Response::html('404 Not Found', 404);
         }
 
+        // Doc truoc list variant (vd thumbnail) de unlink file that SAU KHI transaction commit -
+        // row media_variants tu dong bi xoa qua FK CASCADE, nhung file vat ly tren disk thi khong.
+        $variants = $this->database->select(
+            'SELECT path FROM media_variants WHERE media_id = ?',
+            [$mediaId]
+        );
+
         $this->database->transaction(function (Database $db) use ($mediaId, $siteId, $media): void {
             $db->statement('DELETE FROM media WHERE id = ?', [$mediaId]);
             $db->statement(
@@ -54,6 +61,14 @@ final class MediaDeleteController
 
         if (\is_file($fullPath)) {
             @\unlink($fullPath);
+        }
+
+        foreach ($variants as $variant) {
+            $variantPath = \rtrim($this->storagePath, '/\\') . DIRECTORY_SEPARATOR . $variant['path'];
+
+            if (\is_file($variantPath)) {
+                @\unlink($variantPath);
+            }
         }
 
         return Response::redirect('/admin/media');

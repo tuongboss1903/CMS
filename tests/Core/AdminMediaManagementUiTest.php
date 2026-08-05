@@ -31,6 +31,15 @@ final class AdminMediaManagementUiTest extends TestCase
     /** PNG 1x1 that (magic byte hop le, base64) - can thiet vi MediaUploadController gio xac minh mime qua finfo_file(), khong con chap nhan byte gia tuy y. */
     private const REAL_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
+    /**
+     * PNG 10x10 giai ma duoc that qua GD (khac REAL_PNG_BASE64 - fixture 1x1 o tren CHI du "that"
+     * cho finfo_file() nhan dien magic byte, khong du du lieu IDAT that de GD tu giai ma - libpng
+     * bao loi "Not enough image data" that khi imagecreatefrompng() thu doc). Chi dung rieng cho
+     * test sinh thumbnail (can GD doc duoc that), khong doi REAL_PNG_BASE64 dung chung de tranh
+     * anh huong cac test dang assert dung theo strlen() cua no (vd storage_used_bytes).
+     */
+    private const REAL_DECODABLE_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAFElEQVQYlWNMmXaCATdgwiM3gqUBKnQB1qndD6MAAAAASUVORK5CYII=';
+
     private Container $container;
     private Router $router;
     private Database $database;
@@ -81,6 +90,15 @@ final class AdminMediaManagementUiTest extends TestCase
         $this->container->singleton(
             MediaFileController::class,
             static fn (Container $c): MediaFileController => new MediaFileController(
+                $c->get(\Core\Authorization::class),
+                $c->get(Database::class),
+                $c->get(TenantManager::class),
+                $storageDir
+            )
+        );
+        $this->container->singleton(
+            \Modules\Admin\MediaThumbnailController::class,
+            static fn (Container $c): \Modules\Admin\MediaThumbnailController => new \Modules\Admin\MediaThumbnailController(
                 $c->get(\Core\Authorization::class),
                 $c->get(Database::class),
                 $c->get(TenantManager::class),
@@ -163,9 +181,25 @@ final class AdminMediaManagementUiTest extends TestCase
             title VARCHAR(255) NULL,
             caption VARCHAR(500) NULL,
             uploaded_by BIGINT NOT NULL,
+            folder_id BIGINT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )');
         $this->database->statement('CREATE INDEX idx_media_tenant_id ON media (tenant_id)');
+        $this->database->statement('CREATE TABLE media_folders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id BIGINT NOT NULL,
+            parent_id BIGINT NULL,
+            name VARCHAR(150) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )');
+        $this->database->statement('CREATE TABLE media_variants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            media_id BIGINT NOT NULL,
+            size_type VARCHAR(20) NOT NULL,
+            path VARCHAR(500) NOT NULL,
+            width INT NULL,
+            height INT NULL
+        )');
     }
 
     private function seedSite(string $name = 'Site A'): int
@@ -498,5 +532,156 @@ final class AdminMediaManagementUiTest extends TestCase
         ));
 
         self::assertSame(419, $response->getStatusCode());
+    }
+
+    // ---- Folder ----
+
+    public function testCreateFolderThenListShowsItAsTab(): void
+    {
+        $siteId = $this->seedSite();
+        $this->actingAs($siteId, $this->seedUser(), ['media.view', 'media.upload']);
+
+        $listPage = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/admin/media/folders',
+            'example.com',
+            [],
+            ['name' => 'Anh San Pham', '_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $folder = $this->database->selectOne('SELECT id, tenant_id, name FROM media_folders WHERE tenant_id = ?', [$siteId]);
+        self::assertNotNull($folder);
+        self::assertSame('Anh San Pham', $folder['name']);
+
+        $page = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com'));
+        self::assertStringContainsString('Anh San Pham', $page->getBody());
+    }
+
+    public function testListFiltersByFolderId(): void
+    {
+        $siteId = $this->seedSite();
+        $this->database->insert('INSERT INTO media_folders (tenant_id, name) VALUES (?, ?)', [$siteId, 'Folder A']);
+        $folderId = (int) $this->database->connection()->lastInsertId();
+
+        $this->database->insert(
+            'INSERT INTO media (tenant_id, file_name, path, mime_type, size, uploaded_by, folder_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$siteId, 'in-folder.png', "{$siteId}/in-folder.png", 'image/png', 100, 1, $folderId]
+        );
+        $this->seedMedia($siteId, "{$siteId}/unfiled.png", 100, 'image/png', 'unfiled.png');
+        $this->actingAs($siteId, $this->seedUser(), ['media.view']);
+
+        $response = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com', ['folder_id' => (string) $folderId]));
+
+        self::assertStringContainsString('in-folder.png', $response->getBody());
+        self::assertStringNotContainsString('unfiled.png', $response->getBody());
+    }
+
+    public function testDeleteFolderUnsetsMediaFolderIdInsteadOfDeletingMedia(): void
+    {
+        $siteId = $this->seedSite();
+        $this->database->insert('INSERT INTO media_folders (tenant_id, name) VALUES (?, ?)', [$siteId, 'Folder A']);
+        $folderId = (int) $this->database->connection()->lastInsertId();
+        $mediaId = $this->seedMedia($siteId, "{$siteId}/x.png");
+        $this->database->statement('UPDATE media SET folder_id = ? WHERE id = ?', [$folderId, $mediaId]);
+        $this->actingAs($siteId, $this->seedUser(), ['media.view', 'media.delete']);
+
+        $listPage = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/admin/media/folders/{$folderId}/delete",
+            'example.com',
+            [],
+            ['_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertNull($this->database->selectOne('SELECT id FROM media_folders WHERE id = ?', [$folderId]));
+
+        $row = $this->database->selectOne('SELECT folder_id FROM media WHERE id = ?', [$mediaId]);
+        self::assertNotNull($row);
+        self::assertNull($row['folder_id']);
+    }
+
+    public function testUpdateMovesMediaIntoFolder(): void
+    {
+        $siteId = $this->seedSite();
+        $userId = $this->seedUser();
+        $this->database->insert('INSERT INTO media_folders (tenant_id, name) VALUES (?, ?)', [$siteId, 'Folder A']);
+        $folderId = (int) $this->database->connection()->lastInsertId();
+        $mediaId = $this->seedMedia($siteId, "{$siteId}/x.png");
+        $this->actingAs($siteId, $userId, ['media.view', 'media.update']);
+
+        $listPage = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            "/admin/media/{$mediaId}",
+            'example.com',
+            [],
+            ['folder_id' => (string) $folderId, '_token' => $token]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+
+        $row = $this->database->selectOne('SELECT folder_id FROM media WHERE id = ?', [$mediaId]);
+        self::assertSame($folderId, (int) $row['folder_id']);
+    }
+
+    // ---- Thumbnail ----
+
+    public function testUploadRealImageGeneratesThumbnailVariant(): void
+    {
+        $siteId = $this->seedSite();
+        $userId = $this->seedUser();
+        $this->actingAs($siteId, $userId, ['media.view', 'media.upload']);
+
+        $listPage = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $file = $this->fakeUploadedFile('photo.png', 'image/png', (string) \base64_decode(self::REAL_DECODABLE_PNG_BASE64, true));
+
+        $this->router->dispatch(new Request(
+            'POST',
+            '/admin/media',
+            'example.com',
+            [],
+            ['_token' => $token],
+            [],
+            [],
+            ['file' => $file]
+        ));
+
+        $media = $this->database->selectOne('SELECT id FROM media WHERE tenant_id = ?', [$siteId]);
+        self::assertNotNull($media);
+
+        $variant = $this->database->selectOne(
+            "SELECT path, width, height FROM media_variants WHERE media_id = ? AND size_type = 'thumbnail'",
+            [$media['id']]
+        );
+        self::assertNotNull($variant);
+        self::assertFileExists($this->storageDir . '/' . $variant['path']);
+    }
+
+    public function testThumbnailControllerFallsBackToOriginalWhenNoVariant(): void
+    {
+        $siteId = $this->seedSite();
+        $userId = $this->seedUser();
+        \mkdir($this->storageDir . '/' . $siteId, 0755, true);
+        \file_put_contents($this->storageDir . '/' . $siteId . '/pic.png', 'raw-bytes');
+        $mediaId = $this->seedMedia($siteId, "{$siteId}/pic.png", 9, 'image/png');
+        $this->actingAs($siteId, $userId, ['media.view']);
+
+        $response = $this->router->dispatch(new Request('GET', "/admin/media/{$mediaId}/thumbnail", 'example.com'));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame('raw-bytes', $response->getBody());
     }
 }

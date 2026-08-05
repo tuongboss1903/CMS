@@ -91,7 +91,7 @@ final class ProductUpdateController
      */
     private function renderWithErrors(int $productId, array $errors, array $data): Response
     {
-        $html = $this->view->render('admin.pages.products.edit', [
+        $html = $this->view->render('admin.pages.ecommerce.products.edit', [
             'product' => ['id' => $productId],
             'errors' => $errors,
             'old' => $data,

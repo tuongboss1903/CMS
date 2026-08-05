@@ -41,7 +41,7 @@ final class ProductListController
             [$this->tenantManager->id()]
         );
 
-        $html = $this->view->render('admin.pages.products.list', [
+        $html = $this->view->render('admin.pages.ecommerce.products.list', [
             'products' => $products,
             'breadcrumb_items' => [['label' => 'San pham']],
             'csrf_token' => $this->csrf->token(),

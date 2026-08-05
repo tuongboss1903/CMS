@@ -1,14 +1,14 @@
 <?php $this->extend('system_admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
 <div class="flex items-center justify-between" style="margin-bottom: var(--space-5);">
-    <h1 class="mb-0">Plugin cua site: <?= $this->e((string) $site['name']) ?></h1>
-    <a href="/system-admin/sites/<?= $this->e((string) $site['id']) ?>/edit" class="btn btn-secondary">Quay lai Site</a>
+    <h1 class="mb-0">Plugin của site: <?= $this->e((string) $site['name']) ?></h1>
+    <a href="/system-admin/sites/<?= $this->e((string) $site['id']) ?>/edit" class="btn btn-secondary">Quay lại Site</a>
 </div>
 
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Plugin</th><th>Version</th><th>Mo ta</th><th>Trang thai</th><th>Hanh dong</th></tr>
+<tr><th>Plugin</th><th>Phiên bản</th><th>Mô tả</th><th>Trạng thái</th><th>Hành động</th></tr>
 </thead>
 <tbody>
 <?php foreach ($plugins as $plugin): ?>
@@ -17,12 +17,12 @@
     <td><?= $this->e($plugin['version']) ?></td>
     <td class="text-muted"><?= $this->e($plugin['description']) ?></td>
     <td data-field="status">
-        <span class="badge <?= $plugin['is_active'] ? 'badge-success' : 'badge-secondary' ?>"><?= $plugin['is_active'] ? 'Dang bat' : 'Dang tat' ?></span>
+        <span class="badge <?= $plugin['is_active'] ? 'badge-success' : 'badge-secondary' ?>"><?= $plugin['is_active'] ? 'Đang bật' : 'Đang tắt' ?></span>
     </td>
     <td>
-        <form method="POST" action="/system-admin/sites/<?= $this->e((string) $site['id']) ?>/plugins/<?= $this->e($plugin['key']) ?>/toggle">
+        <form method="POST" action="/system-admin/sites/<?= $this->e((string) $site['id']) ?>/plugins/<?= $this->e($plugin['key']) ?>/toggle" data-confirm="<?= $plugin['is_active'] ? 'Tắt plugin này cho site?' : 'Bật plugin này cho site?' ?>">
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
-            <button type="submit" class="btn <?= $plugin['is_active'] ? 'btn-danger' : 'btn-secondary' ?> btn-sm"><?= $plugin['is_active'] ? 'Tat' : 'Bat' ?></button>
+            <button type="submit" class="btn <?= $plugin['is_active'] ? 'btn-danger' : 'btn-secondary' ?> btn-sm"><?= $plugin['is_active'] ? 'Tắt' : 'Bật' ?></button>
         </form>
     </td>
 </tr>

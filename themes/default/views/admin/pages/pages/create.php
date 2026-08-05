@@ -9,7 +9,7 @@
 <?php $this->endSection(); ?>
 
 <?php $this->section('content'); ?>
-<h1>Tao Page</h1>
+<h1>Tạo Trang nội dung</h1>
 <?php if (!empty($errors)): ?>
 <div class="alert alert-danger">
 <ul>
@@ -26,7 +26,7 @@
     <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
     <input type="hidden" name="editor_mode" id="editor-mode-input" value="<?= $this->e($editor_mode ?? 'quill') ?>">
     <div class="field">
-        <label for="title">Tieu de</label>
+        <label for="title">Tiêu đề</label>
         <input type="text" id="title" name="title" value="<?= $this->e($old['title'] ?? '') ?>">
     </div>
     <div class="field">
@@ -34,22 +34,22 @@
         <input type="text" id="slug" name="slug" value="<?= $this->e($old['slug'] ?? '') ?>">
     </div>
     <div class="field">
-        <label for="parent_id">Parent Page (tuy chon)</label>
+        <label for="parent_id">Trang cha (tuỳ chọn)</label>
         <select id="parent_id" name="parent_id">
-            <option value="">-- Khong co --</option>
+            <option value="">-- Không có --</option>
             <?php foreach ($parents as $parent): ?>
             <option value="<?= $this->e((string) $parent['id']) ?>"<?= (string) $parent['id'] === (string) ($old['parent_id'] ?? '') ? ' selected' : '' ?>><?= $this->e($parent['title']) ?></option>
             <?php endforeach; ?>
         </select>
     </div>
     <div class="field">
-        <label for="template">Template (tuy chon)</label>
+        <label for="template">Template (tuỳ chọn)</label>
         <input type="text" id="template" name="template" value="<?= $this->e($old['template'] ?? '') ?>" placeholder="default">
     </div>
     <div class="field">
-        <label>Noi dung theo ngon ngu</label>
+        <label>Nội dung theo ngôn ngữ</label>
         <div class="editor-mode-toggle">
-            <button type="button" class="btn btn-secondary btn-sm" data-locale-tab="vi">Tieng Viet (goc)</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-locale-tab="vi">Tiếng Việt (gốc)</button>
             <button type="button" class="btn btn-secondary btn-sm" data-locale-tab="en">English</button>
         </div>
 
@@ -66,7 +66,7 @@
 
         <div id="locale-pane-en" style="display:none;">
         <div class="field">
-            <label for="translation-en-title">Tieu de (EN)</label>
+            <label for="translation-en-title">Tiêu đề (EN)</label>
             <input type="text" id="translation-en-title" name="translations[en][title]" value="<?= $this->e($translations['en']['title'] ?? '') ?>">
         </div>
         <div class="field">
@@ -74,14 +74,14 @@
             <input type="text" id="translation-en-slug" name="translations[en][slug]" value="<?= $this->e($translations['en']['slug'] ?? '') ?>">
         </div>
         <div class="field">
-            <label for="translation-en-content">Noi dung (EN, HTML don gian)</label>
+            <label for="translation-en-content">Nội dung (EN, HTML đơn giản)</label>
             <textarea id="translation-en-content" name="translations[en][content]" rows="8"><?= $this->e($translations['en']['content'] ?? '') ?></textarea>
         </div>
         </div>
     </div>
     <div class="flex gap-2">
-        <button type="submit" class="btn btn-primary">Tao page</button>
-        <a href="/admin/pages" class="btn btn-secondary">Huy</a>
+        <button type="submit" class="btn btn-primary"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Tạo trang</button>
+        <a href="/admin/pages" class="btn btn-secondary">Huỷ</a>
     </div>
 </form>
 </div>

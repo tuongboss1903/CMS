@@ -13,8 +13,8 @@ $imagesForJs = \array_map(
 );
 ?>
 <div class="editor-mode-toggle">
-    <button type="button" class="btn btn-secondary btn-sm" data-editor-mode-toggle="quill">Rich Text</button>
-    <button type="button" class="btn btn-secondary btn-sm" data-editor-mode-toggle="block">Block Builder</button>
+    <button type="button" class="btn btn-secondary btn-sm" data-editor-mode-toggle="quill">Soạn thảo văn bản</button>
+    <button type="button" class="btn btn-secondary btn-sm" data-editor-mode-toggle="block">Trình dựng Block</button>
 </div>
 
 <div id="block-builder"
@@ -22,12 +22,12 @@ $imagesForJs = \array_map(
      data-initial-blocks='<?= $this->e(\json_encode($initialBlocks, JSON_UNESCAPED_UNICODE)) ?>'>
     <div id="block-list"></div>
     <div class="block-editor-add-bar">
-        <button type="button" class="btn btn-secondary btn-sm" data-add-block="heading">+ Heading</button>
-        <button type="button" class="btn btn-secondary btn-sm" data-add-block="paragraph">+ Paragraph</button>
-        <button type="button" class="btn btn-secondary btn-sm" data-add-block="image">+ Image</button>
-        <button type="button" class="btn btn-secondary btn-sm" data-add-block="hero">+ Hero</button>
-        <button type="button" class="btn btn-secondary btn-sm" data-add-block="feature_grid">+ Feature Grid</button>
-        <button type="button" class="btn btn-secondary btn-sm" data-add-block="cta">+ CTA</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-add-block="heading"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Tiêu đề</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-add-block="paragraph"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Đoạn văn</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-add-block="image"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Hình ảnh</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-add-block="hero"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Hero</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-add-block="feature_grid"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Lưới tính năng</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-add-block="cta"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> CTA</button>
     </div>
 </div>
 <input type="hidden" name="content_blocks_json" id="content-blocks-input">

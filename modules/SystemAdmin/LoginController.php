@@ -4,26 +4,25 @@ declare(strict_types=1);
 
 namespace Modules\SystemAdmin;
 
-use Core\Csrf;
 use Core\Http\Request;
 use Core\Http\Response;
 use Core\Security\PlatformAuditLogger;
+use Core\Session;
 use Core\SystemAdminAuthenticationService;
 use Core\Validator;
-use Core\View;
 
 /**
- * POST /system-admin/login - khong PRG khi that bai (render lai form), redirect khi thanh cong.
- * Cung quy uoc voi Modules\Admin\LoginController.
+ * POST /system-admin/login - da chuyen sang PRG (Post/Redirect/Get), dong bo Modules\Admin\LoginController
+ * (xem docblock day du o do). Loi/old input dua qua Session::flash(), redirect ve GET
+ * /system-admin/login thay vi render lai form truc tiep tu POST.
  */
 final class LoginController
 {
     public function __construct(
         private readonly SystemAdminAuthenticationService $authenticationService,
-        private readonly Csrf $csrf,
         private readonly PlatformAuditLogger $platformAuditLogger,
+        private readonly Session $session,
         private readonly Validator $validator,
-        private readonly View $view,
     ) {
     }
 
@@ -38,7 +37,7 @@ final class LoginController
         ]);
 
         if ($result->fails()) {
-            return $this->renderWithErrors($result->errors(), $email);
+            return $this->redirectWithErrors($result->errors(), $email);
         }
 
         $password = (string) $data['password'];
@@ -46,7 +45,7 @@ final class LoginController
         if (!$this->authenticationService->attempt($email, $password)) {
             $this->platformAuditLogger->log($request, 'auth.login_failed', newValues: ['email' => $email]);
 
-            return $this->renderWithErrors(['auth' => ['Email hoac mat khau khong dung.']], $email);
+            return $this->redirectWithErrors(['auth' => ['Email hoặc mật khẩu không đúng.']], $email);
         }
 
         $this->platformAuditLogger->log($request, 'auth.login_success');
@@ -55,14 +54,11 @@ final class LoginController
     }
 
     /** @param array<string, list<string>> $errors */
-    private function renderWithErrors(array $errors, string $email): Response
+    private function redirectWithErrors(array $errors, string $email): Response
     {
-        $html = $this->view->render('system_admin.pages.login', [
-            'errors' => $errors,
-            'old' => ['email' => $email],
-            'csrf_token' => $this->csrf->token(),
-        ]);
+        $this->session->flash('errors', $errors);
+        $this->session->flash('old', ['email' => $email]);
 
-        return Response::html($html);
+        return Response::redirect('/system-admin/login');
     }
 }

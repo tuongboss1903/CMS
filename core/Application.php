@@ -59,6 +59,10 @@ final class Application
     {
         $this->boot();
 
+        // Bind Request that vao Container - phuc vu diem doc lai ($request->path()) tu closure
+        // View::class ben duoi (sidebar active-state), khong doi contract handle()/Router.
+        $this->container->instance(Request::class, $request);
+
         $router = $this->container->get(Router::class);
 
         try {
@@ -274,10 +278,22 @@ final class Application
                 }
             }
 
+            // Duong dan request hien tai - phuc vu active-state cua sidebar Admin (so sanh prefix
+            // trong sidebar.php). Chi doc, khong ghi - fallback rong neu Request chua duoc bind
+            // (vd unit test resolve View::class truc tiep, khong qua Application::handle()).
+            $currentPath = '';
+
+            try {
+                $currentPath = $c->get(Request::class)->path();
+            } catch (Throwable) {
+                // Silent-fail co chu dich - xem docblock o tren.
+            }
+
             return new View($this->basePath . '/themes', $activeTheme, $defaultTheme, [
                 'extra_admin_menu_items' => $extraMenuItems,
                 'current_user_name' => $currentUserName,
                 'unread_notifications_count' => $unreadNotificationsCount,
+                'current_path' => $currentPath,
             ]);
         });
 

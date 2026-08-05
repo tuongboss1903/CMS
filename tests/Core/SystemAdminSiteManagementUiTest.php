@@ -217,7 +217,7 @@ final class SystemAdminSiteManagementUiTest extends TestCase
         self::assertNotNull($log);
     }
 
-    public function testLoginWrongPasswordRendersFormAgain(): void
+    public function testLoginWrongPasswordRedirectsBackWithFlashError(): void
     {
         $this->seedAdmin('root@platform.local', 'correct-password');
 
@@ -232,8 +232,18 @@ final class SystemAdminSiteManagementUiTest extends TestCase
             ['email' => 'root@platform.local', 'password' => 'wrong-password', '_token' => $token]
         ));
 
-        self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('Email hoac mat khau khong dung.', $response->getBody());
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/system-admin/login', $response->getHeaders()['Location']);
+
+        // Mo phong ranh gioi request that (xem AdminUiFoundationTest::testLoginWithWrongPasswordRedirectsBackWithFlashError
+        // cho giai thich day du) de Session::start() chay lai ageFlashData().
+        \session_write_close();
+        $this->session->start();
+
+        $retryFormPage = $this->router->dispatch(new Request('GET', '/system-admin/login', 'system-admin.local'));
+
+        self::assertSame(200, $retryFormPage->getStatusCode());
+        self::assertStringContainsString('Email hoặc mật khẩu không đúng.', $retryFormPage->getBody());
     }
 
     // ---- Guard ----
@@ -485,7 +495,7 @@ final class SystemAdminSiteManagementUiTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('Ecommerce MVP', $response->getBody());
-        self::assertStringContainsString('Dang tat', $response->getBody());
+        self::assertStringContainsString('Đang tắt', $response->getBody());
     }
 
     public function testSitePluginToggleActivatesThenDeactivates(): void
@@ -562,7 +572,7 @@ final class SystemAdminSiteManagementUiTest extends TestCase
         $response = $this->router->dispatch(new Request('GET', '/system-admin/dashboard', 'system-admin.local'));
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('Tong so Site', $response->getBody());
+        self::assertStringContainsString('Tổng số Site', $response->getBody());
     }
 
     public function testDashboardRedirectsToLoginWhenNotAuthenticated(): void

@@ -65,6 +65,29 @@ final class MediaUpdateController
             }
         }
 
+        /**
+         * folder_id doc rieng khoi vong lap tren (khac kieu du lieu - int|null, khong phai string
+         * nhu 3 field con lai) - "" (option "-- Khong co --" tren form) = go khoi Folder (NULL),
+         * gia tri so = di chuyen vao Folder do (da xac minh thuoc dung tenant truoc khi UPDATE).
+         */
+        if (\array_key_exists('folder_id', $data)) {
+            $folderIdRaw = \trim((string) $data['folder_id']);
+
+            if ($folderIdRaw === '') {
+                $fields[] = 'folder_id = NULL';
+            } else {
+                $folder = $this->database->selectOne(
+                    'SELECT id FROM media_folders WHERE id = ? AND tenant_id = ?',
+                    [(int) $folderIdRaw, $this->tenantManager->id()]
+                );
+
+                if ($folder !== null) {
+                    $fields[] = 'folder_id = ?';
+                    $bindings[] = (int) $folder['id'];
+                }
+            }
+        }
+
         if ($fields === []) {
             return Response::redirect('/admin/media');
         }

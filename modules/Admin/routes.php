@@ -17,6 +17,7 @@ $router->get('/admin/pages/create', [\Modules\Admin\PageShowCreateController::cl
 $router->get('/admin/pages/{id}/edit', [\Modules\Admin\PageShowEditController::class, 'handle']);
 $router->get('/admin/media', [\Modules\Admin\MediaListController::class, 'handle']);
 $router->get('/admin/media/{id}/file', [\Modules\Admin\MediaFileController::class, 'handle']);
+$router->get('/admin/media/{id}/thumbnail', [\Modules\Admin\MediaThumbnailController::class, 'handle']);
 $router->get('/admin/menus', [\Modules\Admin\MenuListController::class, 'handle']);
 $router->get('/admin/menus/{id}', [\Modules\Admin\MenuShowController::class, 'handle']);
 $router->get('/admin/seo', [\Modules\Admin\SeoListController::class, 'handle']);
@@ -42,12 +43,15 @@ $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], funct
     $router->post('/admin/roles/{id}', [\Modules\Admin\RoleUpdateController::class, 'handle']);
     $router->post('/admin/roles/{id}/delete', [\Modules\Admin\RoleDeleteController::class, 'handle']);
     $router->post('/admin/roles/{id}/permissions', [\Modules\Admin\RoleAssignPermissionsController::class, 'handle']);
+    $router->post('/admin/roles/{id}/permissions/{permissionId}/delete', [\Modules\Admin\RoleRevokePermissionController::class, 'handle']);
     $router->post('/admin/pages', [\Modules\Admin\PageCreateController::class, 'handle']);
     $router->post('/admin/pages/{id}', [\Modules\Admin\PageUpdateController::class, 'handle']);
     $router->post('/admin/pages/{id}/delete', [\Modules\Admin\PageDeleteController::class, 'handle']);
     $router->post('/admin/pages/{id}/publish', [\Modules\Admin\PagePublishController::class, 'handle']);
     $router->post('/admin/pages/{id}/homepage', [\Modules\Admin\PageSetHomepageController::class, 'handle']);
     $router->post('/admin/media', [\Modules\Admin\MediaUploadController::class, 'handle']);
+    $router->post('/admin/media/folders', [\Modules\Admin\MediaFolderCreateController::class, 'handle']);
+    $router->post('/admin/media/folders/{id}/delete', [\Modules\Admin\MediaFolderDeleteController::class, 'handle']);
     $router->post('/admin/media/{id}', [\Modules\Admin\MediaUpdateController::class, 'handle']);
     $router->post('/admin/media/{id}/delete', [\Modules\Admin\MediaDeleteController::class, 'handle']);
     $router->post('/admin/menus', [\Modules\Admin\MenuCreateController::class, 'handle']);

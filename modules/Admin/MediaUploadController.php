@@ -114,16 +114,19 @@ final class MediaUploadController
         }
 
         try {
-            $this->database->transaction(function (Database $db) use ($originalName, $relativePath, $mimeType, $size, $siteId): void {
+            $mediaId = $this->database->transaction(function (Database $db) use ($originalName, $relativePath, $mimeType, $size, $siteId): int {
                 $db->insert(
                     'INSERT INTO media (tenant_id, file_name, path, mime_type, size, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)',
                     [$siteId, $originalName, $relativePath, $mimeType, $size, $this->auth->id()]
                 );
+                $mediaId = (int) $db->connection()->lastInsertId();
 
                 $db->statement(
                     'UPDATE sites SET storage_used_bytes = storage_used_bytes + ? WHERE id = ?',
                     [$size, $siteId]
                 );
+
+                return $mediaId;
             });
         } catch (\Throwable $exception) {
             @\unlink($destination);
@@ -131,7 +134,64 @@ final class MediaUploadController
             return Response::redirect('/admin/media');
         }
 
+        $this->generateThumbnail($mediaId, $destination, $mimeType, $tenantDir, (string) $siteId);
+
         return Response::redirect('/admin/media');
+    }
+
+    /**
+     * Sinh media_variants (size_type='thumbnail', khop ENUM da chot database-design.md muc 4.1)
+     * qua ext-gd (built-in PHP, khong them composer package - dung y Owner Decision CMS-041 goc:
+     * "chua co thu vien xu ly anh" gio da khong con dung, ext-gd luon co san trong PHP chuan).
+     * Best-effort tuyet doi - moi loi (GD khong load duoc anh, extension bi tat, ghi file that
+     * bai...) chi log-silent va bo qua, KHONG lam that bai request upload (thumbnail la tien ich
+     * hien thi, khong phai du lieu bat buoc - Admin Grid/List fallback ve anh goc qua
+     * MediaThumbnailController khi khong co variant).
+     */
+    private function generateThumbnail(int $mediaId, string $sourcePath, string $mimeType, string $tenantDir, string $siteId): void
+    {
+        if (!\function_exists('imagecreatetruecolor') || !\in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif'], true)) {
+            return;
+        }
+
+        try {
+            /** @var array<string, callable(string): (\GdImage|false)> $loaders */
+            $loaders = [
+                'image/jpeg' => \imagecreatefromjpeg(...),
+                'image/png' => \imagecreatefrompng(...),
+                'image/gif' => \imagecreatefromgif(...),
+            ];
+
+            $source = @$loaders[$mimeType]($sourcePath);
+
+            if ($source === false) {
+                return;
+            }
+
+            $originalWidth = \imagesx($source);
+            $originalHeight = \imagesy($source);
+
+            $targetWidth = \min(300, $originalWidth);
+            $targetHeight = (int) \round($originalHeight * ($targetWidth / $originalWidth));
+
+            $thumbnail = \imagecreatetruecolor($targetWidth, $targetHeight);
+            \imagecopyresampled($thumbnail, $source, 0, 0, 0, 0, $targetWidth, $targetHeight, $originalWidth, $originalHeight);
+
+            $thumbnailName = 'thumb_' . \pathinfo($sourcePath, PATHINFO_FILENAME) . '.jpg';
+            $thumbnailDestination = $tenantDir . DIRECTORY_SEPARATOR . $thumbnailName;
+
+            if (\imagejpeg($thumbnail, $thumbnailDestination, 82)) {
+                $this->database->insert(
+                    'INSERT INTO media_variants (media_id, size_type, path, width, height) VALUES (?, ?, ?, ?, ?)',
+                    [$mediaId, 'thumbnail', $siteId . '/' . $thumbnailName, $targetWidth, $targetHeight]
+                );
+            }
+
+            \imagedestroy($source);
+            \imagedestroy($thumbnail);
+        } catch (\Throwable) {
+            // Silent-fail co chu dich - xem docblock o tren.
+        }
     }
 
     /**

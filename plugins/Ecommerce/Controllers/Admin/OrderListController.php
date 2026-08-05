@@ -41,7 +41,7 @@ final class OrderListController
             [$this->tenantManager->id()]
         );
 
-        $html = $this->view->render('admin.pages.orders.list', [
+        $html = $this->view->render('admin.pages.ecommerce.orders.list', [
             'orders' => $orders,
             'breadcrumb_items' => [['label' => 'Don hang']],
             'csrf_token' => $this->csrf->token(),

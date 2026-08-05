@@ -47,7 +47,7 @@ final class OrderShowController
 
         $items = $this->database->select('SELECT * FROM order_items WHERE order_id = ?', [$orderId]);
 
-        $html = $this->view->render('admin.pages.orders.show', [
+        $html = $this->view->render('admin.pages.ecommerce.orders.show', [
             'order' => $order,
             'items' => $items,
             'payments' => $this->fetchPayments($orderId),

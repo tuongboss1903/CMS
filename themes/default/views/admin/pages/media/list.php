@@ -1,24 +1,34 @@
 <?php $this->extend('admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
 <div class="flex items-center justify-between" style="margin-bottom: var(--space-5); flex-wrap: wrap; gap: var(--space-3);">
-    <h1 class="mb-0">Quan ly Media</h1>
+    <h1 class="mb-0">Quản lý Media</h1>
     <div class="flex gap-3" style="align-items:center;">
         <!-- Phase 18 (CMS-055): Grid/List toggle - CSS/JS thuan, dung lai nguyen $media da co,
              khong can Controller cung cap them du lieu gi. -->
         <div class="view-toggle" data-view-toggle>
-            <button type="button" data-view="grid" class="is-active">Grid</button>
-            <button type="button" data-view="list">List</button>
+            <button type="button" data-view="grid" class="is-active">Lưới</button>
+            <button type="button" data-view="list">Danh sách</button>
         </div>
-        <button type="button" class="btn btn-primary" data-modal-open="upload-modal">+ Tai len</button>
+        <button type="button" class="btn btn-secondary" data-modal-open="folder-modal"><?php $this->include('admin.partials.icon', ['name' => 'folder']); ?> Thư mục</button>
+        <button type="button" class="btn btn-primary" data-modal-open="upload-modal"><?php $this->include('admin.partials.icon', ['name' => 'upload']); ?> Tải lên</button>
     </div>
+</div>
+
+<?php $currentFolderId = $filters['folder_id'] ?? ''; ?>
+<div class="table-filter-tabs">
+    <a href="/admin/media" class="btn <?= $currentFolderId === '' ? 'btn-primary' : 'btn-secondary' ?> btn-sm">Tất cả</a>
+    <a href="/admin/media?folder_id=0" class="btn <?= $currentFolderId === '0' ? 'btn-primary' : 'btn-secondary' ?> btn-sm">Chưa phân loại</a>
+    <?php foreach ($folders as $folder): ?>
+    <a href="/admin/media?folder_id=<?= $this->e((string) $folder['id']) ?>" class="btn <?= $currentFolderId === (string) $folder['id'] ? 'btn-primary' : 'btn-secondary' ?> btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'folder']); ?> <?= $this->e($folder['name']) ?></a>
+    <?php endforeach; ?>
 </div>
 
 <?php $this->include('admin.partials.table_filter', [
     'filter_action' => '/admin/media',
     'filter_fields' => [
-        ['name' => 'q', 'label' => 'Tim theo ten file', 'type' => 'text', 'value' => $filters['q'] ?? ''],
-        ['name' => 'type', 'label' => 'Loai file', 'type' => 'select', 'value' => $filters['type'] ?? '', 'options' => [
-            ['value' => 'image/', 'label' => 'Hinh anh'],
+        ['name' => 'q', 'label' => 'Tìm theo tên file', 'type' => 'text', 'value' => $filters['q'] ?? ''],
+        ['name' => 'type', 'label' => 'Loại file', 'type' => 'select', 'value' => $filters['type'] ?? '', 'options' => [
+            ['value' => 'image/', 'label' => 'Hình ảnh'],
             ['value' => 'application/pdf', 'label' => 'PDF'],
         ]],
     ],
@@ -28,7 +38,7 @@
 <?php foreach ($media as $item): ?>
 <div class="media-card">
     <?php if (\str_starts_with((string) $item['mime_type'], 'image/')): ?>
-    <img src="/admin/media/<?= $this->e((string) $item['id']) ?>/file" alt="<?= $this->e((string) ($item['alt_text'] ?? '')) ?>">
+    <img src="/admin/media/<?= $this->e((string) $item['id']) ?>/thumbnail" alt="<?= $this->e((string) ($item['alt_text'] ?? '')) ?>" loading="lazy">
     <?php else: ?>
     <div class="media-card-icon">FILE</div>
     <?php endif; ?>
@@ -39,75 +49,116 @@
         <form method="POST" action="/admin/media/<?= $this->e((string) $item['id']) ?>" class="media-edit-form">
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
             <div class="field">
-                <label>Alt text</label>
+                <label>Văn bản thay thế (Alt)</label>
                 <input type="text" name="alt_text" value="<?= $this->e((string) ($item['alt_text'] ?? '')) ?>">
             </div>
             <div class="field">
-                <label>Tieu de</label>
+                <label>Tiêu đề</label>
                 <input type="text" name="title" value="<?= $this->e((string) ($item['title'] ?? '')) ?>">
             </div>
             <div class="field">
-                <label>Chu thich</label>
+                <label>Chú thích</label>
                 <input type="text" name="caption" value="<?= $this->e((string) ($item['caption'] ?? '')) ?>">
             </div>
-            <button type="submit" class="btn btn-secondary btn-sm">Luu</button>
+            <div class="field">
+                <label>Thư mục</label>
+                <select name="folder_id">
+                    <option value="">-- Chưa phân loại --</option>
+                    <?php foreach ($folders as $folder): ?>
+                    <option value="<?= $this->e((string) $folder['id']) ?>" <?= (int) ($item['folder_id'] ?? 0) === (int) $folder['id'] ? 'selected' : '' ?>><?= $this->e($folder['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
         </form>
 
-        <form method="POST" action="/admin/media/<?= $this->e((string) $item['id']) ?>/delete" data-confirm="Xac nhan xoa file nay?">
+        <form method="POST" action="/admin/media/<?= $this->e((string) $item['id']) ?>/delete" data-confirm="Xác nhận xoá file này?">
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
-            <button type="submit" class="btn btn-danger btn-sm">Xoa</button>
+            <button type="submit" class="btn btn-danger btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'trash']); ?> Xoá</button>
         </form>
     </div>
 </div>
 <?php endforeach; ?>
 <?php if (empty($media)): ?>
-<div class="empty-state">Chua co file nao.</div>
+<div class="empty-state">Chưa có file nào.</div>
 <?php endif; ?>
 </div>
 
 <div class="table-wrap is-hidden" data-view-panel="list">
 <table class="data-table media-list-table">
 <thead>
-<tr><th></th><th>Ten file</th><th>Loai</th><th>Dung luong</th><th></th></tr>
+<tr><th></th><th>Tên file</th><th>Loại</th><th>Dung lượng</th><th></th></tr>
 </thead>
 <tbody>
 <?php foreach ($media as $item): ?>
 <tr>
     <td>
     <?php if (\str_starts_with((string) $item['mime_type'], 'image/')): ?>
-    <img class="media-thumb" src="/admin/media/<?= $this->e((string) $item['id']) ?>/file" alt="">
+    <img class="media-thumb" src="/admin/media/<?= $this->e((string) $item['id']) ?>/thumbnail" alt="" loading="lazy">
     <?php endif; ?>
     </td>
     <td><?= $this->e($item['file_name']) ?></td>
     <td class="text-muted"><?= $this->e((string) $item['mime_type']) ?></td>
     <td class="text-muted"><?= $this->e((string) \round(((int) $item['size']) / 1024, 1)) ?> KB</td>
     <td>
-        <form method="POST" action="/admin/media/<?= $this->e((string) $item['id']) ?>/delete" data-confirm="Xac nhan xoa file nay?">
+        <form method="POST" action="/admin/media/<?= $this->e((string) $item['id']) ?>/delete" data-confirm="Xác nhận xoá file này?">
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
-            <button type="submit" class="btn btn-danger btn-sm">Xoa</button>
+            <button type="submit" class="btn btn-danger btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'trash']); ?> Xoá</button>
         </form>
     </td>
 </tr>
 <?php endforeach; ?>
 <?php if (empty($media)): ?>
-<tr><td colspan="5" class="empty-state">Chua co file nao.</td></tr>
+<tr><td colspan="5" class="empty-state">Chưa có file nào.</td></tr>
 <?php endif; ?>
 </tbody>
 </table>
 </div>
 
+<div class="modal-overlay" id="folder-modal">
+    <div class="modal">
+        <h2>Thư mục Media</h2>
+        <?php if (empty($folders)): ?>
+        <p class="text-muted" style="font-size:13px;">Chưa có thư mục nào.</p>
+        <?php else: ?>
+        <ul style="list-style:none; margin:0 0 var(--space-4); padding:0;">
+        <?php foreach ($folders as $folder): ?>
+        <li class="flex items-center justify-between" style="padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border-subtle);">
+            <span class="flex items-center gap-2"><?php $this->include('admin.partials.icon', ['name' => 'folder']); ?> <?= $this->e($folder['name']) ?></span>
+            <form method="POST" action="/admin/media/folders/<?= $this->e((string) $folder['id']) ?>/delete" data-confirm="Xoá thư mục này? File bên trong sẽ chuyển về Chưa phân loại.">
+                <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
+                <button type="submit" class="btn btn-danger btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'trash']); ?> Xoá</button>
+            </form>
+        </li>
+        <?php endforeach; ?>
+        </ul>
+        <?php endif; ?>
+        <form method="POST" action="/admin/media/folders">
+            <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
+            <div class="field">
+                <label for="folder-name">Tên thư mục mới</label>
+                <input type="text" id="folder-name" name="name" required>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Tạo thư mục</button>
+                <button type="button" class="btn btn-secondary" data-modal-close="folder-modal">Đóng</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="modal-overlay" id="upload-modal">
     <div class="modal">
-        <h2>Tai file len</h2>
+        <h2>Tải file lên</h2>
         <form method="POST" action="/admin/media" enctype="multipart/form-data" id="upload-form">
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
             <div class="field media-dropzone" id="media-dropzone">
                 <input type="file" name="file" id="media-file-input">
-                <p class="text-muted mb-0">Keo tha file vao day hoac bam de chon file (JPEG/PNG/GIF/PDF, toi da 5MB)</p>
+                <p class="text-muted mb-0">Kéo thả file vào đây hoặc bấm để chọn file (JPEG/PNG/GIF/PDF, tối đa 5MB)</p>
             </div>
             <div class="flex gap-2">
-                <button type="submit" class="btn btn-primary">Tai len</button>
-                <button type="button" class="btn btn-secondary" data-modal-close="upload-modal">Huy</button>
+                <button type="submit" class="btn btn-primary">Tải lên</button>
+                <button type="button" class="btn btn-secondary" data-modal-close="upload-modal">Huỷ</button>
             </div>
         </form>
     </div>

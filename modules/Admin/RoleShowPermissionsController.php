@@ -14,9 +14,10 @@ use Core\View;
 
 /**
  * GET /admin/roles/{id}/permissions - xem danh sach permission da gan/chua gan cua 1 role. System
- * Role van xem duoc (Owner Decision 3 CMS-038: "View allowed"), chi hanh dong POST assign moi bi
- * chan 403 - trang nay chi khong render nut "Gan" cho System Role. Owner Decision #1 CMS-047:
- * chi hien thi + gan, khong co nut "Go" (backend khong co kha nang go permission).
+ * Role van xem duoc (Owner Decision 3 CMS-038: "View allowed"), chi hanh dong POST assign/revoke moi
+ * bi chan 403 - trang nay chi khong render nut "Gan"/"Go" cho System Role. UX audit fix: bo sung
+ * nut "Go" (RoleRevokePermissionController) - Owner Decision #1 CMS-047 (chi gan, khong go) da duoc
+ * thay the boi yeu cau nang cap UX moi nhat.
  */
 final class RoleShowPermissionsController
 {

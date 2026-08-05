@@ -47,7 +47,7 @@ final class ProductShowEditController
             return Response::html('404 Not Found', 404);
         }
 
-        $html = $this->view->render('admin.pages.products.edit', [
+        $html = $this->view->render('admin.pages.ecommerce.products.edit', [
             'product' => $product,
             'errors' => [],
             'old' => $product,

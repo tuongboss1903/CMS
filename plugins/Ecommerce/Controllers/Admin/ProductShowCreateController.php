@@ -32,7 +32,7 @@ final class ProductShowCreateController
             return Response::html('403 Forbidden', 403);
         }
 
-        $html = $this->view->render('admin.pages.products.create', [
+        $html = $this->view->render('admin.pages.ecommerce.products.create', [
             'errors' => [],
             'old' => [],
             'breadcrumb_items' => [['label' => 'San pham', 'url' => '/admin/products'], ['label' => 'Them moi']],

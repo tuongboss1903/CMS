@@ -1,7 +1,7 @@
 <?php $this->extend('system_admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<h1>Audit Log (xuyen site)</h1>
-<p class="text-muted">Nhat ky hoat dong cua Site Admin/User tren TAT CA site - <?= $this->e((string) $total) ?> ban ghi phu hop bo loc.</p>
+<h1>Nhật ký hoạt động (xuyên site)</h1>
+<p class="text-muted">Nhật ký hoạt động của Site Admin/Người dùng trên TẤT CẢ site — <?= $this->e((string) $total) ?> bản ghi phù hợp bộ lọc.</p>
 
 <?php
 $eventOptions = \array_map(
@@ -17,16 +17,16 @@ $siteOptions = \array_map(
     'filter_action' => '/system-admin/audit-logs',
     'filter_fields' => [
         ['name' => 'site_id', 'label' => 'Site', 'type' => 'select', 'value' => $filters['site_id'], 'options' => $siteOptions],
-        ['name' => 'event', 'label' => 'Su kien', 'type' => 'select', 'value' => $filters['event'], 'options' => $eventOptions],
-        ['name' => 'date_from', 'label' => 'Tu ngay', 'type' => 'date', 'value' => $filters['date_from']],
-        ['name' => 'date_to', 'label' => 'Den ngay', 'type' => 'date', 'value' => $filters['date_to']],
+        ['name' => 'event', 'label' => 'Sự kiện', 'type' => 'select', 'value' => $filters['event'], 'options' => $eventOptions],
+        ['name' => 'date_from', 'label' => 'Từ ngày', 'type' => 'date', 'value' => $filters['date_from']],
+        ['name' => 'date_to', 'label' => 'Đến ngày', 'type' => 'date', 'value' => $filters['date_to']],
     ],
 ]); ?>
 
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Thoi gian</th><th>Site</th><th>Su kien</th><th>User ID</th><th>Doi tuong</th><th>IP</th></tr>
+<tr><th>Thời gian</th><th>Site</th><th>Sự kiện</th><th>Người dùng ID</th><th>Đối tượng</th><th>IP</th></tr>
 </thead>
 <tbody>
 <?php foreach ($logs as $log): ?>
@@ -46,7 +46,7 @@ $siteOptions = \array_map(
 </tr>
 <?php endforeach; ?>
 <?php if (empty($logs)): ?>
-<tr><td colspan="6" class="empty-state">Khong co nhat ky nao phu hop.</td></tr>
+<tr><td colspan="6" class="empty-state">Không có nhật ký nào phù hợp.</td></tr>
 <?php endif; ?>
 </tbody>
 </table>

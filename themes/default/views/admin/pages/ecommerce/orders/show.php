@@ -1,18 +1,25 @@
 <?php $this->extend('admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<h1>Don hang <?= $this->e((string) $order['order_number']) ?></h1>
+<h1>Đơn hàng <?= $this->e((string) $order['order_number']) ?></h1>
 
+<?php
+$orderStatusLabels = [
+    'pending' => 'Chờ xử lý', 'processing' => 'Đang xử lý', 'shipped' => 'Đang giao',
+    'completed' => 'Hoàn tất', 'cancelled' => 'Đã huỷ',
+];
+$paymentStatusLabels = ['completed' => 'Thành công', 'failed' => 'Thất bại', 'pending' => 'Chờ xử lý'];
+?>
 <div class="card" style="margin-bottom: var(--space-5);">
-    <p><strong>Khach hang:</strong> <?= $this->e((string) $order['guest_name']) ?> (<?= $this->e((string) $order['guest_email']) ?>)</p>
-    <p><strong>Dia chi giao hang:</strong> <?= $this->e((string) ($order['shipping_address'] ?? '-')) ?></p>
-    <p><strong>Trang thai:</strong> <span class="badge badge-neutral"><?= $this->e((string) $order['status']) ?></span></p>
-    <p><strong>Tong tien:</strong> <?= $this->e((string) $order['total_amount']) ?></p>
+    <p><strong>Khách hàng:</strong> <?= $this->e((string) $order['guest_name']) ?> (<?= $this->e((string) $order['guest_email']) ?>)</p>
+    <p><strong>Địa chỉ giao hàng:</strong> <?= $this->e((string) ($order['shipping_address'] ?? '-')) ?></p>
+    <p><strong>Trạng thái:</strong> <span class="badge badge-neutral"><?= $this->e($orderStatusLabels[$order['status']] ?? (string) $order['status']) ?></span></p>
+    <p><strong>Tổng tiền:</strong> <?= $this->e((string) $order['total_amount']) ?></p>
 
     <?php
     $transitions = [
-        'pending' => ['processing' => 'Xac nhan xu ly', 'cancelled' => 'Huy don'],
-        'processing' => ['shipped' => 'Da giao van chuyen', 'cancelled' => 'Huy don'],
-        'shipped' => ['completed' => 'Hoan tat'],
+        'pending' => ['processing' => 'Xác nhận xử lý', 'cancelled' => 'Huỷ đơn'],
+        'processing' => ['shipped' => 'Đã giao vận chuyển', 'cancelled' => 'Huỷ đơn'],
+        'shipped' => ['completed' => 'Hoàn tất'],
     ];
 $available = $transitions[$order['status']] ?? [];
 ?>
@@ -27,7 +34,7 @@ $available = $transitions[$order['status']] ?? [];
 
 <div class="table-wrap">
 <table class="data-table">
-<thead><tr><th>San pham</th><th>Don gia</th><th>So luong</th><th>Thanh tien</th></tr></thead>
+<thead><tr><th>Sản phẩm</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th></tr></thead>
 <tbody>
 <?php foreach ($items as $item): ?>
 <tr>
@@ -42,22 +49,22 @@ $available = $transitions[$order['status']] ?? [];
 </div>
 
 <div class="card" style="margin-top: var(--space-5);">
-    <h2 style="font-size:16px; margin-top:0;">Lich su thanh toan</h2>
+    <h2 style="font-size:16px; margin-top:0;">Lịch sử thanh toán</h2>
     <div class="table-wrap">
     <table class="data-table">
-    <thead><tr><th>Cong thanh toan</th><th>Trang thai</th><th>So tien</th><th>Ma giao dich</th><th>Thoi gian</th></tr></thead>
+    <thead><tr><th>Cổng thanh toán</th><th>Trạng thái</th><th>Số tiền</th><th>Mã giao dịch</th><th>Thời gian</th></tr></thead>
     <tbody>
     <?php foreach ($payments as $payment): ?>
     <tr>
         <td><?= $this->e((string) $payment['driver']) ?></td>
-        <td><span class="badge <?= $payment['status'] === 'completed' ? 'badge-success' : ($payment['status'] === 'failed' ? 'badge-danger' : 'badge-neutral') ?>"><?= $this->e((string) $payment['status']) ?></span></td>
+        <td><span class="badge <?= $payment['status'] === 'completed' ? 'badge-success' : ($payment['status'] === 'failed' ? 'badge-danger' : 'badge-neutral') ?>"><?= $this->e($paymentStatusLabels[$payment['status']] ?? (string) $payment['status']) ?></span></td>
         <td><?= $this->e((string) $payment['amount']) ?></td>
         <td><code><?= $this->e((string) ($payment['transaction_ref'] ?? '-')) ?></code></td>
         <td class="text-muted"><?= $this->e((string) $payment['created_at']) ?></td>
     </tr>
     <?php endforeach; ?>
     <?php if (empty($payments)): ?>
-    <tr><td colspan="5" class="empty-state">Chua co lan thanh toan nao.</td></tr>
+    <tr><td colspan="5" class="empty-state">Chưa có lần thanh toán nào.</td></tr>
     <?php endif; ?>
     </tbody>
     </table>

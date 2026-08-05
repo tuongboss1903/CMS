@@ -237,6 +237,6 @@ final class AdminAuditLogTest extends TestCase
 
         $response = $this->router->dispatch(new Request('GET', '/admin/audit-logs', 'example.com', ['event' => 'khong-ton-tai']));
 
-        self::assertStringContainsString('Khong co nhat ky nao phu hop.', $response->getBody());
+        self::assertStringContainsString('Không có nhật ký nào phù hợp.', $response->getBody());
     }
 }

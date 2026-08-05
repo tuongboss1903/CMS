@@ -6,17 +6,18 @@ namespace Modules\Admin;
 
 use Core\Auth;
 use Core\AuthenticationService;
-use Core\Csrf;
 use Core\Http\Request;
 use Core\Http\Response;
 use Core\Security\AuditLogger;
+use Core\Session;
 use Core\Validator;
-use Core\View;
 
 /**
  * POST /admin/login - khong viet lai logic xac thuc, tai su dung nguyen AuthenticationService/Auth
- * (giong /login JSON CMS-034). Khac /login: redirect khi thanh cong, render lai form (khong PRG,
- * khong Session::flash) khi that bai - dung Owner Decision CMS-045.
+ * (giong /login JSON CMS-034). Da chuyen sang PRG (Post/Redirect/Get) - loi/old input dua qua
+ * Session::flash(), redirect ve GET /admin/login (ShowLoginController doc lai flash) thay vi render
+ * lai form truc tiep tu POST - tranh F5 gui lai form, dung quy uoc "Redirect kem Flash Message" da
+ * chot o core-architecture.md (khong can Csrf/View o Controller nay nua).
  *
  * Phase 16 (Security & Audit Log, CMS-053): ghi "auth.login_success"/"auth.login_failed". Luu y
  * o nhanh that bai, Session chua co "auth.user_id" (dang nhap chua thanh cong) nen AuditLogger tu
@@ -28,9 +29,8 @@ final class LoginController
         private readonly AuditLogger $auditLogger,
         private readonly AuthenticationService $authenticationService,
         private readonly Auth $auth,
-        private readonly Csrf $csrf,
+        private readonly Session $session,
         private readonly Validator $validator,
-        private readonly View $view,
     ) {
     }
 
@@ -45,7 +45,7 @@ final class LoginController
         ]);
 
         if ($result->fails()) {
-            return $this->renderWithErrors($result->errors(), $email);
+            return $this->redirectWithErrors($result->errors(), $email);
         }
 
         $password = (string) $data['password'];
@@ -53,7 +53,7 @@ final class LoginController
         if (!$this->authenticationService->attempt($email, $password)) {
             $this->auditLogger->log($request, 'auth.login_failed', 'user', null, null, ['email' => $email]);
 
-            return $this->renderWithErrors(['auth' => ['Email hoac mat khau khong dung.']], $email);
+            return $this->redirectWithErrors(['auth' => ['Email hoặc mật khẩu không đúng.']], $email);
         }
 
         $this->auditLogger->log($request, 'auth.login_success', 'user', $this->auth->id() !== null ? (int) $this->auth->id() : null);
@@ -62,14 +62,11 @@ final class LoginController
     }
 
     /** @param array<string, list<string>> $errors */
-    private function renderWithErrors(array $errors, string $email): Response
+    private function redirectWithErrors(array $errors, string $email): Response
     {
-        $html = $this->view->render('admin.pages.login', [
-            'errors' => $errors,
-            'old' => ['email' => $email],
-            'csrf_token' => $this->csrf->token(),
-        ]);
+        $this->session->flash('errors', $errors);
+        $this->session->flash('old', ['email' => $email]);
 
-        return Response::html($html);
+        return Response::redirect('/admin/login');
     }
 }

@@ -30,11 +30,14 @@ final class MediaListController
             return Response::html('403 Forbidden', 403);
         }
 
+        $siteId = $this->tenantManager->id();
         $search = \trim((string) ($request->query('q') ?? ''));
         $type = \trim((string) ($request->query('type') ?? ''));
+        $folderParam = (string) ($request->query('folder_id') ?? '');
+        $folderId = $folderParam !== '' ? (int) $folderParam : null;
 
         $conditions = ['tenant_id = ?'];
-        $bindings = [$this->tenantManager->id()];
+        $bindings = [$siteId];
 
         if ($search !== '') {
             $conditions[] = 'file_name LIKE ?';
@@ -46,18 +49,32 @@ final class MediaListController
             $bindings[] = $type . '%';
         }
 
+        if ($folderParam !== '') {
+            $conditions[] = $folderId === 0 ? 'folder_id IS NULL' : 'folder_id = ?';
+
+            if ($folderId !== 0) {
+                $bindings[] = $folderId;
+            }
+        }
+
         $where = \implode(' AND ', $conditions);
 
         $media = $this->database->select(
-            "SELECT id, file_name, path, mime_type, size, alt_text, title, caption, created_at
+            "SELECT id, file_name, path, mime_type, size, alt_text, title, caption, folder_id, created_at
              FROM media WHERE {$where} ORDER BY created_at DESC",
             $bindings
         );
 
+        $folders = $this->database->select(
+            'SELECT id, parent_id, name FROM media_folders WHERE tenant_id = ? ORDER BY name ASC',
+            [$siteId]
+        );
+
         $html = $this->view->render('admin.pages.media.list', [
             'media' => $media,
+            'folders' => $folders,
             'csrf_token' => $this->csrf->token(),
-            'filters' => ['q' => $search, 'type' => $type],
+            'filters' => ['q' => $search, 'type' => $type, 'folder_id' => $folderParam],
         ]);
 
         return Response::html($html);

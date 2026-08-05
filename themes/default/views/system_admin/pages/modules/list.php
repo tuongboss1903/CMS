@@ -1,12 +1,12 @@
 <?php $this->extend('system_admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<h1>Module he thong</h1>
-<p class="text-muted">Module luon duoc bat cho MOI site (khong toggle duoc theo tung site) - danh sach chi mang tinh tham khao.</p>
+<h1>Module hệ thống</h1>
+<p class="text-muted">Module luôn được bật cho MỌI site (không toggle được theo từng site) — danh sách chỉ mang tính tham khảo.</p>
 
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Key</th><th>Ten</th><th>Version</th><th>Dependencies</th></tr>
+<tr><th>Key</th><th>Tên</th><th>Phiên bản</th><th>Phụ thuộc</th></tr>
 </thead>
 <tbody>
 <?php foreach ($modules as $module): ?>

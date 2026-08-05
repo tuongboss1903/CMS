@@ -80,7 +80,7 @@ final class ProductCreateController
      */
     private function renderWithErrors(array $errors, array $data): Response
     {
-        $html = $this->view->render('admin.pages.products.create', [
+        $html = $this->view->render('admin.pages.ecommerce.products.create', [
             'errors' => $errors,
             'old' => $data,
             'breadcrumb_items' => [['label' => 'San pham', 'url' => '/admin/products'], ['label' => 'Them moi']],

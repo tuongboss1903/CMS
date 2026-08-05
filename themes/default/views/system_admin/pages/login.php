@@ -1,7 +1,7 @@
 <?php $this->extend('admin.layouts.auth'); ?>
 <?php $this->section('content'); ?>
-<div class="brand">CMS<span class="dot">.</span>System</div>
-<h1>Dang nhap System Admin</h1>
+<div class="brand"><?php $this->include('admin.partials.icon', ['name' => 'server', 'class' => 'icon brand-icon']); ?> CMS<span class="dot">.</span>System</div>
+<h1>Đăng nhập System Admin</h1>
 <?php if (!empty($errors)): ?>
 <div class="alert alert-danger">
 <ul>
@@ -20,9 +20,9 @@
         <input type="email" id="email" name="email" value="<?= $this->e($old['email'] ?? '') ?>" autofocus>
     </div>
     <div class="field">
-        <label for="password">Mat khau</label>
+        <label for="password">Mật khẩu</label>
         <input type="password" id="password" name="password">
     </div>
-    <button type="submit" class="btn btn-primary btn-block">Dang nhap</button>
+    <button type="submit" class="btn btn-primary btn-block">Đăng nhập</button>
 </form>
 <?php $this->endSection(); ?>

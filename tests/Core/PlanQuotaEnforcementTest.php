@@ -146,6 +146,22 @@ final class PlanQuotaEnforcementTest extends TestCase
             title VARCHAR(255) NULL,
             caption VARCHAR(500) NULL,
             uploaded_by BIGINT NOT NULL,
+            folder_id BIGINT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )');
+        $this->database->statement('CREATE TABLE media_variants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            media_id BIGINT NOT NULL,
+            size_type VARCHAR(20) NOT NULL,
+            path VARCHAR(500) NOT NULL,
+            width INT NULL,
+            height INT NULL
+        )');
+        $this->database->statement('CREATE TABLE media_folders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id BIGINT NOT NULL,
+            parent_id BIGINT NULL,
+            name VARCHAR(150) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )');
         $this->database->statement('CREATE TABLE roles (

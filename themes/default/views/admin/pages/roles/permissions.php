@@ -1,6 +1,6 @@
 <?php $this->extend('admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<h1>Quan ly quyen - <?= $this->e($role['name'] ?? '') ?></h1>
+<h1>Quản lý quyền — <?= $this->e($role['name'] ?? '') ?></h1>
 
 <?php
 /**
@@ -24,12 +24,12 @@ foreach ($unassigned as $permission) {
 
 <div class="card">
 <?php if (empty($allRows)): ?>
-<p class="text-muted mb-0">He thong chua co permission nao.</p>
+<p class="text-muted mb-0">Hệ thống chưa có permission nào.</p>
 <?php else: ?>
 <div class="permission-matrix-wrap">
 <table class="permission-matrix">
 <thead>
-<tr><th>Permission</th><th class="permission-cell">Trang thai</th><th class="permission-cell">Thao tac</th></tr>
+<tr><th>Permission</th><th class="permission-cell">Trạng thái</th><th class="permission-cell">Thao tác</th></tr>
 </thead>
 <tbody>
 <?php foreach ($allRows as $row): ?>
@@ -38,21 +38,26 @@ foreach ($unassigned as $permission) {
     <td><code><?= $this->e((string) $permission['key']) ?></code></td>
     <td class="permission-cell">
     <?php if ($row['is_assigned']): ?>
-    <span class="permission-granted" aria-label="Da gan">&check;</span>
+    <span class="permission-granted" aria-label="Đã gán">&check;</span>
     <?php else: ?>
     <span class="text-muted">&mdash;</span>
     <?php endif; ?>
     </td>
     <td class="permission-cell">
-    <?php if ($row['is_assigned']): ?>
-    <span class="badge badge-success">Da gan</span>
+    <?php if ($row['is_assigned'] && $isSystem): ?>
+    <span class="badge badge-success">Đã gán</span>
+    <?php elseif ($row['is_assigned']): ?>
+    <form method="POST" action="/admin/roles/<?= $this->e((string) $role['id']) ?>/permissions/<?= $this->e((string) $permission['id']) ?>/delete" class="permission-grant-form" data-confirm="Gỡ quyền này khỏi vai trò?">
+        <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
+        <button type="submit" class="btn btn-danger btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'x']); ?> Gỡ</button>
+    </form>
     <?php elseif ($isSystem): ?>
-    <span class="text-muted" style="font-size:12px;">System role</span>
+    <span class="text-muted" style="font-size:12px;">Vai trò hệ thống</span>
     <?php else: ?>
     <form method="POST" action="/admin/roles/<?= $this->e((string) $role['id']) ?>/permissions" class="permission-grant-form">
         <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
         <input type="hidden" name="permission_id" value="<?= $this->e((string) $permission['id']) ?>">
-        <button type="submit" class="btn btn-secondary btn-sm">Gan</button>
+        <button type="submit" class="btn btn-secondary btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'check']); ?> Gán</button>
     </form>
     <?php endif; ?>
     </td>
@@ -63,7 +68,7 @@ foreach ($unassigned as $permission) {
 </div>
 <?php endif; ?>
 <?php if ($isSystem): ?>
-<p class="text-muted" style="margin-top: var(--space-4); margin-bottom:0;">System role khong the sua permission.</p>
+<p class="text-muted" style="margin-top: var(--space-4); margin-bottom:0;">Vai trò hệ thống không thể sửa quyền.</p>
 <?php endif; ?>
 </div>
 <?php $this->endSection(); ?>

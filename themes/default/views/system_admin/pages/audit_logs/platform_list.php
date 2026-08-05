@@ -1,7 +1,7 @@
 <?php $this->extend('system_admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<h1>Nhat ky Super Admin</h1>
-<p class="text-muted">Hanh dong cua chinh Super Admin (tao/sua/suspend site, bat/tat plugin...) - <?= $this->e((string) $total) ?> ban ghi phu hop bo loc.</p>
+<h1>Nhật ký Super Admin</h1>
+<p class="text-muted">Hành động của chính Super Admin (tạo/sửa/tạm khoá site, bật/tắt plugin...) — <?= $this->e((string) $total) ?> bản ghi phù hợp bộ lọc.</p>
 
 <?php
 $eventOptions = \array_map(
@@ -12,14 +12,14 @@ $eventOptions = \array_map(
 <?php $this->include('admin.partials.table_filter', [
     'filter_action' => '/system-admin/platform-audit-logs',
     'filter_fields' => [
-        ['name' => 'event', 'label' => 'Su kien', 'type' => 'select', 'value' => $filters['event'], 'options' => $eventOptions],
+        ['name' => 'event', 'label' => 'Sự kiện', 'type' => 'select', 'value' => $filters['event'], 'options' => $eventOptions],
     ],
 ]); ?>
 
 <div class="table-wrap">
 <table class="data-table">
 <thead>
-<tr><th>Thoi gian</th><th>Super Admin</th><th>Su kien</th><th>Site</th><th>IP</th><th>Chi tiet</th></tr>
+<tr><th>Thời gian</th><th>Super Admin</th><th>Sự kiện</th><th>Site</th><th>IP</th><th>Chi tiết</th></tr>
 </thead>
 <tbody>
 <?php foreach ($logs as $log): ?>
@@ -34,7 +34,7 @@ $eventOptions = \array_map(
         <details>
         <summary>Xem</summary>
         <?php if (!empty($log['old_values'])): ?>
-        <div><strong>Truoc:</strong> <code><?= $this->e((string) $log['old_values']) ?></code></div>
+        <div><strong>Trước:</strong> <code><?= $this->e((string) $log['old_values']) ?></code></div>
         <?php endif; ?>
         <?php if (!empty($log['new_values'])): ?>
         <div><strong>Sau:</strong> <code><?= $this->e((string) $log['new_values']) ?></code></div>
@@ -47,7 +47,7 @@ $eventOptions = \array_map(
 </tr>
 <?php endforeach; ?>
 <?php if (empty($logs)): ?>
-<tr><td colspan="6" class="empty-state">Khong co nhat ky nao phu hop.</td></tr>
+<tr><td colspan="6" class="empty-state">Không có nhật ký nào phù hợp.</td></tr>
 <?php endif; ?>
 </tbody>
 </table>

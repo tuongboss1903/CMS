@@ -193,9 +193,9 @@ final class AdminUiFoundationTest extends TestCase
         self::assertNotNull($this->session->get('auth.user_id'));
     }
 
-    // ---- 3. POST /admin/login - sai password ----
+    // ---- 3. POST /admin/login - sai password (PRG: redirect ve GET, loi hien qua flash) ----
 
-    public function testLoginWithWrongPasswordRendersFormAgainWithError(): void
+    public function testLoginWithWrongPasswordRedirectsBackWithFlashError(): void
     {
         $this->seedUser(email: 'admin@example.com', password: 'correct-password');
 
@@ -210,9 +210,21 @@ final class AdminUiFoundationTest extends TestCase
             ['email' => 'admin@example.com', 'password' => 'wrong-password', '_token' => $token]
         ));
 
-        self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('Email hoac mat khau khong dung.', $response->getBody());
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/admin/login', $response->getHeaders()['Location']);
         self::assertNull($this->session->get('auth.user_id'));
+
+        // Test nay dung Router rieng (khong qua Application::boot()/StartSessionMiddleware -
+        // setUp() tu goi $this->session->start() 1 lan cho ca test). Mo phong ranh gioi request
+        // that bang cach dong roi mo lai session thu cong de Session::start() chay lai
+        // ageFlashData() (_flash_new -> _flash_old) dung nhu 2 request HTTP rieng biet.
+        \session_write_close();
+        $this->session->start();
+
+        $retryLoginPage = $this->router->dispatch(new Request('GET', '/admin/login', 'example.com'));
+
+        self::assertSame(200, $retryLoginPage->getStatusCode());
+        self::assertStringContainsString('Email hoặc mật khẩu không đúng.', $retryLoginPage->getBody());
     }
 
     // ---- 4. POST /admin/login - sai CSRF ----

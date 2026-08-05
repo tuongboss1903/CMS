@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (submitBtn && !submitBtn.disabled) {
                 submitBtn.disabled = true;
                 submitBtn.setAttribute('data-loading-text', submitBtn.textContent);
-                submitBtn.textContent = 'Dang xu ly...';
+                submitBtn.textContent = 'Đang xử lý...';
             }
         });
     });
@@ -289,10 +289,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (result.success) {
                     window.location.reload();
                 } else {
-                    window.alert(result.message || 'Khong the cap nhat vi tri.');
+                    window.alert(result.message || 'Không thể cập nhật vị trí.');
                 }
             }).catch(function () {
-                window.alert('Loi ket noi. Vui long thu lai.');
+                window.alert('Lỗi kết nối. Vui lòng thử lại.');
             });
 
             draggedId = null;
