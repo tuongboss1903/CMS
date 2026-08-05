@@ -2,7 +2,7 @@
 <?php $this->section('content'); ?>
 <h1>Bảng điều khiển hệ thống</h1>
 
-<div class="stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-4);margin-bottom:var(--space-5);">
+<div class="stat-grid mb-5" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-4);">
     <div class="card">
         <div class="text-muted">Tổng số Site</div>
         <div style="font-size:2rem;font-weight:700;"><?= $this->e((string) $total_sites) ?></div>

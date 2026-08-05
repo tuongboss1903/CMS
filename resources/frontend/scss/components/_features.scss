@@ -14,9 +14,9 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
-  transition: border-color var(--transition-fast), transform var(--transition-fast);
 
-  &:hover { border-color: var(--color-accent); transform: translateY(-2px); }
+  // Da xoa hover (border-color + translateY) - Design Audit Phase 6/4.9: thuan minh hoa, khong
+  // co link/button ben trong, hover truoc do tao cam giac bam duoc trong khi khong the.
 
   .feature-icon {
     width: 44px; height: 44px;
@@ -24,9 +24,9 @@
     border-radius: var(--radius-md);
     background: var(--color-accent-soft);
     color: var(--color-accent-text);
-    font-size: 20px;
+    font-size: var(--text-lg);
     margin-bottom: var(--space-4);
   }
-  h3 { font-size: 17px; margin-bottom: var(--space-2); }
-  p { font-size: 14px; color: var(--color-text-secondary); margin: 0; }
+  h3 { font-size: var(--text-md); margin-bottom: var(--space-2); }
+  p { font-size: var(--text-base); color: var(--color-text-secondary); margin: 0; }
 }

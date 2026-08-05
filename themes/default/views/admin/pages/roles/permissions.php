@@ -68,7 +68,7 @@ foreach ($unassigned as $permission) {
 </div>
 <?php endif; ?>
 <?php if ($isSystem): ?>
-<p class="text-muted" style="margin-top: var(--space-4); margin-bottom:0;">Vai trò hệ thống không thể sửa quyền.</p>
+<p class="text-muted mt-4 mb-0">Vai trò hệ thống không thể sửa quyền.</p>
 <?php endif; ?>
 </div>
 <?php $this->endSection(); ?>

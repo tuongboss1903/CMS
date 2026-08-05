@@ -5,7 +5,15 @@
 .card {
   @include mixins.panel;
   padding: var(--space-5);
+
+  // Design Audit Phase 3 - h2 dau tien trong .card khong can tu chen margin-top:0 rieng o
+  // tung view (checkout, page-content...), .card da co padding rieng nen khong can chong lan.
+  > h2:first-child { margin-top: 0; }
 }
+
+// 3 mat do card (Design Audit Phase 6) - dong bo voi resources/admin/tailwind.css.
+.card--compact { padding: var(--space-4) var(--space-5); }
+.card--spacious { padding: var(--space-6); }
 
 .empty-state {
   text-align: center;
@@ -13,4 +21,17 @@
   color: var(--color-text-muted);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-lg);
+
+  // Icon nhat (Design Audit Phase 11) - dong bo voi resources/admin/tailwind.css.
+  &::before {
+    content: "";
+    display: block;
+    width: 32px;
+    height: 32px;
+    margin: 0 auto var(--space-3);
+    background-color: currentColor;
+    opacity: 0.4;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7h18M3 7l2 12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2l2-12M3 7l2-4h14l2 4M9 12h6'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7h18M3 7l2 12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2l2-12M3 7l2-4h14l2 4M9 12h6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
 }

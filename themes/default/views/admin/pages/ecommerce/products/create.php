@@ -1,17 +1,17 @@
 <?php $this->extend('admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
 <h1>Sản phẩm mới</h1>
-<div class="card" style="max-width: 640px;">
+<div class="card card--spacious" style="max-width: 640px;">
 <form method="POST" action="/admin/products">
     <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
     <div class="field">
         <label for="name">Tên sản phẩm</label>
-        <input type="text" id="name" name="name" value="<?= $this->e((string) ($old['name'] ?? '')) ?>" required>
+        <input type="text" id="name" name="name" value="<?= $this->e((string) ($old['name'] ?? '')) ?>" required<?= empty($errors['name']) ? '' : ' aria-invalid="true"' ?>>
         <?php foreach ($errors['name'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
     </div>
     <div class="field">
         <label for="slug">Slug</label>
-        <input type="text" id="slug" name="slug" value="<?= $this->e((string) ($old['slug'] ?? '')) ?>" required>
+        <input type="text" id="slug" name="slug" value="<?= $this->e((string) ($old['slug'] ?? '')) ?>" required<?= empty($errors['slug']) ? '' : ' aria-invalid="true"' ?>>
         <?php foreach ($errors['slug'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
     </div>
     <div class="field">
@@ -24,7 +24,7 @@
     </div>
     <div class="field">
         <label for="price">Giá</label>
-        <input type="number" step="0.01" id="price" name="price" value="<?= $this->e((string) ($old['price'] ?? '')) ?>" required>
+        <input type="number" step="0.01" id="price" name="price" value="<?= $this->e((string) ($old['price'] ?? '')) ?>" required<?= empty($errors['price']) ? '' : ' aria-invalid="true"' ?>>
         <?php foreach ($errors['price'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
     </div>
     <div class="field">

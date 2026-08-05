@@ -339,4 +339,71 @@ final class AdminCommentModerationTest extends TestCase
 
         self::assertSame(403, $response->getStatusCode());
     }
+
+    // ---- Bulk delete (Design Audit Phase 7) ----
+
+    public function testBulkDeleteRemovesSelectedCommentsOnly(): void
+    {
+        $siteId = $this->seedSite();
+        $pageId = $this->seedPage($siteId);
+        $commentA = $this->seedComment($siteId, $pageId, 'approved', 'NguoiA');
+        $commentB = $this->seedComment($siteId, $pageId, 'approved', 'NguoiB');
+        $commentC = $this->seedComment($siteId, $pageId, 'approved', 'NguoiC');
+        $this->actingAs($siteId, ['comment.view', 'comment.delete']);
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/admin/comments/bulk-delete',
+            'example.com',
+            [],
+            ['_token' => $this->csrfToken(), 'ids' => [(string) $commentA, (string) $commentB]]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertNull($this->database->selectOne('SELECT id FROM comments WHERE id = ?', [$commentA]));
+        self::assertNull($this->database->selectOne('SELECT id FROM comments WHERE id = ?', [$commentB]));
+        self::assertNotNull($this->database->selectOne('SELECT id FROM comments WHERE id = ?', [$commentC]));
+    }
+
+    public function testBulkDeleteIgnoresIdsFromOtherTenant(): void
+    {
+        $siteA = $this->seedSite('Site A');
+        $siteB = $this->seedSite('Site B');
+        $pageA = $this->seedPage($siteA, 'trang-a');
+        $pageB = $this->seedPage($siteB, 'trang-b');
+        $commentInA = $this->seedComment($siteA, $pageA, 'approved', 'NguoiA');
+        $commentInB = $this->seedComment($siteB, $pageB, 'approved', 'NguoiB');
+        $this->actingAs($siteA, ['comment.view', 'comment.delete']);
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/admin/comments/bulk-delete',
+            'example.com',
+            [],
+            ['_token' => $this->csrfToken(), 'ids' => [(string) $commentInA, (string) $commentInB]]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertNull($this->database->selectOne('SELECT id FROM comments WHERE id = ?', [$commentInA]));
+        self::assertNotNull($this->database->selectOne('SELECT id FROM comments WHERE id = ?', [$commentInB]));
+    }
+
+    public function testBulkDeleteRequiresCommentDeletePermission(): void
+    {
+        $siteId = $this->seedSite();
+        $pageId = $this->seedPage($siteId);
+        $commentId = $this->seedComment($siteId, $pageId, 'approved');
+        $this->actingAs($siteId, ['comment.view']);
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/admin/comments/bulk-delete',
+            'example.com',
+            [],
+            ['_token' => $this->csrfToken(), 'ids' => [(string) $commentId]]
+        ));
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertNotNull($this->database->selectOne('SELECT id FROM comments WHERE id = ?', [$commentId]));
+    }
 }

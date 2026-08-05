@@ -1,6 +1,6 @@
 <?php $this->extend('system_admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<div class="flex items-center justify-between" style="margin-bottom: var(--space-5);">
+<div class="flex items-center justify-between mb-5">
     <h1 class="mb-0">Plugin của site: <?= $this->e((string) $site['name']) ?></h1>
     <a href="/system-admin/sites/<?= $this->e((string) $site['id']) ?>/edit" class="btn btn-secondary">Quay lại Site</a>
 </div>

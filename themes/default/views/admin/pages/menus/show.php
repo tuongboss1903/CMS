@@ -1,11 +1,11 @@
 <?php $this->extend('admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<div class="flex items-center justify-between" style="margin-bottom: var(--space-5);">
+<div class="flex items-center justify-between mb-5">
     <h1 class="mb-0">Menu: <?= $this->e($menu['name']) ?></h1>
     <a href="/admin/menus" class="btn btn-secondary">Quay lại danh sách</a>
 </div>
 
-<div class="card" style="margin-bottom: var(--space-5);">
+<div class="card mb-5">
     <form method="POST" action="/admin/menus/<?= $this->e((string) $menu['id']) ?>" class="flex gap-3" style="flex-wrap: wrap; align-items: flex-end;">
         <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
         <div class="field mb-0" style="flex:1; min-width:200px;">
@@ -42,7 +42,7 @@ $flatten = function (array $nodes, int $depth = 0) use (&$flatten): array {
 };
 ?>
 
-<div class="card" style="margin-bottom: var(--space-5);">
+<div class="card mb-5">
     <h2 style="font-size:16px;">Thêm Menu Item</h2>
     <form method="POST" action="/admin/menus/<?= $this->e((string) $menu['id']) ?>/items" class="flex gap-3" style="flex-wrap: wrap; align-items: flex-end;">
         <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">

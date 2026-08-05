@@ -1,6 +1,6 @@
 <?php $this->extend('system_admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<div class="flex items-center justify-between" style="margin-bottom: var(--space-5);">
+<div class="flex items-center justify-between mb-5">
     <h1 class="mb-0">Quản lý Site</h1>
     <a href="/system-admin/sites/create" class="btn btn-primary"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Tạo site mới</a>
 </div>

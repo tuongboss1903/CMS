@@ -88,6 +88,8 @@ final class DashboardController
             'activity' => $this->fetchActivity($siteId),
             'total_views' => $analytics['total_views'],
             'unique_visitors' => $analytics['unique_visitors'],
+            'total_views_trend' => $analytics['total_views_trend'],
+            'unique_visitors_trend' => $analytics['unique_visitors_trend'],
             'top_pages' => $analytics['top_pages'],
             'daily_views' => $analytics['daily_views'],
             'recent_audit_logs' => $this->fetchRecentAuditLogs($siteId),
@@ -103,14 +105,24 @@ final class DashboardController
      * AdminUiFoundationTest.php) - bat Throwable, fallback rong, cung nguyen tac da ap dung cho
      * bang media o PageShowCreateController/PageShowEditController (Phase 11).
      *
-     * @return array{total_views: int, unique_visitors: int, top_pages: list<array{path: string, views: int}>, daily_views: list<array{date: string, views: int}>}
+     * Design Audit Phase 8: bo sung *_trend (so voi ky truoc, AnalyticsService::
+     * previousPeriodSummary()) - CHI cho total_views/unique_visitors vi day la 2 chi so THEO KY
+     * duy nhat co du lieu ky truoc that su, khac page/media/user/role count (tong tich luy).
+     *
+     * @return array{total_views: int, unique_visitors: int, total_views_trend: array{direction: string, percent: int|null}, unique_visitors_trend: array{direction: string, percent: int|null}, top_pages: list<array{path: string, views: int}>, daily_views: list<array{date: string, views: int}>}
      */
     private function fetchAnalyticsSummary(): array
     {
         try {
+            $totalViews = $this->analyticsService->totalViews('7d');
+            $uniqueVisitors = $this->analyticsService->uniqueVisitors('7d');
+            $previous = $this->analyticsService->previousPeriodSummary('7d');
+
             return [
-                'total_views' => $this->analyticsService->totalViews('7d'),
-                'unique_visitors' => $this->analyticsService->uniqueVisitors('7d'),
+                'total_views' => $totalViews,
+                'unique_visitors' => $uniqueVisitors,
+                'total_views_trend' => $this->calculateTrend($totalViews, $previous['total_views']),
+                'unique_visitors_trend' => $this->calculateTrend($uniqueVisitors, $previous['unique_visitors']),
                 'top_pages' => $this->analyticsService->topPages('7d', 5),
                 'daily_views' => $this->analyticsService->dailyViews(7),
             ];
@@ -121,13 +133,37 @@ final class DashboardController
                 $emptyDays[] = ['date' => \date('Y-m-d', \time() - $i * 86400), 'views' => 0];
             }
 
+            $flatTrend = ['direction' => 'flat', 'percent' => null];
+
             return [
                 'total_views' => 0,
                 'unique_visitors' => 0,
+                'total_views_trend' => $flatTrend,
+                'unique_visitors_trend' => $flatTrend,
                 'top_pages' => [],
                 'daily_views' => $emptyDays,
             ];
         }
+    }
+
+    /**
+     * @return array{direction: string, percent: int|null}
+     */
+    private function calculateTrend(int $current, int $previous): array
+    {
+        if ($current === $previous) {
+            return ['direction' => 'flat', 'percent' => 0];
+        }
+
+        $direction = $current > $previous ? 'up' : 'down';
+
+        if ($previous === 0) {
+            // Ky truoc = 0 -> % tang la vo cuc, khong the tinh trung thuc. Chi hien mui ten,
+            // khong bia con so.
+            return ['direction' => $direction, 'percent' => null];
+        }
+
+        return ['direction' => $direction, 'percent' => (int) \round((($current - $previous) / $previous) * 100)];
     }
 
     /**

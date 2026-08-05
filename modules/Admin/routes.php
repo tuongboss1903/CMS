@@ -52,6 +52,9 @@ $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], funct
     $router->post('/admin/media', [\Modules\Admin\MediaUploadController::class, 'handle']);
     $router->post('/admin/media/folders', [\Modules\Admin\MediaFolderCreateController::class, 'handle']);
     $router->post('/admin/media/folders/{id}/delete', [\Modules\Admin\MediaFolderDeleteController::class, 'handle']);
+    // bulk-delete PHAI dang ky truoc /admin/media/{id} - cung 2 segment, neu dang sau se bi
+    // MediaUpdateController "nuot" voi id="bulk-delete" (dung bai hoc tu bug folders da gap).
+    $router->post('/admin/media/bulk-delete', [\Modules\Admin\MediaBulkDeleteController::class, 'handle']);
     $router->post('/admin/media/{id}', [\Modules\Admin\MediaUpdateController::class, 'handle']);
     $router->post('/admin/media/{id}/delete', [\Modules\Admin\MediaDeleteController::class, 'handle']);
     $router->post('/admin/menus', [\Modules\Admin\MenuCreateController::class, 'handle']);
@@ -65,6 +68,7 @@ $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], funct
     $router->post('/admin/comments/{id}/approve', [\Modules\Admin\CommentApproveController::class, 'handle']);
     $router->post('/admin/comments/{id}/reject', [\Modules\Admin\CommentRejectController::class, 'handle']);
     $router->post('/admin/comments/{id}/delete', [\Modules\Admin\CommentDeleteController::class, 'handle']);
+    $router->post('/admin/comments/bulk-delete', [\Modules\Admin\CommentBulkDeleteController::class, 'handle']);
     $router->post('/admin/system-settings', [\Modules\Admin\SystemSettingSaveController::class, 'handle']);
     $router->post('/admin/plugins/{key}/toggle', [\Modules\Admin\PluginToggleController::class, 'handle']);
     $router->post('/admin/system-settings/{id}/delete', [\Modules\Admin\SystemSettingDeleteController::class, 'handle']);

@@ -5,7 +5,7 @@
   .container { max-width: 760px; }
 }
 .breadcrumb {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
   margin-bottom: var(--space-4);
 
@@ -20,7 +20,7 @@
   padding: var(--space-4);
   overflow-x: auto;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
 
@@ -29,6 +29,6 @@
   padding: var(--space-6) 0;
   margin-top: var(--space-8);
   color: var(--color-text-muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
   text-align: center;
 }

@@ -13,6 +13,7 @@ use Core\Router;
 use Core\Session;
 use Core\TenantManager;
 use Core\View;
+use Modules\Admin\MediaBulkDeleteController;
 use Modules\Admin\MediaDeleteController;
 use Modules\Admin\MediaFileController;
 use Modules\Admin\MediaUploadController;
@@ -81,6 +82,15 @@ final class AdminMediaManagementUiTest extends TestCase
         $this->container->singleton(
             MediaDeleteController::class,
             static fn (Container $c): MediaDeleteController => new MediaDeleteController(
+                $c->get(\Core\Authorization::class),
+                $c->get(Database::class),
+                $c->get(TenantManager::class),
+                $storageDir
+            )
+        );
+        $this->container->singleton(
+            MediaBulkDeleteController::class,
+            static fn (Container $c): MediaBulkDeleteController => new MediaBulkDeleteController(
                 $c->get(\Core\Authorization::class),
                 $c->get(Database::class),
                 $c->get(TenantManager::class),
@@ -506,6 +516,88 @@ final class AdminMediaManagementUiTest extends TestCase
 
         $row = $this->database->selectOne('SELECT id FROM media WHERE id = ?', [$mediaInB]);
         self::assertNotNull($row);
+    }
+
+    // ---- Bulk delete (Design Audit Phase 7) ----
+
+    public function testBulkDeleteRemovesSelectedRowsFilesAndDecreasesStorage(): void
+    {
+        $siteId = $this->seedSite();
+        $userId = $this->seedUser();
+        \mkdir($this->storageDir . '/' . $siteId, 0755, true);
+        \file_put_contents($this->storageDir . '/' . $siteId . '/a.png', 'aaaa');
+        \file_put_contents($this->storageDir . '/' . $siteId . '/b.png', 'bbbbbb');
+        $mediaA = $this->seedMedia($siteId, "{$siteId}/a.png", 4, 'image/png', 'a.png');
+        $mediaB = $this->seedMedia($siteId, "{$siteId}/b.png", 6, 'image/png', 'b.png');
+        $mediaC = $this->seedMedia($siteId, "{$siteId}/c.png", 8, 'image/png', 'c.png');
+        $this->database->statement('UPDATE sites SET storage_used_bytes = ? WHERE id = ?', [18, $siteId]);
+        $this->actingAs($siteId, $userId, ['media.view', 'media.delete']);
+
+        $listPage = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/admin/media/bulk-delete',
+            'example.com',
+            [],
+            ['_token' => $token, 'ids' => [(string) $mediaA, (string) $mediaB]]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertNull($this->database->selectOne('SELECT id FROM media WHERE id = ?', [$mediaA]));
+        self::assertNull($this->database->selectOne('SELECT id FROM media WHERE id = ?', [$mediaB]));
+        self::assertNotNull($this->database->selectOne('SELECT id FROM media WHERE id = ?', [$mediaC]));
+        self::assertFileDoesNotExist($this->storageDir . '/' . $siteId . '/a.png');
+        self::assertFileDoesNotExist($this->storageDir . '/' . $siteId . '/b.png');
+        self::assertSame(8, $this->storageUsedBytes($siteId));
+    }
+
+    public function testBulkDeleteIgnoresIdsFromOtherTenant(): void
+    {
+        $siteA = $this->seedSite('Site A');
+        $siteB = $this->seedSite('Site B');
+        $userId = $this->seedUser();
+        $mediaInA = $this->seedMedia($siteA, "{$siteA}/own.png");
+        $mediaInB = $this->seedMedia($siteB, "{$siteB}/other.png");
+        $this->actingAs($siteA, $userId, ['media.view', 'media.delete']);
+
+        $listPage = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/admin/media/bulk-delete',
+            'example.com',
+            [],
+            ['_token' => $token, 'ids' => [(string) $mediaInA, (string) $mediaInB]]
+        ));
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertNull($this->database->selectOne('SELECT id FROM media WHERE id = ?', [$mediaInA]));
+        self::assertNotNull($this->database->selectOne('SELECT id FROM media WHERE id = ?', [$mediaInB]));
+    }
+
+    public function testBulkDeleteMissingPermissionReturns403Html(): void
+    {
+        $siteId = $this->seedSite();
+        $userId = $this->seedUser();
+        $mediaId = $this->seedMedia($siteId, "{$siteId}/a.png");
+        $this->actingAs($siteId, $userId, ['media.view']);
+
+        $listPage = $this->router->dispatch(new Request('GET', '/admin/media', 'example.com'));
+        $token = $this->extractCsrfToken($listPage->getBody());
+
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/admin/media/bulk-delete',
+            'example.com',
+            [],
+            ['_token' => $token, 'ids' => [(string) $mediaId]]
+        ));
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertNotNull($this->database->selectOne('SELECT id FROM media WHERE id = ?', [$mediaId]));
     }
 
     // ---- CSRF ----

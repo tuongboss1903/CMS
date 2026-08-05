@@ -10,7 +10,7 @@
 <?php if (empty($items)): ?>
 <div class="empty-state">
     <p class="mb-0">Giỏ hàng đang trống.</p>
-    <a href="/shop" class="btn btn-primary" style="margin-top: var(--space-4);">Tiếp tục mua sắm</a>
+    <a href="/shop" class="btn btn-primary mt-4">Tiếp tục mua sắm</a>
 </div>
 <?php else: ?>
 <div class="commerce-layout">
@@ -39,8 +39,8 @@
         <h2>Tóm tắt đơn hàng</h2>
         <div class="order-summary-row"><span>Tạm tính</span><span><?= $this->e(\number_format((float) $total, 0, ',', '.')) ?> đ</span></div>
         <div class="order-summary-total"><span>Tổng cộng</span><span><?= $this->e(\number_format((float) $total, 0, ',', '.')) ?> đ</span></div>
-        <a href="/checkout" class="btn btn-primary btn-block" style="margin-top: var(--space-4);">Tiến hành đặt hàng</a>
-        <a href="/shop" class="btn btn-secondary btn-block" style="margin-top: var(--space-2);">Tiếp tục mua sắm</a>
+        <a href="/checkout" class="btn btn-primary btn-block mt-4">Tiến hành đặt hàng</a>
+        <a href="/shop" class="btn btn-secondary btn-block mt-2">Tiếp tục mua sắm</a>
     </aside>
 </div>
 <?php endif; ?>

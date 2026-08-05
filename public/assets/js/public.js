@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (submitBtn && !submitBtn.disabled) {
                 submitBtn.disabled = true;
+                submitBtn.classList.add('is-loading');
                 submitBtn.setAttribute('data-loading-text', submitBtn.textContent);
                 submitBtn.textContent = 'Đang xử lý...';
             }

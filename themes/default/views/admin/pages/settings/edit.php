@@ -16,7 +16,7 @@
     <div class="field">
         <label for="default_meta_description">Mô tả Meta mặc định</label>
         <textarea id="default_meta_description" name="default_meta_description" rows="3"><?= $this->e((string) ($settings['default_meta_description'] ?? '')) ?></textarea>
-        <p class="text-muted mb-0" style="font-size:12px; margin-top: var(--space-2);">Dùng khi 1 Trang chưa có SEO Meta riêng.</p>
+        <p class="text-muted mb-0 mt-2" style="font-size:12px;">Dùng khi 1 Trang chưa có SEO Meta riêng.</p>
     </div>
     <div class="field">
         <label for="default_og_image_id">Ảnh chia sẻ mặc định (OG Image)</label>

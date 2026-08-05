@@ -1,6 +1,6 @@
 <?php $this->extend('admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<div class="flex items-center justify-between" style="margin-bottom: var(--space-5); flex-wrap: wrap; gap: var(--space-3);">
+<div class="flex items-center justify-between mb-5" style="flex-wrap: wrap; gap: var(--space-3);">
     <h1 class="mb-0">Quản lý Media</h1>
     <div class="flex gap-3" style="align-items:center;">
         <!-- Phase 18 (CMS-055): Grid/List toggle - CSS/JS thuan, dung lai nguyen $media da co,
@@ -84,36 +84,47 @@
 <?php endif; ?>
 </div>
 
-<div class="table-wrap is-hidden" data-view-panel="list">
-<table class="data-table media-list-table">
-<thead>
-<tr><th scope="col"></th><th scope="col">Tên file</th><th scope="col">Loại</th><th scope="col">Dung lượng</th><th scope="col"></th></tr>
-</thead>
-<tbody>
-<?php foreach ($media as $item): ?>
-<tr>
-    <td>
-    <?php if (\str_starts_with((string) $item['mime_type'], 'image/')): ?>
-    <img class="media-thumb" src="/admin/media/<?= $this->e((string) $item['id']) ?>/thumbnail" alt="" loading="lazy">
+<div class="table-wrap is-hidden" data-view-panel="list" data-bulk-select="media-bulk-form">
+    <div class="bulk-actions-bar" data-bulk-bar>
+        <span data-bulk-count>0 mục đã chọn</span>
+        <button type="submit" form="media-bulk-form" class="btn btn-danger btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'trash']); ?> Xoá đã chọn</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-bulk-clear>Bỏ chọn</button>
+    </div>
+    <table class="data-table media-list-table">
+    <thead>
+    <tr><th scope="col" class="table-select-col"><input type="checkbox" data-select-all aria-label="Chọn tất cả file"></th><th scope="col"></th><th scope="col">Tên file</th><th scope="col">Loại</th><th scope="col">Dung lượng</th><th scope="col"></th></tr>
+    </thead>
+    <tbody>
+    <?php foreach ($media as $item): ?>
+    <tr>
+        <td><input type="checkbox" name="ids[]" value="<?= $this->e((string) $item['id']) ?>" form="media-bulk-form" data-select-row aria-label="<?= $this->e('Chọn file ' . (string) $item['file_name']) ?>"></td>
+        <td>
+        <?php if (\str_starts_with((string) $item['mime_type'], 'image/')): ?>
+        <img class="media-thumb" src="/admin/media/<?= $this->e((string) $item['id']) ?>/thumbnail" alt="" loading="lazy">
+        <?php endif; ?>
+        </td>
+        <td><?= $this->e($item['file_name']) ?></td>
+        <td class="text-muted"><?= $this->e((string) $item['mime_type']) ?></td>
+        <td class="text-muted"><?= $this->e((string) \round(((int) $item['size']) / 1024, 1)) ?> KB</td>
+        <td>
+            <form method="POST" action="/admin/media/<?= $this->e((string) $item['id']) ?>/delete" data-confirm="Xác nhận xoá file này?">
+                <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
+                <button type="submit" class="btn btn-danger btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'trash']); ?> Xoá</button>
+            </form>
+        </td>
+    </tr>
+    <?php endforeach; ?>
+    <?php if (empty($media)): ?>
+    <tr><td colspan="6" class="empty-state">Chưa có file nào.</td></tr>
     <?php endif; ?>
-    </td>
-    <td><?= $this->e($item['file_name']) ?></td>
-    <td class="text-muted"><?= $this->e((string) $item['mime_type']) ?></td>
-    <td class="text-muted"><?= $this->e((string) \round(((int) $item['size']) / 1024, 1)) ?> KB</td>
-    <td>
-        <form method="POST" action="/admin/media/<?= $this->e((string) $item['id']) ?>/delete" data-confirm="Xác nhận xoá file này?">
-            <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
-            <button type="submit" class="btn btn-danger btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'trash']); ?> Xoá</button>
-        </form>
-    </td>
-</tr>
-<?php endforeach; ?>
-<?php if (empty($media)): ?>
-<tr><td colspan="5" class="empty-state">Chưa có file nào.</td></tr>
-<?php endif; ?>
-</tbody>
-</table>
+    </tbody>
+    </table>
 </div>
+<!-- Form rieng, khong long trong .table-wrap - checkbox/nut ben tren tro toi qua thuoc tinh
+     form="media-bulk-form" (HTML5 hop le, tranh loi <form> long <form> voi form xoa tung dong). -->
+<form id="media-bulk-form" method="POST" action="/admin/media/bulk-delete" data-confirm="Xoá các file đã chọn? Không thể hoàn tác.">
+    <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
+</form>
 
 <div class="modal-overlay" id="folder-modal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="folder-modal-title" tabindex="-1">

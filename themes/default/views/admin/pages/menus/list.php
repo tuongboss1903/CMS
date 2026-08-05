@@ -2,7 +2,7 @@
 <?php $this->section('content'); ?>
 <h1>Quản lý Menu</h1>
 
-<div class="card" style="max-width: 480px; margin-bottom: var(--space-5);">
+<div class="card mb-5" style="max-width: 480px;">
     <h2 class="mb-0" style="font-size:16px;">Tạo Menu mới</h2>
     <form method="POST" action="/admin/menus">
         <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">

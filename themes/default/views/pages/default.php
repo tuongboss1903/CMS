@@ -119,7 +119,7 @@ $renderBlock = function (array $block) {
 <?php endif; ?>
 
 <?php if (isset($comment_csrf_token) || isset($comments)): ?>
-<div class="comments-section" style="margin-top: var(--space-6);">
+<div class="comments-section mt-6">
     <h2>Bình luận (<?= $this->e((string) \count($comments ?? [])) ?>)</h2>
 
     <?php if (!empty($comment_success)): ?>
@@ -139,7 +139,7 @@ $renderBlock = function (array $block) {
     <?php endif; ?>
 
     <?php foreach (($comments ?? []) as $comment): ?>
-    <div class="card" style="margin-top: var(--space-3);">
+    <div class="card mt-3">
         <strong><?= $this->e((string) $comment['guest_name']) ?></strong>
         <span class="text-muted"> - <?= $this->e((string) $comment['created_at']) ?></span>
         <p><?= \nl2br($this->e((string) $comment['body'])) ?></p>
@@ -150,7 +150,7 @@ $renderBlock = function (array $block) {
     <?php endif; ?>
 
     <?php if (isset($comment_csrf_token)): ?>
-    <form method="POST" action="/<?= $this->e((string) ($page_slug ?? '')) ?>/comments" class="card" style="margin-top: var(--space-4);">
+    <form method="POST" action="/<?= $this->e((string) ($page_slug ?? '')) ?>/comments" class="card mt-4">
         <input type="hidden" name="_token" value="<?= $this->e((string) $comment_csrf_token) ?>">
         <div class="field">
             <label for="guest_name">Tên của bạn</label>

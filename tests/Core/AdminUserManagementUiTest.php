@@ -237,6 +237,13 @@ final class AdminUserManagementUiTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('name="_token"', $response->getBody());
+        // Design Audit Phase 9 - loi hien NGAY CANH field lien quan (aria-invalid + field-error),
+        // khong con dong het len 1 khoi alert dau form.
+        self::assertMatchesRegularExpression(
+            '/name="name"[^>]*aria-invalid="true"/',
+            $response->getBody()
+        );
+        self::assertStringContainsString('class="field-error"', $response->getBody());
 
         $row = $this->database->selectOne('SELECT id FROM users WHERE email = ?', ['new@example.com']);
         self::assertNull($row);

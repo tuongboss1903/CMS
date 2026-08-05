@@ -1,6 +1,6 @@
 <?php $this->extend('admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<div class="flex items-center justify-between" style="margin-bottom: var(--space-5);">
+<div class="flex items-center justify-between mb-5">
     <h1 class="mb-0">Quản lý Vai trò</h1>
     <a href="/admin/roles/create" class="btn btn-primary"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Tạo vai trò mới</a>
 </div>

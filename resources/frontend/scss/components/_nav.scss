@@ -17,7 +17,7 @@
 }
 .site-logo {
   font-weight: 700;
-  font-size: 18px;
+  font-size: var(--text-lg);
   color: var(--color-text-primary);
   letter-spacing: -0.02em;
 
@@ -35,7 +35,7 @@
     display: inline-block;
     color: var(--color-text-secondary);
     font-weight: 500;
-    font-size: 14px;
+    font-size: var(--text-base);
     transition: color var(--transition-fast);
 
     &::after {
@@ -51,7 +51,7 @@
   }
   > ul > li.active > a::after { width: 100%; }
 
-  a { color: var(--color-text-secondary); font-weight: 500; font-size: 14px; transition: color var(--transition-fast); }
+  a { color: var(--color-text-secondary); font-weight: 500; font-size: var(--text-base); transition: color var(--transition-fast); }
   a:hover, li.active > a { color: var(--color-accent-text); text-decoration: none; }
 
   li ul {
@@ -101,6 +101,6 @@
     padding: 8px 10px;
     color: var(--color-text-primary);
     cursor: pointer;
-    font-size: 16px;
+    font-size: var(--text-md);
   }
 }

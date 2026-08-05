@@ -4,8 +4,8 @@
 <p class="text-muted">Cấu hình dạng key-value theo nhóm — bổ sung cho <a href="/admin/settings">Cài đặt chung</a> (tên website/favicon...).</p>
 
 <?php foreach ($grouped as $group => $items): ?>
-<div class="card" style="margin-top: var(--space-4);">
-    <h2 style="font-size:16px; margin-top:0; text-transform: capitalize;"><?= $this->e($group) ?></h2>
+<div class="card mt-4">
+    <h2 style="font-size:16px; text-transform: capitalize;"><?= $this->e($group) ?></h2>
     <div class="table-wrap">
     <table class="data-table">
     <thead>
@@ -30,11 +30,11 @@
 </div>
 <?php endforeach; ?>
 <?php if (empty($grouped)): ?>
-<div class="card" style="margin-top: var(--space-4);"><p class="empty-state">Chưa có cấu hình nào.</p></div>
+<div class="card mt-4"><p class="empty-state">Chưa có cấu hình nào.</p></div>
 <?php endif; ?>
 
-<div class="card" style="margin-top: var(--space-5); max-width: 520px;">
-    <h2 style="font-size:16px; margin-top:0;">Thêm / Cập nhật cấu hình</h2>
+<div class="card mt-5" style="max-width: 520px;">
+    <h2 style="font-size:16px;">Thêm / Cập nhật cấu hình</h2>
     <form method="POST" action="/admin/system-settings">
         <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
         <div class="field">

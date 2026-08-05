@@ -15,7 +15,7 @@
     <td>
         <form method="POST" action="/admin/plugins/<?= $this->e((string) $plugin['key']) ?>/toggle" data-confirm="<?= $plugin['is_active'] ? 'Tắt plugin này?' : 'Bật plugin này?' ?>">
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
-            <button type="submit" class="btn <?= $plugin['is_active'] ? 'btn-secondary' : 'btn-primary' ?> btn-sm"><?= $plugin['is_active'] ? 'Tắt' : 'Bật' ?></button>
+            <button type="submit" class="switch<?= $plugin['is_active'] ? ' is-on' : '' ?>" role="switch" aria-checked="<?= $plugin['is_active'] ? 'true' : 'false' ?>" aria-label="<?= $this->e('Bật/tắt plugin ' . (string) $plugin['name']) ?>"></button>
         </form>
     </td>
 </tr>

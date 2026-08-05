@@ -9,15 +9,18 @@
   justify-content: center;
   gap: var(--space-2);
   padding: 10px 18px;
-  font-size: 14px;
+  font-size: var(--text-base);
   font-weight: 500;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+  // Pressed feedback (Design Audit Phase 4) - transform rieng --dur-instant (100ms), tach khoi
+  // hieu ung hover chuyen mau/vien (--transition-fast, 120ms).
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--dur-instant) var(--ease-standard);
   line-height: 1;
 
-  &:active { transform: scale(0.98); }
+  // translateY(1px) thay vi scale(.98) cu - scale mot minh de gay cam giac "rung" tren nut nho.
+  &:active { transform: translateY(1px); }
   &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   &:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 }
@@ -42,7 +45,39 @@
 
   &:hover { background: var(--color-danger); color: #fff; text-decoration: none; }
 }
-.btn-sm { padding: 6px 12px; font-size: 13px; }
+// ===== Buttons bo sung (Design Audit Phase 4 - cong them, khong doi bien the cu) =====
+.btn-outline {
+  background: transparent;
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+
+  &:hover { background: var(--color-accent-soft); text-decoration: none; }
+}
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-text-secondary);
+
+  &:hover { background: var(--color-bg-elevated); color: var(--color-text-primary); text-decoration: none; }
+}
+// Icon-only - dung KEM 1 bien the mau (vd "btn btn-ghost btn-icon"). Luon phai co aria-label
+// tren <button>/<a> vi khong con text con lai cho screen reader.
+.btn-icon { padding: 10px; width: 40px; height: 40px; }
+.btn-icon.btn-sm { padding: 6px; width: 30px; height: 30px; }
+// Loading - public.js gan class nay + disabled khi submit form (Checkout...), hien spinner
+// truoc text "Dang xu ly...". prefers-reduced-motion global da tat animation-duration cho *.
+.btn.is-loading { cursor: wait; }
+.btn.is-loading::before {
+  content: "";
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: btn-spin 700ms linear infinite;
+  flex-shrink: 0;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+.btn-sm { padding: 6px 12px; font-size: var(--text-sm); }
 .btn-block { width: 100%; }
 
 .badge {
@@ -50,7 +85,7 @@
   align-items: center;
   padding: 3px 10px;
   border-radius: var(--radius-full);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.02em;
 }

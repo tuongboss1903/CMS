@@ -1,40 +1,34 @@
 <?php $this->extend('system_admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
 <h1>Sửa site: <?= $this->e((string) $site['name']) ?></h1>
-<?php if (!empty($errors)): ?>
-<div class="alert alert-danger">
-<ul>
-<?php foreach ($errors as $messages): ?>
-<?php foreach ($messages as $message): ?>
-<li><?= $this->e($message) ?></li>
-<?php endforeach; ?>
-<?php endforeach; ?>
-</ul>
-</div>
-<?php endif; ?>
-<form method="POST" action="/system-admin/sites/<?= $this->e((string) $site['id']) ?>" class="card" style="max-width: 480px;">
+<form method="POST" action="/system-admin/sites/<?= $this->e((string) $site['id']) ?>" class="card card--spacious" style="max-width: 480px;">
     <input type="hidden" name="_token" value="<?= $this->e($csrf_token ?? '') ?>">
     <div class="field">
-        <label for="name">Tên Site</label>
-        <input type="text" id="name" name="name" value="<?= $this->e($old['name'] ?? '') ?>">
+        <label for="name">Tên Site <span class="req">*</span></label>
+        <input type="text" id="name" name="name" value="<?= $this->e($old['name'] ?? '') ?>" required<?= empty($errors['name']) ? '' : ' aria-invalid="true"' ?>>
+        <?php foreach ($errors['name'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
     </div>
+    <div class="field-grid-2">
     <div class="field">
-        <label for="theme_active">Theme</label>
-        <select id="theme_active" name="theme_active">
+        <label for="theme_active">Theme <span class="opt">(tuỳ chọn)</span></label>
+        <select id="theme_active" name="theme_active"<?= empty($errors['theme_active']) ? '' : ' aria-invalid="true"' ?>>
             <option value="">-- Dùng theme mặc định hệ thống --</option>
             <?php foreach (($themes ?? []) as $theme): ?>
             <option value="<?= $this->e($theme->key) ?>"<?= $theme->key === (string) ($site['theme_active'] ?? '') ? ' selected' : '' ?>><?= $this->e($theme->name) ?> (<?= $this->e($theme->version) ?>)</option>
             <?php endforeach; ?>
         </select>
+        <?php foreach ($errors['theme_active'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
     </div>
     <div class="field">
-        <label for="plan_id">Gói dịch vụ</label>
-        <select id="plan_id" name="plan_id">
+        <label for="plan_id">Gói dịch vụ <span class="opt">(tuỳ chọn)</span></label>
+        <select id="plan_id" name="plan_id"<?= empty($errors['plan_id']) ? '' : ' aria-invalid="true"' ?>>
             <option value="">-- Không gán gói --</option>
             <?php foreach (($plans ?? []) as $plan): ?>
             <option value="<?= $this->e((string) $plan['id']) ?>"<?= (int) $plan['id'] === (int) ($site['plan_id'] ?? 0) ? ' selected' : '' ?>><?= $this->e((string) $plan['name']) ?><?= $plan['is_active'] ? '' : ' (đã ẩn)' ?></option>
             <?php endforeach; ?>
         </select>
+        <?php foreach ($errors['plan_id'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
+    </div>
     </div>
     <button type="submit" class="btn btn-primary">Lưu</button>
     <a href="/system-admin/sites/<?= $this->e((string) $site['id']) ?>/plugins" class="btn btn-secondary"><?php $this->include('admin.partials.icon', ['name' => 'plugins']); ?> Quản lý Plugin</a>
@@ -64,7 +58,7 @@
 </table>
 </div>
 
-<form method="POST" action="/system-admin/sites/<?= $this->e((string) $site['id']) ?>/domains" class="flex gap-2" style="margin-top: var(--space-3);">
+<form method="POST" action="/system-admin/sites/<?= $this->e((string) $site['id']) ?>/domains" class="flex gap-2 mt-3">
     <input type="hidden" name="_token" value="<?= $this->e($csrf_token ?? '') ?>">
     <input type="text" name="domain" placeholder="domain-phu.com">
     <button type="submit" class="btn btn-secondary"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Thêm domain</button>

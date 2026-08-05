@@ -169,6 +169,15 @@ final class AdminAnalyticsUiTest extends TestCase
         );
     }
 
+    /** Cho test xu huong (Design Audit Phase 8) - can dieu khien created_at de gia lap "ky truoc". */
+    private function seedViewAt(int $tenantId, string $path, string $ipHash, int $daysAgo): void
+    {
+        $this->database->insert(
+            'INSERT INTO analytics_views (tenant_id, path, ip_hash, created_at) VALUES (?, ?, ?, ?)',
+            [$tenantId, $path, $ipHash, \date('Y-m-d H:i:s', \time() - $daysAgo * 86400)]
+        );
+    }
+
     private function extractCsrfToken(string $html): string
     {
         \preg_match('/name="_token" value="([^"]+)"/', $html, $matches);
@@ -259,5 +268,55 @@ final class AdminAnalyticsUiTest extends TestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('data-field="total_views">0<', $response->getBody());
         self::assertStringContainsString('data-field="unique_visitors">0<', $response->getBody());
+    }
+
+    // ---- Chi bao xu huong KPI Card (Design Audit Phase 8) ----
+
+    public function testDashboardShowsUpTrendWhenCurrentWeekHasMoreViewsThanPrevious(): void
+    {
+        $seeded = $this->seedUser();
+        // Ky truoc (7-14 ngay truoc): 1 luot xem.
+        $this->seedViewAt($seeded['siteId'], '/', 'hash-old', 10);
+        // Ky hien tai (0-7 ngay truoc): 2 luot xem -> tang 100%.
+        $this->seedViewAt($seeded['siteId'], '/', 'hash-1', 1);
+        $this->seedViewAt($seeded['siteId'], '/', 'hash-2', 2);
+
+        $response = $this->loginAndGetDashboard('admin@example.com', 'correct-password');
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('stat-trend--up', $response->getBody());
+        self::assertStringContainsString('100% so với kỳ trước', $response->getBody());
+    }
+
+    public function testDashboardShowsDownTrendWhenCurrentWeekHasFewerViewsThanPrevious(): void
+    {
+        $seeded = $this->seedUser();
+        // Ky truoc: 4 luot xem tu 4 IP khac nhau.
+        $this->seedViewAt($seeded['siteId'], '/', 'hash-a', 8);
+        $this->seedViewAt($seeded['siteId'], '/', 'hash-b', 9);
+        $this->seedViewAt($seeded['siteId'], '/', 'hash-c', 10);
+        $this->seedViewAt($seeded['siteId'], '/', 'hash-d', 11);
+        // Ky hien tai: 1 luot xem -> giam 75%.
+        $this->seedViewAt($seeded['siteId'], '/', 'hash-e', 1);
+
+        $response = $this->loginAndGetDashboard('admin@example.com', 'correct-password');
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('stat-trend--down', $response->getBody());
+        self::assertStringContainsString('75% so với kỳ trước', $response->getBody());
+    }
+
+    public function testDashboardShowsUpTrendWithoutFabricatedPercentWhenNoPreviousData(): void
+    {
+        $seeded = $this->seedUser();
+        // Khong co du lieu ky truoc (>14 ngay), chi co du lieu ky hien tai.
+        $this->seedViewAt($seeded['siteId'], '/', 'hash-1', 1);
+
+        $response = $this->loginAndGetDashboard('admin@example.com', 'correct-password');
+
+        self::assertSame(200, $response->getStatusCode());
+        // Ky truoc = 0 -> khong the tinh % that su (chia cho 0), CHI hien mui ten, khong bia so
+        // (khong duoc ghep "N% so voi ky truoc" khi N khong co y nghia thong ke that).
+        self::assertStringContainsString('stat-trend--up">&#9650; so với kỳ trước</div>', $response->getBody());
     }
 }

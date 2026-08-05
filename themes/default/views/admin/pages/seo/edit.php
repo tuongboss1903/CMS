@@ -1,6 +1,6 @@
 <?php $this->extend('admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<div class="flex items-center justify-between" style="margin-bottom: var(--space-5);">
+<div class="flex items-center justify-between mb-5">
     <h1 class="mb-0">SEO: <?= $this->e($page['title']) ?></h1>
     <a href="/admin/seo" class="btn btn-secondary">Quay lại danh sách</a>
 </div>
@@ -54,7 +54,7 @@
     <div class="field">
         <label for="schema_data_json">Dữ liệu Schema (JSON)</label>
         <textarea id="schema_data_json" name="schema_data_json" rows="5" class="mb-0"><?= $this->e($schema_data_text) ?></textarea>
-        <p class="text-muted mb-0" style="font-size:12px; margin-top: var(--space-2);">Nhập JSON hợp lệ, để trống nếu không dùng. Nếu JSON sai định dạng, thay đổi sẽ không được lưu.</p>
+        <p class="text-muted mb-0 mt-2" style="font-size:12px;">Nhập JSON hợp lệ, để trống nếu không dùng. Nếu JSON sai định dạng, thay đổi sẽ không được lưu.</p>
     </div>
     <button type="submit" class="btn btn-primary">Lưu SEO</button>
 </form>

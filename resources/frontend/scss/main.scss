@@ -17,6 +17,18 @@
 
 .mt-0 { margin-top: 0; }
 .mb-0 { margin-bottom: 0; }
+// mt-2..6 / mb-2..6 (Design Audit Phase 3) - thay style="margin-top/bottom: var(--space-X)"
+// roi rac trong view bang class dung lai duoc, dong bo voi resources/admin/tailwind.css.
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-5 { margin-top: var(--space-5); }
+.mt-6 { margin-top: var(--space-6); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-5 { margin-bottom: var(--space-5); }
+.mb-6 { margin-bottom: var(--space-6); }
 .text-muted { color: var(--color-text-muted); }
 .flex { display: flex; }
 .items-center { align-items: center; }

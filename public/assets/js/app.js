@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (submitBtn && !submitBtn.disabled) {
                 submitBtn.disabled = true;
+                submitBtn.classList.add('is-loading');
                 submitBtn.setAttribute('data-loading-text', submitBtn.textContent);
                 submitBtn.textContent = 'Đang xử lý...';
             }
@@ -124,11 +125,22 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function closeModal(modal) {
-        if (!modal) {
+        if (!modal || !modal.classList.contains('is-open')) {
             return;
         }
 
+        // Design Audit Phase 11 - doi animation "lui xuong nhe + fade" (@keyframes modal-out/
+        // overlay-out) chay xong roi moi that su go .is-open (an modal), thay vi cat ngang tuc thi.
         modal.classList.remove('is-open');
+        modal.classList.add('is-closing');
+        modal.addEventListener('animationend', function handler(event) {
+            if (event.target !== modal) {
+                return;
+            }
+
+            modal.classList.remove('is-closing');
+            modal.removeEventListener('animationend', handler);
+        });
 
         if (lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === 'function') {
             lastFocusedBeforeModal.focus();
@@ -268,6 +280,62 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Design Audit Phase 7 - checkbox chon dong + thanh bulk-action. Moi container
+    // [data-bulk-select] doc lap (Media, Comments...), khong phu thuoc cau truc <form> vi
+    // checkbox tro toi form xoa hang loat rieng qua thuoc tinh form="..." (tranh <form> long
+    // <form> voi form thao tac tung dong nam trong cung table).
+    document.querySelectorAll('[data-bulk-select]').forEach(function (container) {
+        var selectAll = container.querySelector('[data-select-all]');
+        var bar = container.querySelector('[data-bulk-bar]');
+
+        if (!selectAll || !bar) {
+            return;
+        }
+
+        var countEl = bar.querySelector('[data-bulk-count]');
+        var clearBtn = bar.querySelector('[data-bulk-clear]');
+
+        var rowCheckboxes = function () {
+            return Array.prototype.slice.call(container.querySelectorAll('[data-select-row]'));
+        };
+
+        var updateBar = function () {
+            var all = rowCheckboxes();
+            var checked = all.filter(function (checkbox) { return checkbox.checked; });
+
+            bar.classList.toggle('is-visible', checked.length > 0);
+
+            if (countEl) {
+                countEl.textContent = checked.length + ' mục đã chọn';
+            }
+
+            selectAll.checked = all.length > 0 && checked.length === all.length;
+            selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+        };
+
+        selectAll.addEventListener('change', function () {
+            rowCheckboxes().forEach(function (checkbox) { checkbox.checked = selectAll.checked; });
+            updateBar();
+        });
+
+        container.addEventListener('change', function (event) {
+            if (event.target.matches('[data-select-row]')) {
+                updateBar();
+            }
+        });
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function () {
+                rowCheckboxes().forEach(function (checkbox) { checkbox.checked = false; });
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+                updateBar();
+            });
+        }
+
+        updateBar();
+    });
+
     var dropzone = document.getElementById('media-dropzone');
     var fileInput = document.getElementById('media-file-input');
 
@@ -376,4 +444,16 @@ document.addEventListener('DOMContentLoaded', function () {
             draggedId = null;
         });
     }
+
+    // Design Audit Phase 10 - fade-edge chi hien khi bang THAT SU cuon duoc (scrollWidth >
+    // clientWidth), tranh cat mat vien noi dung o bang khong can cuon. CSS mask chi kich hoat
+    // qua class .is-scrollable, gioi han hien thi trong @media (max-width:640px).
+    var updateScrollableTableWraps = function () {
+        document.querySelectorAll('.table-wrap').forEach(function (wrap) {
+            wrap.classList.toggle('is-scrollable', wrap.scrollWidth > wrap.clientWidth + 1);
+        });
+    };
+
+    updateScrollableTableWraps();
+    window.addEventListener('resize', updateScrollableTableWraps);
 });

@@ -21,7 +21,7 @@
 </ul>
 </div>
 <?php endif; ?>
-<div class="card" style="max-width: 720px;">
+<div class="card card--spacious" style="max-width: 720px;">
 <form method="POST" action="/admin/pages" id="page-form">
     <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
     <input type="hidden" name="editor_mode" id="editor-mode-input" value="<?= $this->e($editor_mode ?? 'quill') ?>">

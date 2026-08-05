@@ -108,6 +108,90 @@
 - `tests/Fixtures/App/plugins/TestPlugin/PluginPingController.php` khai `namespace Tests\Fixtures\App\Plugins\TestPlugin` (chữ hoa "Plugins") nhưng thư mục thật là `tests/Fixtures/App/plugins/TestPlugin` (chữ thường) — PSR-4 không khớp, Composer tự bỏ qua class này khỏi autoload map (cảnh báo đã thấy từ lâu trong `composer dump-autoload`, trước đây nhầm là "không liên quan"). Trên Linux, autoload thất bại lúc `Container` resolve `PluginPingController` → 500, làm FAIL 2 test regression Plugin routing của `ApplicationTest` (`testPluginRouteIsLoadedAndReachable`, `testPluginRouteHasSessionStartedAndTenantResolved`). Đổi namespace về chữ thường `plugins` khớp đúng thư mục (đúng quy ước thư mục `plugins/` thật của dự án), sửa cả reference trong `routes.php`.
 - Verified: `composer dump-autoload` không còn cảnh báo PSR-4, `vendor/bin/phpunit` 912 tests PASS, `phpstan` 0 lỗi, `php-cs-fixer` sạch (0/540). **CI GitHub Actions PASS hoàn toàn lần đầu tiên trong lịch sử 22 lần chạy** (cả PHP 8.2 và 8.3, cả 3 bước lint/PHPStan/PHPUnit).
 
+### Design System Overhaul — Audit + triển khai 11 phase (PHASE 22, CMS-069 → CMS-079)
+
+> Xuất phát từ 1 báo cáo Design Audit độc lập (đóng vai Principal Product Designer/Frontend Lead, đối chiếu tư duy thiết kế Linear/Notion/Vercel/Stripe Dashboard/Shopify Admin/Laravel Nova — không copy giao diện), xuất bản dạng Artifact trước khi sửa code theo đúng yêu cầu "Nhiệm vụ 1: audit-only". Rút ra lộ trình 11 phase, triển khai tuần tự. **Tại thời điểm ghi nhận, toàn bộ 11 phase đã code + test xong nhưng CHƯA commit** (working tree), chưa gắn tag version — ghi nhận trước để khớp tiến độ thật, tag sẽ gắn khi commit.
+
+#### CMS-069 — Design Tokens: Type Scale, Elevation, Motion (PHASE 22.1)
+
+- `resources/shared/tokens.css` + `resources/frontend/scss/_tokens.scss` (2 file song song, chưa từng dùng chung/import — duy trì đồng bộ thủ công đúng hiện trạng): thêm **type scale** 9 bậc (`--text-xs` → `--text-4xl`, 12–40px, tỷ lệ ~1.2), **elevation semantics** (`--elev-flat/raised/overlay/modal`, tham chiếu lại `--shadow-*` sẵn có nên tự đổi theo theme sáng/tối, không cần khai giá trị riêng), **motion** (`--dur-instant/fast/base` — 100/160/220ms, dùng chung `--ease-standard` đã có).
+- Thuần khai báo biến, chưa gán vào component nào ở bước này — zero-regression thị giác.
+
+#### CMS-070 — Typography: xoá 74 giá trị font-size hardcode (PHASE 22.2)
+
+- Thay **74 giá trị `font-size` hardcode** (39 trong `resources/admin/tailwind.css`, 35 trong `resources/frontend/scss/**`) bằng token CMS-069 — gom về 9 bậc chuẩn thay vì mỗi nơi tự gõ số riêng (nguồn gốc phát hiện ở Design Audit: 18+ giá trị rời rạc không theo cấp số nào).
+- Giữ nguyên 2 giá trị `36px`/`64px` trong `_shop.scss` — kích thước icon chữ cái trang trí bên trong khối vuông sản phẩm, không thuộc phân cấp chữ đọc, token hoá sẽ vô nghĩa.
+
+#### CMS-071 — Spacing: xoá 90 inline margin, chuẩn hoá nhịp dọc (PHASE 22.3)
+
+- Thêm utility `.mt-2..6`/`.mb-2..6` (đồng bộ Admin + Frontend) và `.stack-5` (flex+gap) thay cho margin cộng dồn từng phần tử con.
+- Thay **90 lượt inline `style="margin-top/bottom: var(--space-X)"`** trên **24 file view** (Admin/System Admin/Public) bằng class utility hoặc `.stack-5`. Áp `.stack-5` cho Dashboard — ví dụ điển hình Design Audit nêu (14 khối tự chèn `margin-top: var(--space-5)` rời rạc, giờ 1 container cha điều phối qua `gap`).
+- Không đụng 6 file `themes/default/views/emails/*.php` — inline style là bắt buộc cho tương thích email client.
+- Thêm rule `.card > h2:first-child { margin-top: 0 }` (cả 2 stylesheet), xoá ~10 lượt inline `margin-top:0` lặp lại y hệt trên tiêu đề card (Dashboard/Orders/System Settings/Checkout).
+
+#### CMS-072 — Buttons: Outline/Ghost/Icon/Loading, chuẩn hoá pressed state (PHASE 22.4)
+
+- Thêm biến thể `.btn-outline` (viền accent ngay từ đầu, khác `.btn-secondary` chỉ đổi màu khi hover), `.btn-ghost` (không viền, dùng cho toolbar dày thao tác), `.btn-icon` (vuông hoá, dùng kèm biến thể màu, bắt buộc `aria-label`) — cộng thêm, không đổi Primary/Secondary/Danger cũ.
+- Pressed state: `transform: scale(.98)` → `translateY(1px)` với `transition` riêng dùng token `--dur-instant` (100ms), tách khỏi transition hover 120ms — giảm cảm giác "rung" trên nút nhỏ.
+- `.btn.is-loading` (spinner CSS quay trước chữ, tự tuân theo `prefers-reduced-motion` sẵn có) — gắn `classList.add('is-loading')` vào logic submit-loading-state có sẵn ở cả `app.js` (Admin) và `public.js` (Public), không đổi luồng chặn double-submit đang hoạt động.
+
+#### CMS-073 — Inputs: focus ring 2 lớp, Checkbox/Radio/Switch (PHASE 22.5)
+
+- `input[aria-invalid="true"]` viền đỏ ngay cả khi không focus; khi focus vào ô đang lỗi, quầng sáng đổi đỏ nhạt thay vì xanh accent mặc định — không còn mất tín hiệu "vẫn đang lỗi".
+- **Phát hiện & sửa 1 bug thật lúc làm**: class `.field-error` đã dùng trong 2 view Admin (`ecommerce/products/create.php`, `edit.php`) từ trước nhưng **chưa từng có CSS định nghĩa trong `tailwind.css`** — lỗi validate hiển thị chữ đen mặc định, không đỏ. Thêm rule khớp bản Frontend đã có sẵn. Gắn `aria-invalid="true"` vào 6 input tương ứng ở 3 view (2 Admin + `checkout/index.php`).
+- Checkbox/Radio: `accent-color: var(--color-accent)` toàn hệ thống — trước đó mang màu xanh mặc định hệ điều hành.
+- **Switch — component hoàn toàn mới**: `<button role="switch" aria-checked>` có track+thumb, tái dùng đúng cơ chế `form + data-confirm + CSRF` đã có sẵn (không cần JS mới, không đổi luồng submit). Áp dụng ngay cho toggle Bật/Tắt Plugin (`admin/pages/plugins/list.php`).
+
+#### CMS-074 — Cards: 3 mật độ, xoá hover-lift sai (PHASE 22.6)
+
+- Thêm modifier `.card--compact` (16/24px) và `.card--spacious` (32px) — `.card` mặc định giữ nguyên. Áp compact vào `.stat-card`; áp `card--spacious` vào **12 trang create/edit dạng 1 khối form duy nhất** (Products/Pages/Users/Roles ở Admin, Plans/Sites ở System Admin).
+- **Xoá hover-lift** (`translateY(-2px) + shadow-md`) ở `.stat-card`/`.media-card`/`.feature-card` — cả 3 không có `href`/`onclick`, hover trước đó tạo cảm giác "bấm được" sai (đúng phát hiện Design Audit). Giữ nguyên `.product-card:hover` (Shop) — phần lớn diện tích thẻ là link thật, trường hợp hợp lệ.
+
+#### CMS-075 — Tables: bỏ accent-hover sai + Bulk Delete Media/Comments (PHASE 22.7, rủi ro cao nhất — có sửa Controller)
+
+- Bỏ thanh accent trái khi hover dòng bảng thường (trùng ngôn ngữ thị giác với trạng thái active của Sidebar) — thay bằng `tr.is-selected` riêng cho trạng thái thật sự được chọn.
+- **2 Controller mới**: `Modules\Admin\MediaBulkDeleteController`/`CommentBulkDeleteController` — tái dùng đúng logic transaction/storage-bookkeeping/tenant-scoping của controller xoá đơn lẻ tương ứng, gộp thành 1 lần gọi thay vì lặp POST từng item.
+- Route `POST /admin/media/bulk-delete` đăng ký **TRƯỚC** `POST /admin/media/{id}` — cùng 2 segment, nếu đăng ký sau sẽ bị `MediaUpdateController` "nuốt" với `id="bulk-delete"` (đúng bài học từ bug route `folders` trước đó trong dự án).
+- View: checkbox chọn dòng + thanh bulk-action cho Media (list view)/Comments. Vì HTML không cho `<form>` lồng `<form>` (mỗi dòng đã có form Duyệt/Từ chối/Xoá riêng), checkbox dùng thuộc tính `form="..."` trỏ tới 1 `<form>` bulk-delete độc lập đặt ngoài bảng.
+- JS generic `[data-bulk-select]` trong `app.js` (chọn tất cả, đếm đã chọn, hiện/ẩn thanh bulk-action) — không phụ thuộc cấu trúc `<form>`, tái dùng được cho bảng khác sau này.
+- Cố ý **bỏ qua Users**: không có `UserDeleteController` sẵn để dựa vào (Users chỉ có Lock/Unlock), bulk-lock tài khoản hàng loạt rủi ro cao hơn (tự khoá chính mình) nên không làm trong phase này.
+- 6 test mới (3 `AdminMediaManagementUiTest`, 3 `AdminCommentModerationTest`) — xoá đúng item đã chọn, bỏ qua ID thuộc tenant khác, chặn khi thiếu quyền.
+- Verified: `composer dump-autoload -o` (2 Controller mới, bắt buộc theo `CLAUDE.md`), `vendor/bin/phpunit` PASS.
+
+#### CMS-076 — Dashboard: lưới 2 cột + chỉ báo xu hướng KPI (PHASE 22.8)
+
+- Lưới 2 cột theo tỷ lệ (`.dashboard-row-8-4`/`.dashboard-row-6-6`, về 1 cột dưới 900px cùng ngưỡng sidebar off-canvas) — kéo "Tình trạng hệ thống" lên **ngang hàng biểu đồ lượt xem** thay vì cuối trang; nhóm "Trang xem nhiều nhất" cạnh "Audit Log gần đây".
+- `Modules\Analytics\AnalyticsService::previousPeriodSummary()` mới (kỳ liền trước, cùng độ dài) + tính `%` thay đổi trong `DashboardController`. **Chỉ áp dụng cho Lượt xem/Khách truy cập** — 2 chỉ số theo kỳ có dữ liệu kỳ trước thật; không áp cho Trang/Media/Người dùng/Vai trò vì đó là tổng tích luỹ tại 1 thời điểm, không có "kỳ trước" thật (tránh bịa số liệu). Khi kỳ trước = 0, chỉ hiện mũi tên hướng, không hiện phần trăm giả.
+- Root Cause Analysis tự phát hiện trước khi giao (không phải sau khi PHPUnit FAIL): bản đầu dùng `function render_stat_trend()` (hàm toàn cục) trong view — sẽ fatal "Cannot redeclare" nếu Dashboard render 2 lần trong cùng 1 tiến trình PHP (đúng cơ chế PHPUnit tái dùng session đã gặp ở Phase 14/CMS-051). Chuyển sang closure cục bộ (`$renderStatTrend = function(...) {...}`) trước khi test — closure tạo trong scope method của `View::renderTemplate()` tự động bind `$this` đúng, không cần truyền tường minh.
+- 3 test mới (`AdminAnalyticsUiTest`) — up trend/down trend/không có dữ liệu kỳ trước (không bịa %).
+
+#### CMS-077 — Forms: Required/Optional, lỗi tại chỗ, grid 2 cột (PHASE 22.9)
+
+- `.req` (đỏ, sau label bắt buộc)/`.opt` (xám nhỏ, "(tuỳ chọn)") — chỉ đánh dấu 1 trong 2, ưu tiên `required`.
+- Chuyển **8 form** (Users/Roles/Plans/Sites create + edit) từ "dồn hết lỗi lên 1 khối `<ul>` đầu form" sang hiện `<p class="field-error">` ngay dưới field liên quan + `aria-invalid="true"` — dùng lại đúng cơ chế CMS-073. Lỗi không gắn được vào field cụ thể (vd giới hạn gói dịch vụ) vẫn giữ alert đầu form nhưng chỉ hiện phần lỗi dư (`array_diff_key` theo field đã biết), không mất thông tin.
+- Grid 2 cột cho field ngắn liên quan (Tên+Email, Key+Tên, Giá+Chu kỳ...) — không ép field có label dài (3 field "Giới hạn... bỏ trống = không giới hạn" của Plans giữ 1 cột).
+- Bỏ qua có chủ đích: 2 trang Login (lỗi không gắn field cụ thể là đúng UX bảo mật, không tiết lộ sai email hay sai mật khẩu) và 2 trang Page Builder create/edit (validate qua Action class riêng, cấu trúc lỗi không chắc chắn, form nhiều tab/block phức tạp hơn).
+- 1 assertion mới bổ sung vào `AdminUserManagementUiTest::testCreateUserValidationFailRendersFormAgain` xác minh `aria-invalid` gắn đúng field.
+
+#### CMS-078 — Responsive: sidebar rail, max-width, fade-edge (PHASE 22.10)
+
+- Sidebar rail icon-only cho dải 901–1200px (trước đó chỉ có 2 trạng thái: đầy đủ/ẩn hoàn toàn off-canvas ≤900px) — ẩn nhãn chữ/brand, giữ icon căn giữa + `title="..."` làm tooltip. Cố ý **không** dùng `aria-label` cho việc này (sẽ ghi đè accessible name ngay cả khi nhãn chữ vẫn hiện ở chế độ đầy đủ — vi phạm WCAG 2.5.3 Label in Name); `title` chỉ bổ sung, không thay accessible name khi đã có text con.
+- `.admin-content { max-width: 1400px; margin: 0 auto }` từ 1440px trở lên — chặn bảng dữ liệu giãn hết cỡ trên màn hình lớn.
+- Fade-edge cho bảng cuộn ngang mobile qua CSS `mask-image` (không phải background-gradient — mask hoạt động đúng trên mọi nền, tránh lệch màu khi `.table-wrap` nằm trong ngữ cảnh nền khác nhau). Chỉ kích hoạt qua class `.is-scrollable` do JS gắn khi `scrollWidth > clientWidth` thật sự (kiểm tra lúc tải + resize), tránh cắt mất nội dung ở bảng không cần cuộn.
+
+#### CMS-079 — Polish: Modal animation, Toast, Tooltip, Empty State (PHASE 22.11)
+
+- Modal mở/đóng: `@keyframes modal-in/overlay-in` (fade + hạ 6px) khi mở, `modal-out/overlay-out` khi đóng. Sửa `closeModal()` trong `app.js` để chờ `animationend` thật sự rồi mới gỡ `.is-open` (trước đó cắt ngang tức thì).
+- **Toast thật**: bọc `admin.partials.flash_messages` (dùng chung Admin + System Admin, xác nhận qua cả 2 layout cùng include đúng 1 path) trong `.toast-stack` (`position:fixed`, góc trên-phải) — không còn bị modal che hay mất khỏi tầm nhìn khi cuộn form dài để bấm Lưu. Trượt vào từ phải khi xuất hiện, fade thuần khi tự đóng (không trượt ngược, tránh giật nếu người dùng đã di chuột qua vùng đó). Không đổi Controller/3 key dữ liệu đầu vào (`$flash_success/$flash_warning/$flash_error`) — chỉ đổi nơi và cách hiển thị.
+- Tooltip CSS thuần `[data-tooltip]` (không JS) — áp cho `sidebar-toggle`/`theme-toggle`, 2 nút icon-only thật đang tồn tại. Bỏ `title` trùng lặp trên `theme-toggle` để tránh 2 tooltip chồng nhau; giá trị luôn khớp `aria-label` (accessible name thật vẫn từ `aria-label`, tooltip chỉ hỗ trợ thị giác).
+- Empty State: icon "khay rỗng" nhạt màu qua `::before` + CSS `mask` (không đầu tư illustration riêng) — `background-color: currentColor` nên tự đổi màu theo theme, không cần khai riêng từng theme. Áp dụng tự động cho **mọi** `.empty-state` hiện có ở cả Admin và Public site chỉ bằng 1 lần sửa CSS mỗi bên, không cần sửa từng view.
+- Cố ý bỏ qua animate dropdown Public nav (`.site-nav li ul`, hiện qua `:hover`/`:focus-within`) — kỹ thuật `display:none/block` hiện tại không animate an toàn mà không đổi cơ chế hiển thị, rủi ro tái phát đúng loại lỗi keyboard-accessibility đã sửa trước đó trong cùng khu vực (submenu không điều hướng được bằng bàn phím). Admin chưa có dropdown component nào để animate.
+
+#### Verification (toàn bộ 11 phase, CMS-069 → CMS-079)
+
+- `vendor/bin/phpunit` PASS trên môi trường thật (PHP 8.3.30, PHPUnit 10.5.64) — **927 tests, 1988 assertions, 0 Errors, 0 Failures, 4 Skipped** (Redis, đúng thiết kế) — tăng 9 test so với baseline 918 trước Phase 22 (6 ở CMS-075, 3 ở CMS-076). `php-cs-fixer fix --dry-run` sạch (0/550), `phpstan analyse` 0 lỗi — cả 3 lệnh chạy lại sau MỖI phase (không chỉ 1 lần cuối), khớp đúng workflow CI.
+- **Chưa kiểm tra trực quan qua trình duyệt thật** trong phiên này — dev server cục bộ (`php -S`) trả 404 cho route Admin vì cần cấu hình domain/tenant đầy đủ theo `SETUP_LOCAL.md` (TenantResolverMiddleware fail-closed), không thiết lập lại trong phiên này. Chỉ xác nhận qua code review + test tự động — khuyến nghị kiểm tra trực quan trước khi merge/deploy.
+
 ## [0.3.0] — 2026-08-17 — CMS-056: Ecommerce MVP & Plugin Architecture (PHASE 19) + Payment Gateway Integration (PHASE 20)
 
 ### Added

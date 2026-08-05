@@ -165,12 +165,42 @@ final class AnalyticsService
 
     private function cutoff(string $period): string
     {
-        $seconds = match (\in_array($period, self::VALID_PERIODS, true) ? $period : '7d') {
+        return \date('Y-m-d H:i:s', \time() - $this->periodSeconds($period));
+    }
+
+    private function periodSeconds(string $period): int
+    {
+        return match (\in_array($period, self::VALID_PERIODS, true) ? $period : '7d') {
             '24h' => 86400,
             '30d' => 30 * 86400,
             default => 7 * 86400,
         };
+    }
 
-        return \date('Y-m-d H:i:s', \time() - $seconds);
+    /**
+     * Tong Views/Unique Visitors cua KY LIEN TRUOC $period (cung do dai, ngay truoc do) - dung
+     * lam so sanh xu huong cho KPI Card Dashboard (Design Audit Phase 8). VD period='7d': ky
+     * hien tai la [now-7d, now], ky truoc la [now-14d, now-7d).
+     *
+     * @return array{total_views: int, unique_visitors: int}
+     */
+    public function previousPeriodSummary(string $period = '7d'): array
+    {
+        $seconds = $this->periodSeconds($period);
+        $periodEnd = \date('Y-m-d H:i:s', \time() - $seconds);
+        $periodStart = \date('Y-m-d H:i:s', \time() - (2 * $seconds));
+        $tenantId = $this->tenantManager->id();
+
+        $row = $this->database->selectOne(
+            'SELECT COUNT(*) as total_views, COUNT(DISTINCT ip_hash) as unique_visitors
+             FROM analytics_views
+             WHERE tenant_id = ? AND created_at >= ? AND created_at < ?',
+            [$tenantId, $periodStart, $periodEnd]
+        );
+
+        return [
+            'total_views' => (int) ($row['total_views'] ?? 0),
+            'unique_visitors' => (int) ($row['unique_visitors'] ?? 0),
+        ];
     }
 }

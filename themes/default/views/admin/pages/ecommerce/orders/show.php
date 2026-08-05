@@ -9,7 +9,7 @@ $orderStatusLabels = [
 ];
 $paymentStatusLabels = ['completed' => 'Thành công', 'failed' => 'Thất bại', 'pending' => 'Chờ xử lý'];
 ?>
-<div class="card" style="margin-bottom: var(--space-5);">
+<div class="card mb-5">
     <p><strong>Khách hàng:</strong> <?= $this->e((string) $order['guest_name']) ?> (<?= $this->e((string) $order['guest_email']) ?>)</p>
     <p><strong>Địa chỉ giao hàng:</strong> <?= $this->e((string) ($order['shipping_address'] ?? '-')) ?></p>
     <p><strong>Trạng thái:</strong> <span class="badge badge-neutral"><?= $this->e($orderStatusLabels[$order['status']] ?? (string) $order['status']) ?></span></p>
@@ -48,8 +48,8 @@ $available = $transitions[$order['status']] ?? [];
 </table>
 </div>
 
-<div class="card" style="margin-top: var(--space-5);">
-    <h2 style="font-size:16px; margin-top:0;">Lịch sử thanh toán</h2>
+<div class="card mt-5">
+    <h2 style="font-size:16px;">Lịch sử thanh toán</h2>
     <div class="table-wrap">
     <table class="data-table">
     <thead><tr><th scope="col">Cổng thanh toán</th><th scope="col">Trạng thái</th><th scope="col">Số tiền</th><th scope="col">Mã giao dịch</th><th scope="col">Thời gian</th></tr></thead>

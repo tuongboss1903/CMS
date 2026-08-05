@@ -7,16 +7,16 @@
 <div class="commerce-layout">
     <form method="POST" action="/checkout">
         <input type="hidden" name="_token" value="<?= $this->e($csrf_token ?? '') ?>">
-        <div class="card" style="margin-bottom: var(--space-5);">
-        <h2 style="margin-top:0;">Thông tin giao hàng</h2>
+        <div class="card mb-5">
+        <h2>Thông tin giao hàng</h2>
         <div class="field">
             <label for="guest_name">Họ tên</label>
-            <input type="text" id="guest_name" name="guest_name" value="<?= $this->e((string) ($old['guest_name'] ?? '')) ?>" required>
+            <input type="text" id="guest_name" name="guest_name" value="<?= $this->e((string) ($old['guest_name'] ?? '')) ?>" required<?= empty($errors['guest_name']) ? '' : ' aria-invalid="true"' ?>>
             <?php foreach ($errors['guest_name'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
         </div>
         <div class="field">
             <label for="guest_email">Email</label>
-            <input type="email" id="guest_email" name="guest_email" value="<?= $this->e((string) ($old['guest_email'] ?? '')) ?>" required>
+            <input type="email" id="guest_email" name="guest_email" value="<?= $this->e((string) ($old['guest_email'] ?? '')) ?>" required<?= empty($errors['guest_email']) ? '' : ' aria-invalid="true"' ?>>
             <?php foreach ($errors['guest_email'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
         </div>
         <div class="field">
@@ -26,7 +26,7 @@
         </div>
 
         <div class="card">
-        <h2 style="margin-top:0;">Phương thức thanh toán</h2>
+        <h2>Phương thức thanh toán</h2>
         <?php $selectedMethod = (string) ($old['payment_method'] ?? 'cod'); ?>
         <div class="payment-method-options">
             <label class="payment-method-option">
@@ -45,9 +45,9 @@
         </div>
 
         <?php if (!empty($errors['cart'])): ?>
-        <div class="alert alert-danger" style="margin-top: var(--space-4);"><?= $this->e($errors['cart'][0]) ?></div>
+        <div class="alert alert-danger mt-4"><?= $this->e($errors['cart'][0]) ?></div>
         <?php endif; ?>
-        <button type="submit" class="btn btn-primary btn-block" style="margin-top: var(--space-5);">Xác nhận đặt hàng</button>
+        <button type="submit" class="btn btn-primary btn-block mt-5">Xác nhận đặt hàng</button>
     </form>
 
     <aside class="order-summary">
