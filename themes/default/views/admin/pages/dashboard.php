@@ -1,39 +1,39 @@
 <?php $this->extend('admin.layouts.main'); ?>
 <?php $this->section('content'); ?>
-<h1>Dashboard</h1>
+<h1>Bảng điều khiển</h1>
 
 <div class="stat-grid">
     <div class="stat-card">
-        <div class="stat-label">Trang da xuat ban</div>
+        <div class="stat-label">Trang đã xuất bản</div>
         <div class="stat-value" data-field="page_count"><?= $this->e((string) $page_count) ?></div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Tong so Media</div>
+        <div class="stat-label">Tổng số Media</div>
         <div class="stat-value" data-field="media_count"><?= $this->e((string) $media_count) ?></div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Tong so User</div>
+        <div class="stat-label">Tổng số Người dùng</div>
         <div class="stat-value" data-field="user_count"><?= $this->e((string) $user_count) ?></div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Tong so Role</div>
+        <div class="stat-label">Tổng số Vai trò</div>
         <div class="stat-value" data-field="role_count"><?= $this->e((string) $role_count) ?></div>
     </div>
 </div>
 
 <div class="stat-grid" style="margin-top: var(--space-5);">
     <div class="stat-card">
-        <div class="stat-label">Luot xem (7 ngay)</div>
+        <div class="stat-label">Lượt xem (7 ngày)</div>
         <div class="stat-value" data-field="total_views"><?= $this->e((string) $total_views) ?></div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Khach truy cap doc nhat (7 ngay)</div>
+        <div class="stat-label">Khách truy cập độc nhất (7 ngày)</div>
         <div class="stat-value" data-field="unique_visitors"><?= $this->e((string) $unique_visitors) ?></div>
     </div>
 </div>
 
 <div class="card" style="margin-top: var(--space-5);">
-    <h2 style="font-size:16px; margin-top:0;">Luot xem 7 ngay gan day</h2>
+    <h2 style="font-size:16px; margin-top:0;">Lượt xem 7 ngày gần đây</h2>
     <?php
     $maxViews = \max(1, \max(\array_column($daily_views, 'views')));
 $barWidth = 40;
@@ -41,7 +41,7 @@ $gap = 16;
 $chartHeight = 120;
 $chartWidth = \count($daily_views) * ($barWidth + $gap);
 ?>
-    <svg viewBox="0 0 <?= $this->e((string) $chartWidth) ?> <?= $this->e((string) ($chartHeight + 20)) ?>" width="100%" height="140" role="img" aria-label="Bieu do luot xem 7 ngay gan day">
+    <svg viewBox="0 0 <?= $this->e((string) $chartWidth) ?> <?= $this->e((string) ($chartHeight + 20)) ?>" width="100%" height="140" role="img" aria-label="Biểu đồ lượt xem 7 ngày gần đây">
         <?php foreach ($daily_views as $index => $day): ?>
         <?php
     $barHeight = (int) \round(($day['views'] / $maxViews) * $chartHeight);
@@ -55,11 +55,11 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
 </div>
 
 <div class="card" style="margin-top: var(--space-5);">
-    <h2 style="font-size:16px; margin-top:0;">Trang xem nhieu nhat (7 ngay)</h2>
+    <h2 style="font-size:16px; margin-top:0;">Trang xem nhiều nhất (7 ngày)</h2>
     <div class="table-wrap">
     <table class="data-table">
     <thead>
-    <tr><th>Duong dan</th><th>Luot xem</th></tr>
+    <tr><th>Đường dẫn</th><th>Lượt xem</th></tr>
     </thead>
     <tbody>
     <?php foreach ($top_pages as $page): ?>
@@ -69,7 +69,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
     </tr>
     <?php endforeach; ?>
     <?php if (empty($top_pages)): ?>
-    <tr><td colspan="2" class="empty-state">Chua co du lieu.</td></tr>
+    <tr><td colspan="2" class="empty-state">Chưa có dữ liệu.</td></tr>
     <?php endif; ?>
     </tbody>
     </table>
@@ -77,30 +77,23 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
 </div>
 
 <div class="card" style="margin-top: var(--space-5);">
-    <h2 style="font-size:16px; margin-top:0;">Thao tac nhanh</h2>
+    <h2 style="font-size:16px; margin-top:0;">Thao tác nhanh</h2>
     <div class="flex gap-3" style="flex-wrap: wrap;">
-        <a href="/admin/pages/create" class="btn btn-primary">+ Tao trang moi</a>
-        <a href="/admin/media" class="btn btn-secondary">Tai Media len</a>
-        <a href="/admin/settings" class="btn btn-secondary">Cau hinh SEO chung</a>
-        <a href="/" class="btn btn-secondary" target="_blank" rel="noopener">Xem Public Site</a>
+        <a href="/admin/pages/create" class="btn btn-primary"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Tạo trang mới</a>
+        <a href="/admin/media" class="btn btn-secondary"><?php $this->include('admin.partials.icon', ['name' => 'upload']); ?> Tải Media lên</a>
+        <a href="/admin/settings" class="btn btn-secondary"><?php $this->include('admin.partials.icon', ['name' => 'seo']); ?> Cấu hình SEO chung</a>
+        <a href="/" class="btn btn-secondary" target="_blank" rel="noopener"><?php $this->include('admin.partials.icon', ['name' => 'search']); ?> Xem Public Site</a>
     </div>
 </div>
 
 <?php if (isset($recent_audit_logs) || isset($system_health)): ?>
-<!--
-    Phase 18 (CMS-055): widget nay CHI render khi Controller da truyen du lieu qua
-    $recent_audit_logs/$system_health - DashboardController hien CHUA truyen 2 bien nay (HARD
-    CONSTRAINT Phase 18: khong sua Controller nao). Day la scaffolding san sang, can 1 thay doi
-    THUAN BO SUNG (khong doi HTTP status/redirect) o DashboardController::handle() de co du lieu
-    that - da bao lai Owner, chua tu y lam trong Phase nay.
--->
 <div class="dashboard-widget-grid" style="margin-top: var(--space-5);">
     <?php if (isset($recent_audit_logs)): ?>
     <div class="card">
-        <h2 style="font-size:16px; margin-top:0;">Audit Log gan day</h2>
+        <h2 style="font-size:16px; margin-top:0;">Audit Log gần đây</h2>
         <div class="table-wrap">
         <table class="data-table">
-        <thead><tr><th>Su kien</th><th>Thoi gian</th></tr></thead>
+        <thead><tr><th>Sự kiện</th><th>Thời gian</th></tr></thead>
         <tbody>
         <?php foreach ($recent_audit_logs as $log): ?>
         <tr>
@@ -109,17 +102,17 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
         </tr>
         <?php endforeach; ?>
         <?php if (empty($recent_audit_logs)): ?>
-        <tr><td colspan="2" class="empty-state">Chua co hoat dong nao.</td></tr>
+        <tr><td colspan="2" class="empty-state">Chưa có hoạt động nào.</td></tr>
         <?php endif; ?>
         </tbody>
         </table>
         </div>
-        <p style="margin-top: var(--space-3); margin-bottom:0;"><a href="/admin/audit-logs">Xem toan bo Audit Log &rarr;</a></p>
+        <p style="margin-top: var(--space-3); margin-bottom:0;"><a href="/admin/audit-logs">Xem toàn bộ Audit Log &rarr;</a></p>
     </div>
     <?php endif; ?>
     <?php if (isset($system_health)): ?>
     <div class="card">
-        <h2 style="font-size:16px; margin-top:0;">System Status</h2>
+        <h2 style="font-size:16px; margin-top:0;">Tình trạng hệ thống</h2>
         <?php foreach ($system_health as $item): ?>
         <div class="health-item">
             <span><span class="health-dot <?= ($item['ok'] ?? true) ? 'is-ok' : 'is-warn' ?>"></span><?= $this->e((string) $item['label']) ?></span>
@@ -132,22 +125,22 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
 <?php endif; ?>
 
 <div class="card" style="margin-top: var(--space-5);">
-    <h2 style="font-size:16px; margin-top:0;">Hoat dong gan day</h2>
+    <h2 style="font-size:16px; margin-top:0;">Hoạt động gần đây</h2>
     <div class="table-wrap">
     <table class="data-table">
     <thead>
-    <tr><th>Loai</th><th>Noi dung</th><th>Thoi gian</th></tr>
+    <tr><th>Loại</th><th>Nội dung</th><th>Thời gian</th></tr>
     </thead>
     <tbody>
     <?php foreach ($activity as $item): ?>
     <tr>
         <td>
         <?php if ($item['type'] === 'page'): ?>
-            <span class="badge badge-neutral">Page</span>
+            <span class="badge badge-neutral">Trang</span>
         <?php elseif ($item['type'] === 'media'): ?>
             <span class="badge badge-warning">Media</span>
         <?php else: ?>
-            <span class="badge badge-success">User</span>
+            <span class="badge badge-success">Người dùng</span>
         <?php endif; ?>
         </td>
         <td><?= $this->e((string) $item['label']) ?></td>
@@ -155,7 +148,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
     </tr>
     <?php endforeach; ?>
     <?php if (empty($activity)): ?>
-    <tr><td colspan="3" class="empty-state">Chua co hoat dong nao.</td></tr>
+    <tr><td colspan="3" class="empty-state">Chưa có hoạt động nào.</td></tr>
     <?php endif; ?>
     </tbody>
     </table>
@@ -165,7 +158,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
 <div class="card" style="margin-top: var(--space-5);">
     <form method="POST" action="/admin/logout">
         <input type="hidden" name="_token" value="<?= $this->e($csrf_token ?? '') ?>">
-        <button type="submit" class="btn btn-secondary">Dang xuat</button>
+        <button type="submit" class="btn btn-secondary"><?php $this->include('admin.partials.icon', ['name' => 'logout']); ?> Đăng xuất</button>
     </form>
 </div>
 <?php $this->endSection(); ?>

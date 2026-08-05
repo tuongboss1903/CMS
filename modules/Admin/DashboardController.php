@@ -180,11 +180,41 @@ final class DashboardController
      *
      * @return list<array{label: string, value: string, ok: bool}>
      */
+    /** @return list<array{label: string, value: string, ok: bool}> */
     private function fetchSystemHealth(): array
     {
-        return [
-            ['label' => 'Ket noi Database', 'value' => 'OK', 'ok' => true],
+        $items = [
+            ['label' => 'Kết nối Database', 'value' => 'OK', 'ok' => true],
             ['label' => 'PHP Runtime', 'value' => \PHP_VERSION, 'ok' => true],
         ];
+
+        /**
+         * Bang "plans" (CMS-065) co the chua ton tai o fixture test cu chua migrate them - cung
+         * nguyen tac try/catch fallback nhu fetchAnalyticsSummary()/fetchRecentAuditLogs() - khong
+         * hien thi muc nay thay vi lam vo Dashboard neu query loi.
+         */
+        try {
+            $row = $this->database->selectOne(
+                'SELECT sites.storage_used_bytes, plans.max_storage_mb
+                    FROM sites LEFT JOIN plans ON plans.id = sites.plan_id
+                    WHERE sites.id = ?',
+                [$this->tenantManager->id()]
+            );
+
+            if ($row !== null) {
+                $usedMb = (int) \round(((int) $row['storage_used_bytes']) / 1024 / 1024, 1);
+                $limitMb = $row['max_storage_mb'] !== null ? (int) $row['max_storage_mb'] : null;
+
+                $items[] = [
+                    'label' => 'Dung lượng lưu trữ',
+                    'value' => $limitMb !== null ? "{$usedMb} MB / {$limitMb} MB" : "{$usedMb} MB (không giới hạn)",
+                    'ok' => $limitMb === null || $usedMb < $limitMb,
+                ];
+            }
+        } catch (\Throwable) {
+            // Silent-fail co chu dich - xem docblock o tren.
+        }
+
+        return $items;
     }
 }
