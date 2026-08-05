@@ -5,11 +5,11 @@
  */
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head><meta charset="UTF-8"></head>
 <body style="font-family: Arial, sans-serif; color:#1a1a1a; max-width:600px; margin:0 auto;">
-<h2>Binh luan cua ban khong duoc duyet</h2>
-<p>Xin chao <?= $this->e((string) ($guest_name ?? '')) ?>,</p>
-<p>Binh luan cua ban tren trang "<?= $this->e((string) ($page_title ?? '')) ?>" khong duoc duyet de hien thi cong khai.</p>
+<h2>Bình luận của bạn không được duyệt</h2>
+<p>Xin chào <?= $this->e((string) ($guest_name ?? '')) ?>,</p>
+<p>Bình luận của bạn trên trang "<?= $this->e((string) ($page_title ?? '')) ?>" không được duyệt để hiển thị công khai.</p>
 </body>
 </html>

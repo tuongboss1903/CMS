@@ -9,14 +9,14 @@
  */
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head><meta charset="UTF-8"></head>
 <body style="font-family: Arial, sans-serif; color:#1a1a1a; max-width:600px; margin:0 auto;">
-<h2>Co binh luan moi cho duyet</h2>
-<p><strong><?= $this->e((string) ($guest_name ?? '')) ?></strong> vua binh luan tren trang "<?= $this->e((string) ($page_title ?? '')) ?>":</p>
+<h2>Có bình luận mới chờ duyệt</h2>
+<p><strong><?= $this->e((string) ($guest_name ?? '')) ?></strong> vừa bình luận trên trang "<?= $this->e((string) ($page_title ?? '')) ?>":</p>
 <blockquote style="border-left:3px solid #ccc; padding-left:12px; color:#555; margin-left:0;">
 <?= \nl2br($this->e((string) ($body ?? ''))) ?>
 </blockquote>
-<p><a href="<?= $this->e((string) ($admin_url ?? '/admin/comments')) ?>" style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;display:inline-block;">Xem va duyet</a></p>
+<p><a href="<?= $this->e((string) ($admin_url ?? '/admin/comments')) ?>" style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;display:inline-block;">Xem và duyệt</a></p>
 </body>
 </html>

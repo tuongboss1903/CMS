@@ -128,7 +128,7 @@ final class OrderNotificationHookTest extends TestCase
         $sent = $this->mailerDriver->sent();
         self::assertCount(1, $sent);
         self::assertSame('a@example.com', $sent[0]['to']);
-        self::assertStringContainsString('Thanh toan thanh cong', $sent[0]['subject']);
+        self::assertStringContainsString('Thanh toán thành công', $sent[0]['subject']);
     }
 
     public function testOrderShippedSendsEmailToGuest(): void
@@ -138,6 +138,6 @@ final class OrderNotificationHookTest extends TestCase
         $sent = $this->mailerDriver->sent();
         self::assertCount(1, $sent);
         self::assertSame('a@example.com', $sent[0]['to']);
-        self::assertStringContainsString('van chuyen', $sent[0]['subject']);
+        self::assertStringContainsString('vận chuyển', $sent[0]['subject']);
     }
 }

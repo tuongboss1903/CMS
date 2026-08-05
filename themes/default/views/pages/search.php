@@ -2,15 +2,15 @@
 <?php $this->section('content'); ?>
 <div class="page-content">
 <div class="container">
-<h1>Ket qua tim kiem</h1>
+<h1>Kết quả tìm kiếm</h1>
 <?php if ($query !== ''): ?>
-<p>Ket qua cho: "<?= $this->e($query) ?>"</p>
+<p>Kết quả cho: "<?= $this->e($query) ?>"</p>
 <?php endif; ?>
 
 <?php if ($query === ''): ?>
-<p>Nhap tu khoa de tim kiem.</p>
+<p>Nhập từ khoá để tìm kiếm.</p>
 <?php elseif (empty($results)): ?>
-<p>Khong tim thay ket qua nao phu hop.</p>
+<p>Không tìm thấy kết quả nào phù hợp.</p>
 <?php else: ?>
 <ul>
 <?php foreach ($results as $result): ?>

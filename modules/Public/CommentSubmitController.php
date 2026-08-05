@@ -65,7 +65,7 @@ final class CommentSubmitController
         $rateLimitKey = 'comment:' . $tenantId;
 
         if ($this->rateLimiter->tooManyAttempts($rateLimitKey, self::MAX_ATTEMPTS)) {
-            $this->session->flash('comment_errors', ['rate_limit' => ['Ban gui qua nhieu binh luan, vui long thu lai sau.']]);
+            $this->session->flash('comment_errors', ['rate_limit' => ['Bạn gửi quá nhiều bình luận, vui lòng thử lại sau.']]);
 
             return Response::redirect('/' . $slug);
         }
@@ -106,9 +106,9 @@ final class CommentSubmitController
             'comment.new',
             'comment',
             $commentId,
-            'Binh luan moi tu ' . (string) $data['guest_name'],
+            'Bình luận mới từ ' . (string) $data['guest_name'],
             (string) $data['body'],
-            'Binh luan moi can duyet',
+            'Bình luận mới cần duyệt',
             'emails.comment_new',
             [
                 'guest_name' => $data['guest_name'],
@@ -118,7 +118,7 @@ final class CommentSubmitController
             ]
         );
 
-        $this->session->flash('comment_success', 'Binh luan cua ban da duoc gui, dang cho Quan tri vien duyet.');
+        $this->session->flash('comment_success', 'Bình luận của bạn đã được gửi, đang chờ Quản trị viên duyệt.');
 
         return Response::redirect('/' . $slug);
     }

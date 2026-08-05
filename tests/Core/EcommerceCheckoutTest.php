@@ -204,7 +204,7 @@ final class EcommerceCheckoutTest extends TestCase
         self::assertSame(302, $response->getStatusCode());
 
         $cartResponse = $this->router->dispatch(new Request('GET', '/cart', 'example.com'));
-        self::assertStringContainsString('trong', $cartResponse->getBody());
+        self::assertStringContainsString('trống', $cartResponse->getBody());
     }
 
     public function testCheckoutWithEmptyCartRedirectsToCart(): void
@@ -241,7 +241,7 @@ final class EcommerceCheckoutTest extends TestCase
         ));
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('thanh cong', $response->getBody());
+        self::assertStringContainsString('thành công', $response->getBody());
 
         $order = $this->database->selectOne('SELECT * FROM orders WHERE tenant_id = ?', [$siteId]);
         self::assertNotNull($order);
@@ -256,6 +256,6 @@ final class EcommerceCheckoutTest extends TestCase
         self::assertSame(8, (int) $product['stock_quantity']);
 
         $cartResponse = $this->router->dispatch(new Request('GET', '/cart', 'example.com'));
-        self::assertStringContainsString('trong', $cartResponse->getBody());
+        self::assertStringContainsString('trống', $cartResponse->getBody());
     }
 }

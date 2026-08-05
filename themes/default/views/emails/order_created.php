@@ -6,12 +6,12 @@
  */
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head><meta charset="UTF-8"></head>
 <body style="font-family: Arial, sans-serif; color:#1a1a1a; max-width:600px; margin:0 auto;">
-<h2>Xac nhan don hang <?= $this->e((string) ($order['order_number'] ?? '')) ?></h2>
-<p>Cam on <strong><?= $this->e((string) ($order['guest_name'] ?? '')) ?></strong> da dat hang.</p>
-<p>Tong tien: <strong><?= $this->e((string) ($order['total_amount'] ?? '')) ?></strong></p>
-<p>Chung toi se lien he som de xac nhan va giao hang.</p>
+<h2>Xác nhận đơn hàng <?= $this->e((string) ($order['order_number'] ?? '')) ?></h2>
+<p>Cảm ơn <strong><?= $this->e((string) ($order['guest_name'] ?? '')) ?></strong> đã đặt hàng.</p>
+<p>Tổng tiền: <strong><?= $this->e((string) ($order['total_amount'] ?? '')) ?></strong></p>
+<p>Chúng tôi sẽ liên hệ sớm để xác nhận và giao hàng.</p>
 </body>
 </html>

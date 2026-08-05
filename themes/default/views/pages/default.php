@@ -4,7 +4,7 @@
 <div class="container">
 <?php if (!empty($breadcrumb) && \count($breadcrumb) > 1): ?>
 <nav class="breadcrumb" aria-label="breadcrumb">
-    <a href="/">Trang chu</a>
+    <a href="/">Trang chủ</a>
 <?php foreach ($breadcrumb as $index => $crumb): ?>
     <span class="breadcrumb-sep">/</span>
 <?php if ($index === \count($breadcrumb) - 1): ?>
@@ -120,7 +120,7 @@ $renderBlock = function (array $block) {
 
 <?php if (isset($comment_csrf_token) || isset($comments)): ?>
 <div class="comments-section" style="margin-top: var(--space-6);">
-    <h2>Binh luan (<?= $this->e((string) \count($comments ?? [])) ?>)</h2>
+    <h2>Bình luận (<?= $this->e((string) \count($comments ?? [])) ?>)</h2>
 
     <?php if (!empty($comment_success)): ?>
     <div class="alert alert-success"><?= $this->e((string) $comment_success) ?></div>
@@ -146,25 +146,25 @@ $renderBlock = function (array $block) {
     </div>
     <?php endforeach; ?>
     <?php if (empty($comments)): ?>
-    <p class="empty-state">Chua co binh luan nao.</p>
+    <p class="empty-state">Chưa có bình luận nào.</p>
     <?php endif; ?>
 
     <?php if (isset($comment_csrf_token)): ?>
     <form method="POST" action="/<?= $this->e((string) ($page_slug ?? '')) ?>/comments" class="card" style="margin-top: var(--space-4);">
         <input type="hidden" name="_token" value="<?= $this->e((string) $comment_csrf_token) ?>">
         <div class="field">
-            <label for="guest_name">Ten cua ban</label>
+            <label for="guest_name">Tên của bạn</label>
             <input type="text" id="guest_name" name="guest_name" required>
         </div>
         <div class="field">
-            <label for="guest_email">Email (khong hien thi cong khai)</label>
+            <label for="guest_email">Email (không hiển thị công khai)</label>
             <input type="email" id="guest_email" name="guest_email" required>
         </div>
         <div class="field">
-            <label for="body">Binh luan</label>
+            <label for="body">Bình luận</label>
             <textarea id="body" name="body" rows="4" required></textarea>
         </div>
-        <button type="submit" class="btn btn-primary">Gui binh luan</button>
+        <button type="submit" class="btn btn-primary">Gửi bình luận</button>
     </form>
     <?php endif; ?>
 </div>

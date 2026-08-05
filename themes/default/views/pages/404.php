@@ -3,9 +3,9 @@
 <div class="page-content">
 <div class="container" style="text-align: center;">
 <h1 style="font-size: 64px; color: var(--color-accent-text); margin-bottom: var(--space-2);">404</h1>
-<h2>Khong tim thay trang</h2>
-<p>Trang ban tim khong ton tai hoac da bi go bo.</p>
-<a href="/" class="btn btn-primary">Ve trang chu</a>
+<h2>Không tìm thấy trang</h2>
+<p>Trang bạn tìm không tồn tại hoặc đã bị gỡ bỏ.</p>
+<a href="/" class="btn btn-primary">Về trang chủ</a>
 </div>
 </div>
 <?php $this->endSection(); ?>

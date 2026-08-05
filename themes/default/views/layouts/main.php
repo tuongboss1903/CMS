@@ -36,7 +36,7 @@
     <div class="container">
         <a href="/" class="site-logo"><?php if (!empty($site_settings['site_name'])): ?><?= $this->e($site_settings['site_name']) ?><?php else: ?>CMS<span class="dot">.</span>Demo<?php endif; ?></a>
 <?php if (!empty($menu)): ?>
-        <button type="button" class="nav-toggle" data-nav-toggle aria-label="Toggle menu">&#9776;</button>
+        <button type="button" class="nav-toggle" data-nav-toggle aria-label="Đóng/Mở menu">&#9776;</button>
         <nav class="site-nav">
             <ul>
             <?php foreach ($menu as $item): ?>
@@ -60,7 +60,7 @@
 </header>
 <?= $this->raw($this->yield('content')) ?>
 <footer class="site-footer">
-    <div class="container">&copy; <?= date('Y') ?> CMS Demo. Xay dung tren CMS da website tu code.</div>
+    <div class="container">&copy; <?= date('Y') ?> CMS Demo. Xây dựng trên CMS đa website tự viết code.</div>
 </footer>
 <script src="/assets/js/public.js"></script>
 </body>

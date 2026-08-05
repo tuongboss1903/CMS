@@ -241,7 +241,7 @@ final class PublicCommentRenderingTest extends TestCase
         $response = $this->router->dispatch(new Request('GET', '/bai-viet-6', 'example.com'));
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('Chua co binh luan nao.', $response->getBody());
+        self::assertStringContainsString('Chưa có bình luận nào.', $response->getBody());
     }
 
     public function testHomepageRendersWithoutCommentSectionCrashing(): void

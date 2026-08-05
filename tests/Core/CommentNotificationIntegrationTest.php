@@ -331,7 +331,7 @@ final class CommentNotificationIntegrationTest extends TestCase
         $sent = $this->mailerDriver->sent();
         self::assertCount(1, $sent);
         self::assertSame('an@example.com', $sent[0]['to']);
-        self::assertStringContainsString('duoc duyet', $sent[0]['html']);
+        self::assertStringContainsString('được duyệt', $sent[0]['html']);
     }
 
     public function testRejectingCommentSendsEmailToGuest(): void
@@ -358,7 +358,7 @@ final class CommentNotificationIntegrationTest extends TestCase
         $sent = $this->mailerDriver->sent();
         self::assertCount(1, $sent);
         self::assertSame('an@example.com', $sent[0]['to']);
-        self::assertStringContainsString('khong duoc duyet', $sent[0]['html']);
+        self::assertStringContainsString('không được duyệt', $sent[0]['html']);
     }
 
     public function testGuestEmailIsNotAmongAdminNotificationRecipients(): void

@@ -142,7 +142,7 @@ final class ApplicationPluginActivationIntegrationTest extends TestCase
         $response = $this->router->dispatch(new Request('GET', '/admin/dashboard', 'example.com'));
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringNotContainsString('San pham', $response->getBody());
+        self::assertStringNotContainsString('Sản phẩm', $response->getBody());
         self::assertStringNotContainsString('/admin/orders', $response->getBody());
     }
 
@@ -155,7 +155,7 @@ final class ApplicationPluginActivationIntegrationTest extends TestCase
         $response = $this->router->dispatch(new Request('GET', '/admin/dashboard', 'example.com'));
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('San pham', $response->getBody());
+        self::assertStringContainsString('Sản phẩm', $response->getBody());
         self::assertStringContainsString('/admin/orders', $response->getBody());
     }
 
@@ -168,7 +168,7 @@ final class ApplicationPluginActivationIntegrationTest extends TestCase
         $this->actingAs($siteB);
         $response = $this->router->dispatch(new Request('GET', '/admin/dashboard', 'example.com'));
 
-        self::assertStringNotContainsString('San pham', $response->getBody());
+        self::assertStringNotContainsString('Sản phẩm', $response->getBody());
     }
 
     public function testExistingAdminRouteStillWorksAfterPluginWiring(): void

@@ -2,7 +2,7 @@
 <?php $this->section('content'); ?>
 <div class="page-content">
 <div class="container">
-<h1>San pham</h1>
+<h1>Sản phẩm</h1>
 <?php if (!empty($cart_error)): ?>
 <div class="alert alert-danger"><?= $this->e((string) $cart_error) ?></div>
 <?php endif; ?>
@@ -17,9 +17,9 @@
         <div class="product-card-category"><?= $this->e((string) $product['category']) ?></div>
         <?php endif; ?>
         <a href="/shop/<?= $this->e((string) $product['slug']) ?>" class="product-card-name"><?= $this->e((string) $product['name']) ?></a>
-        <div class="product-card-price"><?= $this->e(\number_format((float) $product['price'], 0, ',', '.')) ?> d</div>
+        <div class="product-card-price"><?= $this->e(\number_format((float) $product['price'], 0, ',', '.')) ?> đ</div>
         <?php if (!$inStock): ?>
-        <span class="badge badge-danger">Het hang</span>
+        <span class="badge badge-danger">Hết hàng</span>
         <?php endif; ?>
     </div>
     <div class="product-card-footer">
@@ -27,13 +27,13 @@
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token ?? '') ?>">
             <input type="hidden" name="product_id" value="<?= $this->e((string) $product['id']) ?>">
             <input type="hidden" name="quantity" value="1">
-            <button type="submit" class="btn btn-primary btn-sm"<?= $inStock ? '' : ' disabled' ?>>Them vao gio</button>
+            <button type="submit" class="btn btn-primary btn-sm"<?= $inStock ? '' : ' disabled' ?>>Thêm vào giỏ</button>
         </form>
     </div>
 </div>
 <?php endforeach; ?>
 <?php if (empty($products)): ?>
-<p class="empty-state">Chua co san pham nao.</p>
+<p class="empty-state">Chưa có sản phẩm nào.</p>
 <?php endif; ?>
 </div>
 </div>

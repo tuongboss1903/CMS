@@ -117,21 +117,21 @@ final class Validator
     private function defaultMessage(string $field, string $rule, array $params): string
     {
         return match ($rule) {
-            'required' => \sprintf('%s la bat buoc.', $field),
-            'string' => \sprintf('%s phai la chuoi ky tu.', $field),
-            'int', 'integer' => \sprintf('%s phai la so nguyen.', $field),
-            'numeric' => \sprintf('%s phai la so.', $field),
-            'boolean' => \sprintf('%s phai la gia tri boolean.', $field),
-            'array' => \sprintf('%s phai la mang.', $field),
-            'email' => \sprintf('%s phai la email hop le.', $field),
-            'min' => \sprintf('%s phai co gia tri toi thieu %s.', $field, $params[0] ?? ''),
-            'max' => \sprintf('%s khong duoc vuot qua %s.', $field, $params[0] ?? ''),
-            'between' => \sprintf('%s phai nam trong khoang %s - %s.', $field, $params[0] ?? '', $params[1] ?? ''),
-            'in' => \sprintf('%s khong nam trong danh sach cho phep.', $field),
-            'regex' => \sprintf('%s khong dung dinh dang.', $field),
-            'date' => \sprintf('%s phai la ngay hop le.', $field),
-            'confirmed' => \sprintf('%s xac nhan khong khop.', $field),
-            default => \sprintf('%s khong hop le.', $field),
+            'required' => \sprintf('%s là bắt buộc.', $field),
+            'string' => \sprintf('%s phải là chuỗi ký tự.', $field),
+            'int', 'integer' => \sprintf('%s phải là số nguyên.', $field),
+            'numeric' => \sprintf('%s phải là số.', $field),
+            'boolean' => \sprintf('%s phải là giá trị boolean.', $field),
+            'array' => \sprintf('%s phải là mảng.', $field),
+            'email' => \sprintf('%s phải là email hợp lệ.', $field),
+            'min' => \sprintf('%s phải có giá trị tối thiểu %s.', $field, $params[0] ?? ''),
+            'max' => \sprintf('%s không được vượt quá %s.', $field, $params[0] ?? ''),
+            'between' => \sprintf('%s phải nằm trong khoảng %s - %s.', $field, $params[0] ?? '', $params[1] ?? ''),
+            'in' => \sprintf('%s không nằm trong danh sách cho phép.', $field),
+            'regex' => \sprintf('%s không đúng định dạng.', $field),
+            'date' => \sprintf('%s phải là ngày hợp lệ.', $field),
+            'confirmed' => \sprintf('%s xác nhận không khớp.', $field),
+            default => \sprintf('%s không hợp lệ.', $field),
         };
     }
 

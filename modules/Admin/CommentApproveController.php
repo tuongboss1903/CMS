@@ -60,7 +60,7 @@ final class CommentApproveController
 
         $this->mailer->send(
             (string) $comment['guest_email'],
-            'Binh luan cua ban da duoc duyet',
+            'Bình luận của bạn đã được duyệt',
             'emails.comment_approved',
             [
                 'guest_name' => $comment['guest_name'],

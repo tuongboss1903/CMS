@@ -3,15 +3,15 @@
 <div class="page-content">
 <div class="container" style="max-width: 480px;">
 <div class="card" style="text-align: center;">
-    <h1>Ket qua thanh toan</h1>
+    <h1>Kết quả thanh toán</h1>
     <?php if ($order !== null): ?>
-    <p>Don hang <strong><?= $this->e((string) $order['order_number']) ?></strong> hien dang o trang thai:</p>
+    <p>Đơn hàng <strong><?= $this->e((string) $order['order_number']) ?></strong> hiện đang ở trạng thái:</p>
     <p><span class="badge badge-neutral"><?= $this->e((string) $order['status']) ?></span></p>
-    <p class="text-muted">Trang thai thanh toan chinh thuc se duoc cap nhat tu dong khi cong thanh toan xac nhan xong - vui long kiem tra lai sau it phut neu chua thay cap nhat.</p>
+    <p class="text-muted">Trạng thái thanh toán chính thức sẽ được cập nhật tự động khi cổng thanh toán xác nhận xong - vui lòng kiểm tra lại sau ít phút nếu chưa thấy cập nhật.</p>
     <?php else: ?>
-    <p>Khong tim thay thong tin don hang <?= $this->e($order_number) ?>.</p>
+    <p>Không tìm thấy thông tin đơn hàng <?= $this->e($order_number) ?>.</p>
     <?php endif; ?>
-    <a href="/shop" class="btn btn-secondary">Tiep tuc mua sam</a>
+    <a href="/shop" class="btn btn-secondary">Tiếp tục mua sắm</a>
 </div>
 </div>
 </div>

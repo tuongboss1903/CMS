@@ -40,8 +40,8 @@ $hook->filter('admin.menu.items', static function (array $items, ?TenantManager 
 
     return [
         ...$items,
-        ['label' => 'San pham', 'url' => '/admin/products'],
-        ['label' => 'Don hang', 'url' => '/admin/orders'],
+        ['label' => 'Sản phẩm', 'url' => '/admin/products'],
+        ['label' => 'Đơn hàng', 'url' => '/admin/orders'],
     ];
 });
 
@@ -59,7 +59,7 @@ $hook->action('order.created', static function (array $order, ?Mailer $mailer = 
     if ($mailer !== null) {
         $mailer->send(
             (string) $order['guest_email'],
-            'Xac nhan don hang ' . $order['order_number'],
+            'Xác nhận đơn hàng ' . $order['order_number'],
             'emails.order_created',
             ['order' => $order]
         );
@@ -70,9 +70,9 @@ $hook->action('order.created', static function (array $order, ?Mailer $mailer = 
             'order.created',
             'order',
             (int) $order['id'],
-            'Don hang moi',
-            'Don hang ' . $order['order_number'] . ' vua duoc tao.',
-            'Don hang moi can xu ly',
+            'Đơn hàng mới',
+            'Đơn hàng ' . $order['order_number'] . ' vừa được tạo.',
+            'Đơn hàng mới cần xử lý',
             'emails.order_created',
             ['order' => $order]
         );
@@ -86,7 +86,7 @@ $hook->action('order.payment_completed', static function (array $order, ?Mailer 
 
     $mailer->send(
         (string) $order['guest_email'],
-        'Thanh toan thanh cong - Don hang ' . $order['order_number'],
+        'Thanh toán thành công - Đơn hàng ' . $order['order_number'],
         'emails.order_payment_completed',
         ['order' => $order]
     );
@@ -99,7 +99,7 @@ $hook->action('order.shipped', static function (array $order, ?Mailer $mailer = 
 
     $mailer->send(
         (string) $order['guest_email'],
-        'Don hang ' . $order['order_number'] . ' dang duoc van chuyen',
+        'Đơn hàng ' . $order['order_number'] . ' đang được vận chuyển',
         'emails.order_shipped',
         ['order' => $order]
     );

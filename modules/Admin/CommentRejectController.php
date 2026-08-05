@@ -60,7 +60,7 @@ final class CommentRejectController
 
         $this->mailer->send(
             (string) $comment['guest_email'],
-            'Binh luan cua ban khong duoc duyet',
+            'Bình luận của bạn không được duyệt',
             'emails.comment_rejected',
             [
                 'guest_name' => $comment['guest_name'],
