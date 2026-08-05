@@ -105,36 +105,36 @@ $flatten = function (array $nodes, int $depth = 0) use (&$flatten): array {
                 </div>
 
                 <div class="modal-overlay" id="<?= $modalId ?>">
-                    <div class="modal">
-                        <h2>Sửa Menu Item</h2>
+                    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="<?= $modalId ?>-title" tabindex="-1">
+                        <h2 id="<?= $modalId ?>-title">Sửa Menu Item</h2>
                         <form method="POST" action="/admin/menu-items/<?= $itemId ?>">
                             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
                             <div class="field">
-                                <label>Nhãn</label>
-                                <input type="text" name="label" value="<?= $this->e($node['label']) ?>">
+                                <label for="<?= $modalId ?>-label">Nhãn</label>
+                                <input type="text" id="<?= $modalId ?>-label" name="label" value="<?= $this->e($node['label']) ?>">
                             </div>
                             <div class="field">
-                                <label>Loại</label>
-                                <select name="type" onchange="document.getElementById('<?= $pageFieldId ?>').style.display = this.value === 'page' ? 'block' : 'none'; document.getElementById('<?= $urlFieldId ?>').style.display = this.value === 'custom' ? 'block' : 'none';">
+                                <label for="<?= $modalId ?>-type">Loại</label>
+                                <select id="<?= $modalId ?>-type" name="type" onchange="document.getElementById('<?= $pageFieldId ?>').style.display = this.value === 'page' ? 'block' : 'none'; document.getElementById('<?= $urlFieldId ?>').style.display = this.value === 'custom' ? 'block' : 'none';">
                                     <option value="page" <?= $node['type'] === 'page' ? 'selected' : '' ?>>Trang nội dung</option>
                                     <option value="custom" <?= $node['type'] === 'custom' ? 'selected' : '' ?>>URL tuỳ chỉnh</option>
                                 </select>
                             </div>
                             <div class="field" id="<?= $pageFieldId ?>" style="<?= $node['type'] === 'page' ? '' : 'display:none;' ?>">
-                                <label>Trang</label>
-                                <select name="reference_id">
+                                <label for="<?= $modalId ?>-reference">Trang</label>
+                                <select id="<?= $modalId ?>-reference" name="reference_id">
                                     <?php foreach ($pages as $page): ?>
                                     <option value="<?= $this->e((string) $page['id']) ?>" <?= (string) $page['id'] === (string) ($node['reference_id'] ?? '') ? 'selected' : '' ?>><?= $this->e($page['title']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="field" id="<?= $urlFieldId ?>" style="<?= $node['type'] === 'custom' ? '' : 'display:none;' ?>">
-                                <label>URL</label>
-                                <input type="text" name="url" value="<?= $this->e((string) ($node['url'] ?? '')) ?>">
+                                <label for="<?= $modalId ?>-url">URL</label>
+                                <input type="text" id="<?= $modalId ?>-url" name="url" value="<?= $this->e((string) ($node['url'] ?? '')) ?>">
                             </div>
                             <div class="field">
-                                <label>Mở tab</label>
-                                <select name="target">
+                                <label for="<?= $modalId ?>-target">Mở tab</label>
+                                <select id="<?= $modalId ?>-target" name="target">
                                     <option value="_self" <?= ($node['target'] ?? '_self') === '_self' ? 'selected' : '' ?>>Cùng tab</option>
                                     <option value="_blank" <?= ($node['target'] ?? '_self') === '_blank' ? 'selected' : '' ?>>Tab mới</option>
                                 </select>

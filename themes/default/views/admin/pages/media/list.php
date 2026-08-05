@@ -38,7 +38,7 @@
 <?php foreach ($media as $item): ?>
 <div class="media-card">
     <?php if (\str_starts_with((string) $item['mime_type'], 'image/')): ?>
-    <img src="/admin/media/<?= $this->e((string) $item['id']) ?>/thumbnail" alt="<?= $this->e((string) ($item['alt_text'] ?? '')) ?>" loading="lazy">
+    <img src="/admin/media/<?= $this->e((string) $item['id']) ?>/thumbnail" alt="<?= $this->e((string) (($item['alt_text'] ?? '') !== '' ? $item['alt_text'] : $item['file_name'])) ?>" loading="lazy">
     <?php else: ?>
     <div class="media-card-icon">FILE</div>
     <?php endif; ?>
@@ -49,20 +49,20 @@
         <form method="POST" action="/admin/media/<?= $this->e((string) $item['id']) ?>" class="media-edit-form">
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
             <div class="field">
-                <label>Văn bản thay thế (Alt)</label>
-                <input type="text" name="alt_text" value="<?= $this->e((string) ($item['alt_text'] ?? '')) ?>">
+                <label for="media-<?= $this->e((string) $item['id']) ?>-alt">Văn bản thay thế (Alt)</label>
+                <input type="text" id="media-<?= $this->e((string) $item['id']) ?>-alt" name="alt_text" value="<?= $this->e((string) ($item['alt_text'] ?? '')) ?>">
             </div>
             <div class="field">
-                <label>Tiêu đề</label>
-                <input type="text" name="title" value="<?= $this->e((string) ($item['title'] ?? '')) ?>">
+                <label for="media-<?= $this->e((string) $item['id']) ?>-title">Tiêu đề</label>
+                <input type="text" id="media-<?= $this->e((string) $item['id']) ?>-title" name="title" value="<?= $this->e((string) ($item['title'] ?? '')) ?>">
             </div>
             <div class="field">
-                <label>Chú thích</label>
-                <input type="text" name="caption" value="<?= $this->e((string) ($item['caption'] ?? '')) ?>">
+                <label for="media-<?= $this->e((string) $item['id']) ?>-caption">Chú thích</label>
+                <input type="text" id="media-<?= $this->e((string) $item['id']) ?>-caption" name="caption" value="<?= $this->e((string) ($item['caption'] ?? '')) ?>">
             </div>
             <div class="field">
-                <label>Thư mục</label>
-                <select name="folder_id">
+                <label for="media-<?= $this->e((string) $item['id']) ?>-folder">Thư mục</label>
+                <select id="media-<?= $this->e((string) $item['id']) ?>-folder" name="folder_id">
                     <option value="">-- Chưa phân loại --</option>
                     <?php foreach ($folders as $folder): ?>
                     <option value="<?= $this->e((string) $folder['id']) ?>" <?= (int) ($item['folder_id'] ?? 0) === (int) $folder['id'] ? 'selected' : '' ?>><?= $this->e($folder['name']) ?></option>
@@ -116,8 +116,8 @@
 </div>
 
 <div class="modal-overlay" id="folder-modal">
-    <div class="modal">
-        <h2>Thư mục Media</h2>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="folder-modal-title" tabindex="-1">
+        <h2 id="folder-modal-title">Thư mục Media</h2>
         <?php if (empty($folders)): ?>
         <p class="text-muted" style="font-size:13px;">Chưa có thư mục nào.</p>
         <?php else: ?>
@@ -148,13 +148,13 @@
 </div>
 
 <div class="modal-overlay" id="upload-modal">
-    <div class="modal">
-        <h2>Tải file lên</h2>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title" tabindex="-1">
+        <h2 id="upload-modal-title">Tải file lên</h2>
         <form method="POST" action="/admin/media" enctype="multipart/form-data" id="upload-form">
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
             <div class="field media-dropzone" id="media-dropzone">
+                <label for="media-file-input" class="text-muted mb-0" style="display:block;">Kéo thả file vào đây hoặc bấm để chọn file (JPEG/PNG/GIF/PDF, tối đa 5MB)</label>
                 <input type="file" name="file" id="media-file-input">
-                <p class="text-muted mb-0">Kéo thả file vào đây hoặc bấm để chọn file (JPEG/PNG/GIF/PDF, tối đa 5MB)</p>
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="btn btn-primary">Tải lên</button>

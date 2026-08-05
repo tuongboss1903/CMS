@@ -10,12 +10,12 @@
  */
 ?>
 <div class="modal-overlay" id="confirm-modal">
-    <div class="modal">
-        <h2>Xac nhan</h2>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" tabindex="-1">
+        <h2 id="confirm-modal-title">Xác nhận</h2>
         <p data-confirm-message class="text-muted mb-0"></p>
         <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" data-modal-close="confirm-modal">Huy</button>
-            <button type="button" class="btn btn-danger" data-confirm-accept>Xac nhan</button>
+            <button type="button" class="btn btn-secondary" data-modal-close="confirm-modal">Huỷ</button>
+            <button type="button" class="btn btn-danger" data-confirm-accept>Xác nhận</button>
         </div>
     </div>
 </div>

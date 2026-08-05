@@ -12,7 +12,9 @@
   /* Colors - Text */
   --color-text-primary: #E5E9F0;
   --color-text-secondary: #8B94A7;
-  --color-text-muted: #6B7489;
+  /* #818BA0 (khong phai #6B7489 goc) - dong bo voi resources/shared/tokens.css, dam bao ty le
+     tuong phan >=4.5:1 (WCAG 2.1 AA) tren ca --color-bg lan --color-bg-card. */
+  --color-text-muted: #818BA0;
 
   /* Colors - Accent (Emerald / Neon Tech Green) */
   --color-accent: #10B981;
@@ -87,7 +89,9 @@
 
   --color-text-primary: #1A2333;
   --color-text-secondary: #566072;
-  --color-text-muted: #6E7789;
+  /* #616A7B (khong phai #6E7789 goc) - dong bo voi resources/shared/tokens.css, tang bien an toan
+     WCAG AA tren nen trang (~5.45:1 thay vi sat nguong 4.5:1). */
+  --color-text-muted: #616A7B;
 
   --color-accent: #0E9F6E;
   --color-accent-hover: #0C8A5F;

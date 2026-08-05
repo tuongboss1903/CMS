@@ -9,13 +9,14 @@
 <?= $this->raw($this->yield('head_extra')) ?>
 </head>
 <body class="admin-shell">
+<a href="#main-content" class="skip-link">Bỏ qua, đến nội dung chính</a>
 <aside class="admin-sidebar">
     <div class="brand">CMS<span class="dot">.</span>Admin</div>
     <?php $this->include('admin.partials.sidebar'); ?>
 </aside>
 <div class="admin-main">
     <?php $this->include('admin.partials.topbar', ['title' => $title ?? 'Admin']); ?>
-    <main class="admin-content">
+    <main class="admin-content" id="main-content" tabindex="-1">
 <?php $this->include('admin.partials.flash_messages', [
     'flash_success' => $flash_success ?? null,
     'flash_warning' => $flash_warning ?? null,

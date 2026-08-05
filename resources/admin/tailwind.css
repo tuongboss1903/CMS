@@ -432,6 +432,14 @@
 
   /* ===== Admin Layout (sidebar/topbar/content) ===== */
   body.admin-shell { display: flex; min-height: 100vh; margin: 0; }
+  .skip-link {
+    position: absolute; top: -100%; left: var(--space-3); z-index: 200;
+    background: var(--color-accent); color: #04160f; font-weight: 600;
+    padding: var(--space-2) var(--space-4); border-radius: var(--radius-md);
+    transition: top var(--transition-fast);
+  }
+  .skip-link:focus { top: var(--space-3); }
+  .admin-content:focus { outline: none; }
 
   .admin-sidebar {
     width: var(--sidebar-width);

@@ -103,6 +103,101 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Accessibility (WCAG 2.1 SC 2.1.2/4.1.2): moi modal (.modal-overlay.is-open) phai - dua focus
+    // vao ben trong khi mo, tra focus ve dung phan tu da kich hoat modal khi dong, dong duoc bang
+    // phim Escape, va bam ra vung nen (backdrop) ngoai .modal cung dong duoc - khong chi dong qua
+    // nut [data-modal-close] nhu truoc. Dung chung cho ca #confirm-modal lan moi modal [data-modal-open].
+    var lastFocusedBeforeModal = null;
+
+    function focusableElementsIn(container) {
+        return Array.prototype.slice.call(container.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ));
+    }
+
+    function openModal(modal, trigger) {
+        if (!modal) {
+            return;
+        }
+
+        lastFocusedBeforeModal = trigger || document.activeElement;
+        modal.classList.add('is-open');
+
+        var dialog = modal.querySelector('.modal');
+
+        window.setTimeout(function () {
+            if (dialog && typeof dialog.focus === 'function') {
+                dialog.focus();
+            }
+        }, 0);
+    }
+
+    function closeModal(modal) {
+        if (!modal) {
+            return;
+        }
+
+        modal.classList.remove('is-open');
+
+        if (lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === 'function') {
+            lastFocusedBeforeModal.focus();
+        }
+
+        lastFocusedBeforeModal = null;
+    }
+
+    function topmostOpenModal() {
+        var openModals = document.querySelectorAll('.modal-overlay.is-open');
+
+        return openModals.length > 0 ? openModals[openModals.length - 1] : null;
+    }
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape' && event.key !== 'Tab') {
+            return;
+        }
+
+        var modal = topmostOpenModal();
+
+        if (!modal) {
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            closeModal(modal);
+
+            return;
+        }
+
+        // Tab: bay focus ben trong modal (focus trap) - Shift+Tab tu phan tu dau quay ve phan tu
+        // cuoi va nguoc lai, tranh Tab thoat ra ngoai noi dung trang phia sau backdrop.
+        var dialog = modal.querySelector('.modal');
+        var focusable = dialog ? focusableElementsIn(dialog) : [];
+
+        if (focusable.length === 0) {
+            return;
+        }
+
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
+
+    document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
+        overlay.addEventListener('mousedown', function (event) {
+            if (event.target === overlay) {
+                closeModal(overlay);
+            }
+        });
+    });
+
     // Phase 18 (CMS-055): thay window.confirm() tho bang modal tuy chinh (#confirm-modal, xem
     // admin.partials.confirm_modal). Neu partial chua duoc include o trang nao do (fallback an
     // toan), quay ve window.confirm() nguyen ban - khong bao gio chan submit ma khong hoi gi ca.
@@ -132,13 +227,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 confirmMessageEl.textContent = form.getAttribute('data-confirm') || '';
             }
 
-            confirmModal.classList.add('is-open');
+            openModal(confirmModal, document.activeElement);
         });
     });
 
     if (confirmAcceptBtn) {
         confirmAcceptBtn.addEventListener('click', function () {
-            confirmModal.classList.remove('is-open');
+            closeModal(confirmModal);
 
             if (pendingConfirmForm) {
                 pendingConfirmForm.setAttribute('data-confirmed', 'true');
@@ -150,21 +245,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('[data-modal-open]').forEach(function (trigger) {
         trigger.addEventListener('click', function () {
-            var modal = document.getElementById(trigger.getAttribute('data-modal-open'));
-
-            if (modal) {
-                modal.classList.add('is-open');
-            }
+            openModal(document.getElementById(trigger.getAttribute('data-modal-open')), trigger);
         });
     });
 
     document.querySelectorAll('[data-modal-close]').forEach(function (trigger) {
         trigger.addEventListener('click', function () {
-            var modal = document.getElementById(trigger.getAttribute('data-modal-close'));
-
-            if (modal) {
-                modal.classList.remove('is-open');
-            }
+            closeModal(document.getElementById(trigger.getAttribute('data-modal-close')));
         });
     });
 

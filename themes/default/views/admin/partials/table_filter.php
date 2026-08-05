@@ -22,7 +22,7 @@ if (empty($fields)) {
         <label for="filter-<?= $this->e($field['name']) ?>"><?= $this->e($field['label']) ?></label>
         <?php if (($field['type'] ?? 'text') === 'select'): ?>
         <select id="filter-<?= $this->e($field['name']) ?>" name="<?= $this->e($field['name']) ?>">
-            <option value="">-- Tat ca --</option>
+            <option value="">-- Tất cả --</option>
             <?php foreach (($field['options'] ?? []) as $option): ?>
             <option value="<?= $this->e((string) $option['value']) ?>"<?= (string) $option['value'] === (string) ($field['value'] ?? '') ? ' selected' : '' ?>><?= $this->e((string) $option['label']) ?></option>
             <?php endforeach; ?>
@@ -33,7 +33,7 @@ if (empty($fields)) {
     </div>
 <?php endforeach; ?>
     <div class="field">
-        <button type="submit" class="btn btn-primary">Loc</button>
-        <a href="<?= $this->e((string) ($filter_action ?? '')) ?>" class="btn btn-secondary">Xoa loc</a>
+        <button type="submit" class="btn btn-primary"><?php $this->include('admin.partials.icon', ['name' => 'filter']); ?> Lọc</button>
+        <a href="<?= $this->e((string) ($filter_action ?? '')) ?>" class="btn btn-secondary">Xoá lọc</a>
     </div>
 </form>

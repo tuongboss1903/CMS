@@ -12,7 +12,9 @@
   /* Colors - Text */
   --color-text-primary: #E5E9F0;
   --color-text-secondary: #8B94A7;
-  --color-text-muted: #6B7489;
+  /* #818BA0 (khong phai #6B7489 goc) - dat lai de dam bao ty le tuong phan >=4.5:1 (WCAG 2.1 AA)
+     tren ca --color-bg lan --color-bg-card, gia tri goc chi dat 3.6:1 tren bg-card (fail AA). */
+  --color-text-muted: #818BA0;
 
   /* Colors - Accent (Emerald / Neon Tech Green) */
   --color-accent: #10B981;
@@ -87,7 +89,9 @@
 
   --color-text-primary: #1A2333;
   --color-text-secondary: #566072;
-  --color-text-muted: #6E7789;
+  /* #616A7B (khong phai #6E7789 goc) - #6E7789 chi dat 4.5:1 tren nen trang (sat nguong AA, de
+     lech fail khi anti-aliasing/subpixel ren dering that), doi sang gia tri co bien an toan hon (~5.45:1). */
+  --color-text-muted: #616A7B;
 
   --color-accent: #0E9F6E;
   --color-accent-hover: #0C8A5F;
