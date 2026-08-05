@@ -62,6 +62,6 @@
 <footer class="site-footer">
     <div class="container">&copy; <?= date('Y') ?> CMS Demo. Xay dung tren CMS da website tu code.</div>
 </footer>
-<script src="/assets/js/app.js"></script>
+<script src="/assets/js/public.js"></script>
 </body>
 </html>

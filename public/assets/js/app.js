@@ -84,15 +84,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    var navToggle = document.querySelector('[data-nav-toggle]');
-    var siteNav = document.querySelector('.site-nav');
-
-    if (navToggle && siteNav) {
-        navToggle.addEventListener('click', function () {
-            siteNav.classList.toggle('is-open');
-        });
-    }
-
     document.querySelectorAll('.admin-nav a[href]').forEach(function (link) {
         var href = link.getAttribute('href');
 
@@ -385,31 +376,4 @@ document.addEventListener('DOMContentLoaded', function () {
             draggedId = null;
         });
     }
-
-    // Phase C (Public UX): Quantity stepper o trang chi tiet San pham (shop.show) - chi tang/giam
-    // gia tri input[type=number] da co san, KHONG thay doi ten field/gia tri submit qua form.
-    document.querySelectorAll('.qty-stepper').forEach(function (stepper) {
-        var input = stepper.querySelector('input[type="number"]');
-        var decreaseBtn = stepper.querySelector('[data-qty-decrease]');
-        var increaseBtn = stepper.querySelector('[data-qty-increase]');
-
-        if (!input) {
-            return;
-        }
-
-        if (decreaseBtn) {
-            decreaseBtn.addEventListener('click', function () {
-                var min = parseInt(input.min, 10) || 1;
-                var value = parseInt(input.value, 10) || min;
-                input.value = Math.max(min, value - 1);
-            });
-        }
-
-        if (increaseBtn) {
-            increaseBtn.addEventListener('click', function () {
-                var value = parseInt(input.value, 10) || 1;
-                input.value = value + 1;
-            });
-        }
-    });
 });
