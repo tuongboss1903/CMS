@@ -1,8 +1,8 @@
 <header class="admin-topbar">
-    <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Đóng/Mở menu" data-tooltip="Đóng/Mở menu"><?php $this->include('admin.partials.icon', ['name' => 'menu']); ?></button>
+    <button type="button" class="sidebar-toggle tooltip-bottom" data-sidebar-toggle aria-label="Đóng/Mở menu" data-tooltip="Đóng/Mở menu"><?php $this->include('admin.partials.icon', ['name' => 'menu']); ?></button>
     <div class="page-title"><?= $this->e($title ?? 'Admin') ?></div>
     <div class="user-menu">
-        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Đổi giao diện Sáng/Tối" data-tooltip="Đổi giao diện Sáng/Tối">
+        <button type="button" class="theme-toggle tooltip-bottom" data-theme-toggle aria-label="Đổi giao diện Sáng/Tối" data-tooltip="Đổi giao diện Sáng/Tối">
             <span class="theme-icon-dark"><?php $this->include('admin.partials.icon', ['name' => 'moon']); ?></span>
             <span class="theme-icon-light"><?php $this->include('admin.partials.icon', ['name' => 'sun']); ?></span>
         </button>

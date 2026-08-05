@@ -318,7 +318,10 @@
      tich khoi vung nhin thay khi cuon form dai. */
   .toast-stack {
     position: fixed;
-    top: var(--space-5);
+    /* top: var(--topbar-height) + khoang cach, KHONG phai var(--space-5) don thuan - phat hien
+       qua kiem tra truc quan that: .admin-topbar cung sticky/fixed tai top:0, toast dat thang
+       o top:24px de tren no, che mat theme-toggle/ten user/avatar trong topbar. */
+    top: calc(var(--topbar-height) + var(--space-4));
     right: var(--space-5);
     z-index: 150;
     display: flex;
@@ -376,6 +379,16 @@
     z-index: 50;
   }
   [data-tooltip]:hover::after, [data-tooltip]:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* .tooltip-bottom - bien the hien BEN DUOI thay vi ben tren (mac dinh). Bat buoc cho nut nam
+     sat mep tren viewport (vd sidebar-toggle/theme-toggle trong .admin-topbar) - phat hien qua
+     kiem tra truc quan that: tooltip mac dinh (bottom: calc(100% + 6px), cao ~29px) bi trinh
+     duyet cat mat hoan toan vi khong du khong gian phia tren khi nut cach dinh man hinh <30px. */
+  [data-tooltip].tooltip-bottom::after {
+    bottom: auto;
+    top: calc(100% + 6px);
+    transform: translateX(-50%) translateY(-4px);
+  }
+  [data-tooltip].tooltip-bottom:hover::after, [data-tooltip].tooltip-bottom:focus-visible::after { transform: translateX(-50%) translateY(0); }
 
   /* ===== Table ===== */
   .table-wrap { overflow-x: auto; overflow-y: auto; max-height: 70vh; border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
