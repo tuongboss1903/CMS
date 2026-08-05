@@ -45,6 +45,25 @@ a, button, input, select, textarea, [tabindex] {
 
 ::selection { background: var(--color-accent-soft); color: var(--color-accent-text); }
 
+// Bo qua Header/Menu dieu huong khi dung ban phim (WCAG 2.4.1 Bypass Blocks) - an bang cach dua
+// ra ngoai man hinh, chi hien khi nhan Tab toi (:focus). #main-content dat o <main> trong
+// layouts/main.php.
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-3);
+  z-index: 200;
+  background: var(--color-accent);
+  color: #04160f;
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  transition: top var(--transition-fast);
+
+  &:focus { top: var(--space-3); }
+}
+main:focus { outline: none; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;

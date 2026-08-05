@@ -32,6 +32,7 @@
     <link rel="stylesheet" href="/assets/css/public.css">
 </head>
 <body class="site-public">
+<a href="#main-content" class="skip-link">Bỏ qua, đến nội dung chính</a>
 <header class="site-header">
     <div class="container">
         <a href="/" class="site-logo"><?php if (!empty($site_settings['site_name'])): ?><?= $this->e($site_settings['site_name']) ?><?php else: ?>CMS<span class="dot">.</span>Demo<?php endif; ?></a>
@@ -58,7 +59,9 @@
 <?php endif; ?>
     </div>
 </header>
+<main id="main-content" tabindex="-1">
 <?= $this->raw($this->yield('content')) ?>
+</main>
 <footer class="site-footer">
     <div class="container">&copy; <?= date('Y') ?> CMS Demo. Xây dựng trên CMS đa website tự viết code.</div>
 </footer>

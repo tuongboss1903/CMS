@@ -68,7 +68,12 @@
 
     li { padding: 2px 0; }
   }
-  li:hover > ul { display: block; }
+  // li:hover-only truoc day khong the dieu huong bang ban phim (Tab) - .site-nav > li > ul
+  // "display:none" mac dinh khien trinh duyet BO QUA hoan toan link con trong tab order, ke ca
+  // khi da Tab toi link cha. Them :focus-within (kich hoat khi bat ky con chau nao dang focus,
+  // bao gom chinh link cha) de Tab van mo duoc dropdown, dung WCAG 2.1.1 (Keyboard).
+  li:hover > ul,
+  li:focus-within > ul { display: block; }
 
   @include mixins.respond(mobile) {
     position: fixed;
