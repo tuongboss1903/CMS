@@ -111,7 +111,7 @@ final class EcommerceOrderManagementTest extends TestCase
         $this->database->statement("CREATE TABLE products (
             id INTEGER PRIMARY KEY AUTOINCREMENT, tenant_id BIGINT NOT NULL, name VARCHAR(255) NOT NULL,
             slug VARCHAR(255) NOT NULL, price DECIMAL(12,2) NOT NULL, stock_quantity INT NOT NULL DEFAULT 0,
-            status VARCHAR(20) NOT NULL DEFAULT 'draft', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(20) NOT NULL DEFAULT 'draft', image_id BIGINT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP NULL, deleted_at TIMESTAMP NULL
         )");
         $this->database->statement("CREATE TABLE orders (

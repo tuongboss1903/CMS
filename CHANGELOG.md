@@ -4,6 +4,33 @@
 
 ## [Unreleased]
 
+### CMS-083 — Email/SMTP Settings (Admin) — PHASE 24
+
+- Gap cùng đợt rà soát: cấu hình gửi mail (`config/mail.php`, đọc `getenv()`) chưa có màn hình Admin nào để xem đang dùng driver gì/host nào, cũng không có cách xác minh SMTP hoạt động ngoài gửi thử qua nghiệp vụ thật (đơn hàng/bình luận).
+- **Quyết định kiến trúc quan trọng**: KHÔNG làm SMTP "editable qua DB" như Payment Management (CMS-081) — `MailerDriver` được đăng ký 1 lần trong `Core\Application::boot()` (Container singleton), và Core không được phép phụ thuộc `Modules\Settings\SettingManager` (vi phạm ranh giới kiến trúc "Core không phụ thuộc Modules" ghi trong CLAUDE.md). Vì vậy `GET /admin/email-settings` (`Modules\Admin\EmailSettingListController`, quyền `settings.manage` có sẵn) chỉ HIỂN THỊ cấu hình đang hiệu lực (driver/host/port/mã hoá/from, password che `••••••••`) — sửa thật vẫn qua `.env` theo đúng quy ước hiện có.
+- `POST /admin/email-settings/test` (`EmailSettingTestController`) — gửi 1 email thử qua `Mailer` thật (không mock) tới địa chỉ bất kỳ, xác minh cấu hình `.env` hiện tại hoạt động đúng. Template mới `emails/test_email.php`.
+- Thêm icon `mail` vào `_icon_paths.php` + regenerate `public/assets/icons/sprite.svg` qua `bin/build_icon_sprite.php`, thêm mục Sidebar "Cấu hình Email".
+- 5 test mới (`tests/Core/AdminEmailSettingsTest.php`): permission gate cho cả 2 route, hiển thị đúng driver đang dùng, gửi thử thành công qua `ArrayMailerDriver` (test double), từ chối địa chỉ email không hợp lệ.
+- **Verified** — `vendor/bin/phpstan analyse` 0 lỗi, `vendor/bin/phpunit` 952/952 PASS.
+
+### CMS-082 — Storage Usage (Admin) — PHASE 24
+
+- Gap phát hiện cùng đợt rà soát với CMS-081: `sites.storage_used_bytes`/`plans.max_storage_mb` đã được duy trì và enforce từ CMS-065 (quota check khi upload ở `MediaUploadController`) nhưng Admin (tenant) chưa có màn hình nào xem chi tiết — chỉ có 1 dòng gọn trong "Tình trạng hệ thống" của Dashboard.
+- `GET /admin/storage` (`Modules\Admin\StorageUsageController`, quyền `media.view` có sẵn — không thêm permission mới) — thanh tiến trình Đã dùng/Hạn mức (đọc đúng `sites.storage_used_bytes` làm nguồn sự thật, KHÔNG `SUM(media.size)` lại để tránh trôi dữ liệu so với logic quota check đã có), phân loại dung lượng theo nhóm mime-type (Hình ảnh/Video/Tài liệu/Khác), danh sách 10 file chiếm dung lượng lớn nhất.
+- Thêm mục "Dung lượng lưu trữ" vào Sidebar Admin (icon `server` có sẵn).
+- 6 test mới (`tests/Core/AdminStorageUsageTest.php`): permission gate, không giới hạn khi chưa gán gói, hiển thị đúng % đã dùng theo gói, phân loại theo mime-type, sắp xếp file lớn nhất, cách ly tenant.
+- **Verified** — `vendor/bin/phpstan analyse` 0 lỗi, `vendor/bin/phpunit` 947/947 PASS.
+
+### CMS-081 — Payment Management (Admin) — PHASE 24
+
+- Gap phát hiện khi rà soát: hạ tầng thanh toán (Momo/VNPay/COD, bảng `payments`, permission `payment.view`) đã có từ CMS-057 nhưng **chưa có UI Admin nào** để bật/tắt cổng thanh toán hay xem lịch sử giao dịch — checkout luôn hiện cả 3 phương thức bất kể đã cấu hình credentials hay chưa.
+- `Plugins\Ecommerce\Services\Payment\PaymentGatewaySettings` mới — tái dùng nguyên bảng `settings` key-value đã có (`Modules\Settings\SettingManager`, CMS-054), key `payment.enabled.{driver}`, mặc định TRUE (giữ đúng hành vi hiện tại khi chưa cấu hình). Không tạo bảng mới, không đổi `PaymentManager`/2 Driver (Momo/VNPay đọc credentials qua `config/payment.php` như cũ) để không phá vỡ `PaymentManagerTest`/`MomoPaymentDriverTest`/`VnPayPaymentDriverTest`.
+- `GET/POST /admin/payment-settings` (`PaymentSettingListController`/`PaymentSettingToggleController`, quyền `payment.manage` — thêm mới vào `bin/bootstrap.php`) — Switch bật/tắt từng cổng, tái dùng đúng component Switch (`form+data-confirm+CSRF`) đã chuẩn hoá từ CMS-073 cho Plugin toggle.
+- `GET /admin/payments` (`PaymentListController`, quyền `payment.view` có sẵn từ CMS-057 nhưng chưa từng dùng) — danh sách giao dịch `payments` JOIN `orders`, lọc theo trạng thái (tab), cách ly tenant tuyệt đối.
+- Chặn đặt hàng qua cổng đã bị tắt ở CẢ 2 lớp: `PlaceOrderAction` (server-side, từ chối qua `EcommerceValidationException` dù client cố tình gửi thẳng `payment_method` bị tắt) và `checkout/index.php` (UI chỉ hiện radio của cổng đang bật).
+- 9 test mới (`tests/Core/EcommercePaymentManagementTest.php`): permission gate, toggle 2 chiều, từ chối key driver không tồn tại, cổng bị tắt biến mất khỏi form + bị chặn khi submit thẳng, danh sách giao dịch lọc theo trạng thái + cách ly tenant.
+- **Verified** — `composer dump-autoload -o`, `vendor/bin/phpstan analyse` 0 lỗi, `vendor/bin/phpunit` 941/941 PASS (tăng 9 so với baseline 932).
+
 ### CMS-057 — CI Hardening: PHPStan + lint gate + coverage report
 
 - Thêm PHPStan level 5 (`phpstan.neon`, quét `app/core/database/modules/plugins`) và bắt buộc `php-cs-fixer fix --dry-run` trong `.github/workflows/phpunit.yml` — chặn build khi lệch PSR-12 hoặc lỗi type. Sửa 83 file lệch line-ending (LF/CRLF) và 7 lỗi PHPStan thật (thiếu `@var` cho biến nạp động trong `routes.php`/`Hooks.php`, dead-code, `@phpstan-impure` cho `View::renderTemplate()`); ignore có phạm vi hẹp 1 trường hợp placeholder có chủ đích (`RateLimitMiddleware`, Owner Decision CMS-023).

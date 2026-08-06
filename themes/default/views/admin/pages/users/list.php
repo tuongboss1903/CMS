@@ -5,6 +5,27 @@
     <a href="/admin/users/create" class="btn btn-primary"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Tạo người dùng mới</a>
 </div>
 
+<?php if (isset($stats)): ?>
+<div class="stat-grid mb-5">
+    <div class="stat-card">
+        <div class="stat-label">Tổng số người dùng</div>
+        <div class="stat-value"><?= $this->e((string) $stats['total']) ?></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Đang hoạt động</div>
+        <div class="stat-value"><?= $this->e((string) $stats['active']) ?></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Đã khoá</div>
+        <div class="stat-value"><?= $this->e((string) $stats['locked']) ?></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Vai trò khả dụng</div>
+        <div class="stat-value"><?= $this->e((string) $stats['roles']) ?></div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php $this->include('admin.partials.table_filter', [
     'filter_action' => '/admin/users',
     'filter_fields' => [
@@ -16,7 +37,7 @@
     ],
 ]); ?>
 
-<div class="table-wrap">
+<div class="table-wrap table-wrap--flat">
 <table class="data-table">
 <thead>
 <tr><th scope="col">Tên</th><th scope="col">Email</th><th scope="col">Trạng thái</th><th scope="col">Hành động</th></tr>
@@ -24,10 +45,10 @@
 <tbody>
 <?php foreach ($users as $user): ?>
 <tr>
-    <td><?= $this->e($user['name']) ?></td>
+    <td><a href="/admin/users/<?= $this->e((string) $user['id']) ?>/edit" class="row-title-link"><?= $this->e($user['name']) ?></a></td>
     <td><?= $this->e($user['email']) ?></td>
     <td data-field="status">
-        <span class="badge <?= $user['status'] === 'active' ? 'badge-success' : 'badge-danger' ?>"><?= $user['status'] === 'active' ? 'Đang hoạt động' : 'Đã khoá' ?></span>
+        <span class="status-dot <?= $user['status'] === 'active' ? 'status-dot--published' : 'status-dot--archived' ?>"><?= $user['status'] === 'active' ? 'Đang hoạt động' : 'Đã khoá' ?></span>
     </td>
     <td>
         <div class="table-actions">
@@ -47,7 +68,7 @@
 
         <form method="POST" action="/admin/users/<?= $this->e((string) $user['id']) ?>/role" class="flex gap-2">
             <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
-            <select name="role_id">
+            <select name="role_id" aria-label="Chọn vai trò để gán cho <?= $this->e($user['name']) ?>">
                 <?php foreach ($roles as $role): ?>
                 <option value="<?= $this->e((string) $role['id']) ?>"><?= $this->e($role['name']) ?></option>
                 <?php endforeach; ?>

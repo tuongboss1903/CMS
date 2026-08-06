@@ -4,7 +4,7 @@
     <h1 class="mb-0">Quản lý Vai trò</h1>
     <a href="/admin/roles/create" class="btn btn-primary"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Tạo vai trò mới</a>
 </div>
-<div class="table-wrap">
+<div class="table-wrap table-wrap--flat">
 <table class="data-table">
 <thead>
 <tr><th scope="col">Tên</th><th scope="col">Loại</th><th scope="col">Hành động</th></tr>
@@ -12,7 +12,7 @@
 <tbody>
 <?php foreach ($roles as $role): ?>
 <tr>
-    <td><?= $this->e($role['name']) ?></td>
+    <td><a href="/admin/roles/<?= $this->e((string) $role['id']) ?>/permissions" class="row-title-link"><?= $this->e($role['name']) ?></a></td>
     <td data-field="type">
         <span class="badge <?= $role['system'] ? 'badge-warning' : 'badge-neutral' ?>"><?= $role['system'] ? 'Hệ thống' : 'Tenant' ?></span>
     </td>

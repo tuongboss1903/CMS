@@ -30,7 +30,10 @@ final class ProductService
             $this->publishedCacheKey($tenantId),
             self::CACHE_TTL_SECONDS,
             fn (): array => $this->database->select(
-                "SELECT * FROM products WHERE tenant_id = ? AND status = 'published' AND deleted_at IS NULL ORDER BY created_at DESC",
+                "SELECT products.*, media.path AS image_path FROM products
+                 LEFT JOIN media ON media.id = products.image_id AND media.tenant_id = products.tenant_id
+                 WHERE products.tenant_id = ? AND products.status = 'published' AND products.deleted_at IS NULL
+                 ORDER BY products.created_at DESC",
                 [$tenantId]
             )
         );

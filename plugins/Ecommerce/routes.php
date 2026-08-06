@@ -7,6 +7,9 @@ use Core\Router;
 use Plugins\Ecommerce\Controllers\Admin\OrderListController;
 use Plugins\Ecommerce\Controllers\Admin\OrderShowController;
 use Plugins\Ecommerce\Controllers\Admin\OrderUpdateStatusController;
+use Plugins\Ecommerce\Controllers\Admin\PaymentListController;
+use Plugins\Ecommerce\Controllers\Admin\PaymentSettingListController;
+use Plugins\Ecommerce\Controllers\Admin\PaymentSettingToggleController;
 use Plugins\Ecommerce\Controllers\Admin\ProductCreateController;
 use Plugins\Ecommerce\Controllers\Admin\ProductDeleteController;
 use Plugins\Ecommerce\Controllers\Admin\ProductListController;
@@ -38,6 +41,8 @@ $router->group(['middleware' => [EcommercePluginGuardMiddleware::class]], static
     $router->get('/admin/products/{id}/edit', [ProductShowEditController::class, 'handle']);
     $router->get('/admin/orders', [OrderListController::class, 'handle']);
     $router->get('/admin/orders/{id}', [OrderShowController::class, 'handle']);
+    $router->get('/admin/payments', [PaymentListController::class, 'handle']);
+    $router->get('/admin/payment-settings', [PaymentSettingListController::class, 'handle']);
 
     // Public (GET)
     $router->get('/shop', [ShopIndexController::class, 'handle']);
@@ -56,6 +61,7 @@ $router->group(['middleware' => [EcommercePluginGuardMiddleware::class]], static
         $router->post('/admin/products/{id}', [ProductUpdateController::class, 'handle']);
         $router->post('/admin/products/{id}/delete', [ProductDeleteController::class, 'handle']);
         $router->post('/admin/orders/{id}/status', [OrderUpdateStatusController::class, 'handle']);
+        $router->post('/admin/payment-settings/{key}/toggle', [PaymentSettingToggleController::class, 'handle']);
 
         $router->post('/cart/add', [CartAddController::class, 'handle']);
         $router->post('/cart/remove', [CartRemoveController::class, 'handle']);

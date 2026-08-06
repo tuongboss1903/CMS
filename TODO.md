@@ -664,3 +664,12 @@ Từ PHASE 4 trở đi (Global Settings, Public Engine Polish, Release Prep, UI/
   - Tooltip `[data-tooltip]` (CMS-079) bị trình duyệt cắt mất hoàn toàn trên `sidebar-toggle`/`theme-toggle` — 2 nút nằm sát mép trên Topbar (~14px), không đủ không gian cho tooltip mặc định hiện phía trên (cần ~29px). Thêm biến thể `.tooltip-bottom`, áp cho cả 2 nút.
   - `.toast-stack` (CMS-079, `top: var(--space-5)`) đè thẳng lên Topbar sticky, che mất theme-toggle/tên user/avatar. Sửa `top: calc(var(--topbar-height) + var(--space-4))`.
   - **Verified** — `vendor/bin/phpunit` 927/927 PASS, `php-cs-fixer` sạch. CI GitHub Actions PASS (commit `3340a72`).
+
+## Phase 24 — Payment Management (Admin, PHASE 24)
+
+- [x] **CMS-081** — Bổ sung UI Admin quản lý thanh toán (Bật/tắt cổng COD/MoMo/VNPay theo tenant + danh sách giao dịch), lấp gap hạ tầng đã có từ CMS-057 (bảng `payments`, permission `payment.view`) nhưng chưa từng dùng tới. Chi tiết đầy đủ xem `CHANGELOG.md` mục `[Unreleased] CMS-081`.
+  - [x] **Verified** — `vendor/bin/phpstan analyse` 0 lỗi, `vendor/bin/phpunit` 941/941 PASS (9 test mới).
+- [x] **CMS-082** — Bổ sung UI Admin Storage Usage (`/admin/storage`) — thanh Đã dùng/Hạn mức theo gói, phân loại theo mime-type, top file lớn nhất. Chi tiết đầy đủ xem `CHANGELOG.md` mục `[Unreleased] CMS-082`.
+  - [x] **Verified** — `vendor/bin/phpstan analyse` 0 lỗi, `vendor/bin/phpunit` 947/947 PASS (6 test mới).
+- [x] **CMS-083** — Bổ sung UI Admin Email/SMTP Settings (`/admin/email-settings`) — chỉ đọc cấu hình `.env` hiện hành (Core không được phụ thuộc Modules nên không làm editable qua DB) + gửi email thử thật. Chi tiết đầy đủ xem `CHANGELOG.md` mục `[Unreleased] CMS-083`.
+  - [x] **Verified** — `vendor/bin/phpstan analyse` 0 lỗi, `vendor/bin/phpunit` 952/952 PASS (5 test mới).

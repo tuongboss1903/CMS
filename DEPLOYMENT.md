@@ -98,7 +98,7 @@ php bin/migrate.php status     # 4. Xac nhan lai trang thai
 
 ## 7. Cronjobs
 
-**Dự án hiện chưa có bất kỳ tác vụ định kỳ (cronjob/scheduled task) nào cần thiết lập.** Không Queue, không Event Dispatcher, không Cache TTL cần dọn định kỳ (`core/Cache.php` là dead capability, chưa Module nào dùng — xem `core-architecture.md`). Mục này sẽ được bổ sung khi có tính năng thật sự cần chạy định kỳ (ví dụ: dọn Session hết hạn, gửi email hàng loạt).
+**Dự án hiện chưa có bất kỳ tác vụ định kỳ (cronjob/scheduled task) nào cần thiết lập.** Không Queue, không Event Dispatcher, không Cache TTL cần dọn định kỳ (`core/Cache.php` là dead capability, chưa Module nào dùng — xem `docs/kien-truc-cot-loi/core-architecture.md`). Mục này sẽ được bổ sung khi có tính năng thật sự cần chạy định kỳ (ví dụ: dọn Session hết hạn, gửi email hàng loạt).
 
 ## 8. Checklist Go-Live
 

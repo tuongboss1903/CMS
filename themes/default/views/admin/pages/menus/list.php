@@ -18,7 +18,7 @@
     </form>
 </div>
 
-<div class="table-wrap">
+<div class="table-wrap table-wrap--flat">
 <table class="data-table">
 <thead>
 <tr><th scope="col">Tên Menu</th><th scope="col">Vị trí hiển thị</th><th scope="col">Hành động</th></tr>

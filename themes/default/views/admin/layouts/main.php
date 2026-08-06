@@ -4,8 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= $this->e($title ?? 'Admin') ?> - CMS Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css">
-    <script>try { var t = localStorage.getItem('cms-theme'); if (t === 'light' || t === 'dark') { document.documentElement.setAttribute('data-theme', t); } } catch (e) {}</script>
+    <?php
+    /**
+     * Cache-busting bang filemtime (khong phai query string co dinh) - admin.css la static file
+     * KHONG co header cache-control tuy chinh (PHP built-in server dev/production webserver deu
+     * cache heuristic theo mac dinh trinh duyet) nen truoc day sua tailwind.css + build lai
+     * KHONG len duoc UI ngay, phai xoa cache tay - bug UX that da gap khi audit Dashboard/Users/
+     * Pages. filemtime() doi tu dong moi lan file admin.css duoc build lai (npm run build:admin),
+     * khong can nho bump version tay.
+     */
+    $adminCssVersion = @\filemtime($_SERVER['DOCUMENT_ROOT'] . '/assets/css/admin.css') ?: \time();
+    ?>
+    <link rel="stylesheet" href="/assets/css/admin.css?v=<?= $this->e((string) $adminCssVersion) ?>">
 <?= $this->raw($this->yield('head_extra')) ?>
 </head>
 <body class="admin-shell">

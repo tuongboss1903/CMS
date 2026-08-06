@@ -2,32 +2,48 @@
    CMS Design Tokens — Tech Green / Dark
    ============================================================ */
 :root {
-  /* Colors - Base */
-  --color-bg: #0B0F17;
-  --color-bg-elevated: #111827;
-  --color-bg-card: #161D2B;
-  --color-border: #232B3D;
-  --color-border-subtle: #1B2231;
+  /* Colors - Base (v2 Japanese Tech Industrial, dong bo voi resources/shared/tokens.css) */
+  --color-bg: oklch(14% 0.01 260);
+  --color-bg-elevated: oklch(19% 0.012 260);
+  --color-bg-card: oklch(24% 0.014 260);
+  --color-surface-2: oklch(24% 0.014 260);
+  --color-border: oklch(32% 0.01 260);
+  --color-border-subtle: oklch(26% 0.012 260);
 
   /* Colors - Text */
-  --color-text-primary: #E5E9F0;
-  --color-text-secondary: #8B94A7;
-  /* #818BA0 (khong phai #6B7489 goc) - dong bo voi resources/shared/tokens.css, dam bao ty le
-     tuong phan >=4.5:1 (WCAG 2.1 AA) tren ca --color-bg lan --color-bg-card. */
-  --color-text-muted: #818BA0;
+  --color-text-primary: oklch(95% 0.003 90);
+  --color-text-secondary: oklch(70% 0.005 90);
+  --color-text-muted: oklch(65% 0.005 90);
 
-  /* Colors - Accent (Emerald / Neon Tech Green) */
-  --color-accent: #10B981;
-  --color-accent-hover: #14D999;
-  --color-accent-soft: rgba(16, 185, 129, 0.12);
-  --color-accent-text: #34E3A6;
+  /* Colors - Accent (2 accent: Sakura Magenta chinh + Xanh la neon phu) */
+  --color-accent: oklch(70% 0.19 340);
+  --color-accent-hover: oklch(75% 0.19 340);
+  --color-accent-soft: oklch(70% 0.19 340 / .16);
+  --color-accent-text: oklch(78% 0.17 340);
+  --color-accent-secondary: oklch(72% 0.18 150);
+  --color-accent-secondary-hover: oklch(77% 0.18 150);
+  --color-accent-secondary-soft: oklch(72% 0.18 150 / .16);
+  --color-accent-secondary-text: oklch(80% 0.17 150);
 
   /* Colors - Semantic */
-  --color-danger: #EF4444;
-  --color-danger-soft: rgba(239, 68, 68, 0.12);
-  --color-warning: #F59E0B;
-  --color-warning-soft: rgba(245, 158, 11, 0.12);
+  --color-danger: oklch(68% 0.2 25);
+  --color-danger-soft: oklch(68% 0.2 25 / .14);
+  --color-warning: oklch(78% 0.15 80);
+  --color-warning-soft: oklch(78% 0.15 80 / .14);
   --color-info: #3B82F6;
+
+  /* Layered Panel 3D (v2) */
+  --gradient-accent-primary: linear-gradient(135deg, oklch(70% 0.19 340), oklch(58% 0.19 340));
+  --glow-accent-primary: 0 0 24px oklch(70% 0.19 340 / .35);
+  --edge-highlight: oklch(100% 0 0 / .12);
+  --shadow-raised-1: 2px 3px 0 var(--color-border), 4px 6px 10px oklch(0% 0 0 / .22);
+  --shadow-raised-2: 3px 4px 0 oklch(10% 0.02 260 / .9), 6px 10px 16px oklch(0% 0 0 / .3), 0 0 24px oklch(70% 0.19 340 / .18);
+  --shadow-inset-pressed: inset 2px 2px 4px oklch(0% 0 0 / .35);
+
+  /* Public: typography scale lon hon Admin 1 bac cho Hero (public-home.md) */
+  --font-size-4xl: 56px;
+  --font-size-5xl: 72px;
+  --line-height-relaxed: 1.7;
 
   /* Typography */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Arial, sans-serif;
@@ -53,7 +69,7 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
-  --shadow-glow: 0 0 24px rgba(16, 185, 129, 0.15);
+  --shadow-glow: 0 0 24px oklch(70% 0.19 340 / .15);
 
   /* Focus ring - dung chung cho input/button/nav de dam bao accessibility nhat quan */
   --focus-ring: 0 0 0 3px var(--color-accent-soft);
@@ -105,31 +121,41 @@
    [data-theme="light"] len <html> + luu localStorage.
    ============================================================ */
 :root[data-theme="light"] {
-  --color-bg: #F5F6F8;
-  --color-bg-elevated: #FFFFFF;
-  --color-bg-card: #FFFFFF;
-  --color-border: #DDE1E8;
-  --color-border-subtle: #E9ECF1;
+  --color-bg: oklch(97% 0.003 90);
+  --color-bg-elevated: oklch(100% 0 0);
+  --color-bg-card: oklch(100% 0 0);
+  --color-surface-2: oklch(94% 0.004 90);
+  --color-border: oklch(88% 0.004 90);
+  --color-border-subtle: oklch(91% 0.004 90);
 
-  --color-text-primary: #1A2333;
-  --color-text-secondary: #566072;
-  /* #616A7B (khong phai #6E7789 goc) - dong bo voi resources/shared/tokens.css, tang bien an toan
-     WCAG AA tren nen trang (~5.45:1 thay vi sat nguong 4.5:1). */
-  --color-text-muted: #616A7B;
+  --color-text-primary: oklch(20% 0.005 90);
+  --color-text-secondary: oklch(50% 0.005 90);
+  --color-text-muted: oklch(46% 0.005 90);
 
-  --color-accent: #0E9F6E;
-  --color-accent-hover: #0C8A5F;
-  --color-accent-soft: rgba(14, 159, 110, 0.10);
-  --color-accent-text: #0C8A5F;
+  --color-accent: oklch(58% 0.17 340);
+  --color-accent-hover: oklch(50% 0.17 340);
+  --color-accent-soft: oklch(58% 0.17 340 / .1);
+  --color-accent-text: oklch(48% 0.17 340);
+  --color-accent-secondary: oklch(62% 0.16 150);
+  --color-accent-secondary-hover: oklch(54% 0.16 150);
+  --color-accent-secondary-soft: oklch(62% 0.16 150 / .1);
+  --color-accent-secondary-text: oklch(46% 0.16 150);
 
-  --color-danger: #DC2626;
-  --color-danger-soft: rgba(220, 38, 38, 0.08);
-  --color-warning: #D97706;
-  --color-warning-soft: rgba(217, 119, 6, 0.10);
+  --color-danger: oklch(58% 0.2 25);
+  --color-danger-soft: oklch(58% 0.2 25 / .08);
+  --color-warning: oklch(72% 0.15 80);
+  --color-warning-soft: oklch(72% 0.15 80 / .1);
   --color-info: #2563EB;
 
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
   --shadow-md: 0 4px 16px rgba(16, 24, 40, 0.10);
   --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
-  --shadow-glow: 0 0 24px rgba(14, 159, 110, 0.10);
+  --shadow-glow: 0 0 24px oklch(58% 0.17 340 / .1);
+
+  --gradient-accent-primary: linear-gradient(135deg, oklch(58% 0.17 340), oklch(48% 0.17 340));
+  --glow-accent-primary: none;
+  --edge-highlight: oklch(100% 0 0 / .6);
+  --shadow-raised-1: 2px 3px 0 var(--color-border), 4px 6px 10px oklch(0% 0 0 / .1);
+  --shadow-raised-2: 3px 4px 0 oklch(80% 0.02 340 / .5), 6px 10px 16px oklch(0% 0 0 / .14);
+  --shadow-inset-pressed: inset 2px 2px 4px oklch(0% 0 0 / .12);
 }

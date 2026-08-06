@@ -8,6 +8,8 @@ use Core\Database;
 use Core\TenantManager;
 use Core\Validator;
 use Plugins\Ecommerce\Services\CartService;
+use Plugins\Ecommerce\Services\Payment\PaymentGatewaySettings;
+use Plugins\Ecommerce\Services\ShippingFeeCalculator;
 
 /**
  * Phase 19 (Ecommerce MVP, CMS-056). Checkout dang Guest (khong tao users moi, dung tien le
@@ -19,6 +21,17 @@ use Plugins\Ecommerce\Services\CartService;
  * Phase 20 (CMS-057): bo sung payment_method (cod|momo|vnpay, mac dinh 'cod' neu khong gui/gia tri
  * la) - CheckoutPlaceOrderController doc gia tri nay sau khi Action tra ve de quyet dinh co goi
  * PaymentManager::driver()->charge() dua khach sang cong thanh toan hay khong (COD khong can).
+ *
+ * Phase 24 (CMS-081): tu choi dat hang neu payment_method duoc chon da bi Admin tat qua trang Quan
+ * ly thanh toan (PaymentGatewaySettings) - chan ca truong hop client gui thang request bo qua UI
+ * (UI Checkout da loc san, day la lop bao ve thu 2 o server).
+ *
+ * Ship ban kinh co dinh: bat buoc customer_lat/customer_lng (toa do GPS khach hang, checkout view
+ * tu lay qua navigator.geolocation phia trinh duyet) - ngoai ban kinh (ShippingFeeCalculator, cau
+ * hinh config/shipping.php) thi TU CHOI dat hang (EcommerceValidationException, khong tao don),
+ * trong ban kinh thi cong them shipping_fee CO DINH vao total_amount, snapshot ca 2 gia tri
+ * (shipping_fee/shipping_distance_km) vao orders - doi cau hinh ban kinh/phi sau khong anh huong
+ * don da dat.
  */
 final class PlaceOrderAction
 {
@@ -27,6 +40,8 @@ final class PlaceOrderAction
     public function __construct(
         private readonly CartService $cartService,
         private readonly Database $database,
+        private readonly PaymentGatewaySettings $paymentGatewaySettings,
+        private readonly ShippingFeeCalculator $shippingFeeCalculator,
         private readonly TenantManager $tenantManager,
         private readonly Validator $validator,
     ) {
@@ -34,7 +49,7 @@ final class PlaceOrderAction
 
     /**
      * @param array<string, mixed> $data
-     * @return array{id: int, order_number: string, guest_name: string, guest_email: string, total_amount: float, payment_method: string}
+     * @return array{id: int, order_number: string, guest_name: string, guest_email: string, total_amount: float, payment_method: string, shipping_fee: float, shipping_distance_km: float}
      *
      * @throws EcommerceValidationException
      */
@@ -47,25 +62,44 @@ final class PlaceOrderAction
         $result = $this->validator->validate($data, [
             'guest_name' => 'required|string',
             'guest_email' => 'required|email',
+            'customer_lat' => 'required|numeric',
+            'customer_lng' => 'required|numeric',
         ]);
 
         if ($result->fails()) {
             throw new EcommerceValidationException('Du lieu khong hop le.', $result->errors());
         }
 
+        $shippingQuote = $this->shippingFeeCalculator->quote((float) $data['customer_lat'], (float) $data['customer_lng']);
+
+        if (!$shippingQuote->withinRange) {
+            throw new EcommerceValidationException(
+                "Ngoai pham vi giao hang ({$shippingQuote->maxRadiusKm}km).",
+                ['shipping' => ["Rất tiếc, vị trí của bạn cách quán khoảng {$shippingQuote->distanceKm}km, vượt quá phạm vi giao hàng {$shippingQuote->maxRadiusKm}km. Vui lòng đặt hàng tại quán hoặc chọn địa chỉ khác gần hơn."]]
+            );
+        }
+
         $paymentMethod = \in_array($data['payment_method'] ?? null, self::VALID_PAYMENT_METHODS, true)
             ? (string) $data['payment_method']
             : 'cod';
 
+        if (!$this->paymentGatewaySettings->isEnabled($paymentMethod)) {
+            throw new EcommerceValidationException(
+                'Phuong thuc thanh toan khong kha dung.',
+                ['payment_method' => ['Phương thức thanh toán này hiện không khả dụng, vui lòng chọn phương thức khác.']]
+            );
+        }
+
         $tenantId = $this->tenantManager->id();
         $items = $this->cartService->items();
-        $total = $this->cartService->total();
+        $itemsTotal = $this->cartService->total();
+        $total = $itemsTotal + $shippingQuote->fee;
         $orderNumber = $this->generateOrderNumber();
 
-        $orderId = $this->database->transaction(function () use ($tenantId, $orderNumber, $data, $total, $items, $paymentMethod): int {
+        $orderId = $this->database->transaction(function () use ($tenantId, $orderNumber, $data, $total, $shippingQuote, $items, $paymentMethod): int {
             $this->database->insert(
-                'INSERT INTO orders (tenant_id, order_number, guest_name, guest_email, shipping_address, status, total_amount, payment_method)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO orders (tenant_id, order_number, guest_name, guest_email, shipping_address, status, total_amount, payment_method, shipping_fee, shipping_distance_km)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $tenantId,
                     $orderNumber,
@@ -75,6 +109,8 @@ final class PlaceOrderAction
                     'pending',
                     $total,
                     $paymentMethod,
+                    $shippingQuote->fee,
+                    $shippingQuote->distanceKm,
                 ]
             );
 
@@ -110,6 +146,8 @@ final class PlaceOrderAction
             'guest_email' => (string) $data['guest_email'],
             'total_amount' => $total,
             'payment_method' => $paymentMethod,
+            'shipping_fee' => $shippingQuote->fee,
+            'shipping_distance_km' => $shippingQuote->distanceKm,
         ];
     }
 

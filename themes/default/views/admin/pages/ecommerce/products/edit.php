@@ -36,6 +36,16 @@
         <input type="number" id="stock_quantity" name="stock_quantity" value="<?= $this->e((string) ($old['stock_quantity'] ?? '0')) ?>">
     </div>
     <div class="field">
+        <label for="image_id">Ảnh sản phẩm</label>
+        <select id="image_id" name="image_id"<?= empty($errors['image_id']) ? '' : ' aria-invalid="true"' ?>>
+            <option value="">-- Không chọn ảnh --</option>
+            <?php foreach ($images ?? [] as $image): ?>
+            <option value="<?= $this->e((string) $image['id']) ?>" <?= (string) $image['id'] === (string) ($old['image_id'] ?? '') ? 'selected' : '' ?>><?= $this->e((string) $image['file_name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php foreach ($errors['image_id'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
+    </div>
+    <div class="field">
         <label for="status">Trạng thái</label>
         <select id="status" name="status">
             <option value="draft" <?= ($old['status'] ?? 'draft') === 'draft' ? 'selected' : '' ?>>Bản nháp</option>

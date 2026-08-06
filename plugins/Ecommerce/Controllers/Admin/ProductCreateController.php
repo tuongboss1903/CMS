@@ -41,6 +41,7 @@ final class ProductCreateController
             'slug' => 'required|string',
             'price' => 'required|numeric',
             'stock_quantity' => 'nullable|integer',
+            'image_id' => 'nullable|integer',
         ]);
 
         if ($result->fails()) {
@@ -48,11 +49,16 @@ final class ProductCreateController
         }
 
         $tenantId = $this->tenantManager->id();
+        $imageId = $this->resolveImageId($data, (string) $tenantId);
+
+        if ($imageId === false) {
+            return $this->renderWithErrors(['image_id' => ['Anh khong hop le.']], $data);
+        }
 
         try {
             $this->database->insert(
-                'INSERT INTO products (tenant_id, name, slug, description, category, price, sku, stock_quantity, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                'INSERT INTO products (tenant_id, name, slug, description, category, price, sku, stock_quantity, status, image_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $tenantId,
                     (string) $data['name'],
@@ -63,6 +69,7 @@ final class ProductCreateController
                     ($data['sku'] ?? '') !== '' ? (string) $data['sku'] : null,
                     (int) ($data['stock_quantity'] ?? 0),
                     ($data['status'] ?? 'draft') === 'published' ? 'published' : 'draft',
+                    $imageId,
                 ]
             );
         } catch (QueryException) {
@@ -75,6 +82,22 @@ final class ProductCreateController
     }
 
     /**
+     * @param array<string, mixed> $data
+     * @return int|null|false null = khong chon anh, false = image_id gui len khong hop le/khac tenant
+     */
+    private function resolveImageId(array $data, string $tenantId): int|null|false
+    {
+        if (($data['image_id'] ?? '') === '' || ($data['image_id'] ?? null) === null) {
+            return null;
+        }
+
+        $imageId = (int) $data['image_id'];
+        $media = $this->database->selectOne('SELECT id FROM media WHERE id = ? AND tenant_id = ?', [$imageId, $tenantId]);
+
+        return $media !== null ? $imageId : false;
+    }
+
+    /**
      * @param array<string, list<string>> $errors
      * @param array<string, mixed> $data
      */
@@ -83,6 +106,7 @@ final class ProductCreateController
         $html = $this->view->render('admin.pages.ecommerce.products.create', [
             'errors' => $errors,
             'old' => $data,
+            'images' => $this->database->select('SELECT id, file_name FROM media WHERE tenant_id = ? ORDER BY created_at DESC', [$this->tenantManager->id()]),
             'breadcrumb_items' => [['label' => 'Sản phẩm', 'url' => '/admin/products'], ['label' => 'Thêm mới']],
             'csrf_token' => $this->csrf->token(),
         ]);

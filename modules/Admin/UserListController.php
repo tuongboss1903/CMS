@@ -68,12 +68,28 @@ final class UserListController
             [$siteId]
         );
 
+        $statCounts = $this->database->selectOne(
+            "SELECT COUNT(*) AS total,
+                    SUM(CASE WHEN users.status = 'active' THEN 1 ELSE 0 END) AS active,
+                    SUM(CASE WHEN users.status != 'active' THEN 1 ELSE 0 END) AS locked
+             FROM users
+             INNER JOIN user_site_roles ON user_site_roles.user_id = users.id
+             WHERE user_site_roles.site_id = ?",
+            [$siteId]
+        );
+
         $html = $this->view->render('admin.pages.users.list', [
             'breadcrumb_items' => [['label' => 'Người dùng']],
             'users' => $users,
             'roles' => $roles,
             'csrf_token' => $this->csrf->token(),
             'filters' => ['q' => $search, 'status' => $status],
+            'stats' => [
+                'total' => (int) ($statCounts['total'] ?? 0),
+                'active' => (int) ($statCounts['active'] ?? 0),
+                'locked' => (int) ($statCounts['locked'] ?? 0),
+                'roles' => \count($roles),
+            ],
         ]);
 
         return Response::html($html);

@@ -28,26 +28,41 @@ $renderStatTrend = function (array $trend) {
 <div class="stack-5">
 <div class="stat-grid">
     <div class="stat-card">
-        <div class="stat-label">Trang đã xuất bản</div>
+        <div class="kpi-top-row">
+            <div class="stat-label">Trang đã xuất bản</div>
+            <?php $this->include('admin.partials.icon', ['name' => 'kpi-pages', 'class' => 'icon icon--kpi']); ?>
+        </div>
         <div class="stat-value" data-field="page_count"><?= $this->e((string) $page_count) ?></div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Tổng số Media</div>
+        <div class="kpi-top-row">
+            <div class="stat-label">Tổng số Media</div>
+            <?php $this->include('admin.partials.icon', ['name' => 'kpi-media', 'class' => 'icon icon--kpi']); ?>
+        </div>
         <div class="stat-value" data-field="media_count"><?= $this->e((string) $media_count) ?></div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Tổng số Người dùng</div>
+        <div class="kpi-top-row">
+            <div class="stat-label">Tổng số Người dùng</div>
+            <?php $this->include('admin.partials.icon', ['name' => 'kpi-users', 'class' => 'icon icon--kpi']); ?>
+        </div>
         <div class="stat-value" data-field="user_count"><?= $this->e((string) $user_count) ?></div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Tổng số Vai trò</div>
+        <div class="kpi-top-row">
+            <div class="stat-label">Tổng số Vai trò</div>
+            <?php $this->include('admin.partials.icon', ['name' => 'kpi-roles', 'class' => 'icon icon--kpi']); ?>
+        </div>
         <div class="stat-value" data-field="role_count"><?= $this->e((string) $role_count) ?></div>
     </div>
 </div>
 
 <div class="stat-grid">
-    <div class="stat-card">
-        <div class="stat-label">Lượt xem (7 ngày)</div>
+    <div class="stat-card stat-card--primary">
+        <div class="kpi-top-row">
+            <div class="stat-label">Lượt xem (7 ngày)</div>
+            <?php $this->include('admin.partials.icon', ['name' => 'star', 'class' => 'icon icon--kpi']); ?>
+        </div>
         <div class="stat-value" data-field="total_views"><?= $this->e((string) $total_views) ?></div>
         <?= $this->raw($renderStatTrend($total_views_trend)) ?>
     </div>
@@ -65,6 +80,7 @@ $renderStatTrend = function (array $trend) {
         <h2 style="font-size:16px;">Lượt xem 7 ngày gần đây</h2>
         <?php
         $maxViews = \max(1, \max(\array_column($daily_views, 'views')));
+$peakIndex = \array_search($maxViews, \array_column($daily_views, 'views'), true);
 $barWidth = 40;
 $gap = 16;
 $chartHeight = 120;
@@ -76,8 +92,9 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
     $barHeight = (int) \round(($day['views'] / $maxViews) * $chartHeight);
                 $x = $index * ($barWidth + $gap);
                 $y = $chartHeight - $barHeight;
+                $barColor = $index === $peakIndex ? 'var(--color-accent)' : 'var(--color-accent-secondary)';
                 ?>
-            <rect x="<?= $this->e((string) $x) ?>" y="<?= $this->e((string) $y) ?>" width="<?= $this->e((string) $barWidth) ?>" height="<?= $this->e((string) $barHeight) ?>" fill="var(--color-accent, #10B981)" rx="3"></rect>
+            <rect x="<?= $this->e((string) $x) ?>" y="<?= $this->e((string) $y) ?>" width="<?= $this->e((string) $barWidth) ?>" height="<?= $this->e((string) $barHeight) ?>" fill="<?= $this->e($barColor) ?>" rx="3"></rect>
             <text x="<?= $this->e((string) ($x + $barWidth / 2)) ?>" y="<?= $this->e((string) ($chartHeight + 14)) ?>" text-anchor="middle" font-size="10" fill="currentColor"><?= $this->e(\substr((string) $day['date'], 5)) ?></text>
             <?php endforeach; ?>
         </svg>
@@ -98,9 +115,9 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
 <!-- Nhom "gan giong nhau" canh nhau (Design Audit Phase 8) - Trang xem nhieu + Audit Log deu la
      danh sach ngan, xem-roi-thoi, thay vi xep doc lien tiep cach xa nhau. -->
 <div class="dashboard-row-6-6">
-    <div class="card">
+    <div class="card dashboard-list-card">
         <h2 style="font-size:16px;">Trang xem nhiều nhất (7 ngày)</h2>
-        <div class="table-wrap">
+        <div class="table-wrap table-wrap--flat">
         <table class="data-table">
         <thead>
         <tr><th scope="col">Đường dẫn</th><th scope="col">Lượt xem</th></tr>
@@ -108,7 +125,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
         <tbody>
         <?php foreach ($top_pages as $page): ?>
         <tr>
-            <td><?= $this->e($page['path']) ?></td>
+            <td class="truncate-cell"><span class="text-truncate" title="<?= $this->e($page['path']) ?>"><?= $this->e($page['path']) ?></span></td>
             <td><?= $this->e((string) $page['views']) ?></td>
         </tr>
         <?php endforeach; ?>
@@ -120,15 +137,20 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
         </div>
     </div>
     <?php if (isset($recent_audit_logs)): ?>
-    <div class="card">
+    <div class="card dashboard-list-card">
         <h2 style="font-size:16px;">Audit Log gần đây</h2>
-        <div class="table-wrap">
+        <div class="table-wrap table-wrap--flat">
         <table class="data-table">
         <thead><tr><th scope="col">Sự kiện</th><th scope="col">Thời gian</th></tr></thead>
         <tbody>
         <?php foreach ($recent_audit_logs as $log): ?>
+        <?php $eventCode = (string) $log['event']; ?>
         <tr>
-            <td><span class="badge badge-neutral"><?= $this->e((string) $log['event']) ?></span></td>
+            <td class="truncate-cell">
+                <span class="badge <?= $this->e(\Modules\Admin\AuditLogPresenter::eventBadgeClass($eventCode)) ?>" title="<?= $this->e($eventCode) ?>">
+                    <?= $this->e(\Modules\Admin\AuditLogPresenter::eventLabel($eventCode)) ?>
+                </span>
+            </td>
             <td class="text-muted"><?= $this->e((string) $log['created_at']) ?></td>
         </tr>
         <?php endforeach; ?>
@@ -138,7 +160,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
         </tbody>
         </table>
         </div>
-        <p class="mt-3 mb-0"><a href="/admin/audit-logs">Xem toàn bộ Audit Log &rarr;</a></p>
+        <a href="/admin/audit-logs" class="card-footer-link">Xem toàn bộ Audit Log <span aria-hidden="true">&rarr;</span></a>
     </div>
     <?php endif; ?>
 </div>
@@ -155,7 +177,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
 
 <div class="card">
     <h2 style="font-size:16px;">Hoạt động gần đây</h2>
-    <div class="table-wrap">
+    <div class="table-wrap table-wrap--flat">
     <table class="data-table">
     <thead>
     <tr><th scope="col">Loại</th><th scope="col">Nội dung</th><th scope="col">Thời gian</th></tr>
@@ -172,7 +194,7 @@ $chartWidth = \count($daily_views) * ($barWidth + $gap);
             <span class="badge badge-success">Người dùng</span>
         <?php endif; ?>
         </td>
-        <td><?= $this->e((string) $item['label']) ?></td>
+        <td class="truncate-cell"><span class="text-truncate" title="<?= $this->e((string) $item['label']) ?>"><?= $this->e((string) $item['label']) ?></span></td>
         <td class="text-muted"><?= $this->e((string) ($item['event_at'] ?? '')) ?></td>
     </tr>
     <?php endforeach; ?>

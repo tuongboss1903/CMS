@@ -368,9 +368,9 @@ final class AdminUiFoundationTest extends TestCase
         self::assertSame('/admin/login', $response->getHeaders()['Location']);
     }
 
-    // ---- 8. Phase 18 (UI/UX Admin Dashboard Overhaul, CMS-055) - Dark Mode attribute structure ----
+    // ---- 8. Phase 25 (Executive Panel Redesign) - da bo Light Mode, chi con 1 Dark Mode duy nhat ----
 
-    public function testDashboardLayoutRendersThemeToggleAndFoucGuardScript(): void
+    public function testDashboardLayoutHasNoThemeToggleOrLightModeArtifacts(): void
     {
         $this->seedUser(email: 'admin@example.com', password: 'correct-password');
 
@@ -388,12 +388,11 @@ final class AdminUiFoundationTest extends TestCase
         $body = $response->getBody();
 
         self::assertSame(200, $response->getStatusCode());
-        // topbar.php: nut chuyen Sang/Toi phai co mat tren layout admin da dang nhap.
-        self::assertStringContainsString('data-theme-toggle', $body);
-        // main.php: inline script chong FOUC phai doc dung key localStorage ma app.js dung
-        // (cms-theme) va gan [data-theme] len <html> TRUOC khi app.js (cuoi <body>) tai xong.
-        self::assertStringContainsString("localStorage.getItem('cms-theme')", $body);
-        self::assertStringContainsString('document.documentElement.setAttribute', $body);
+        // Owner Decision Phase 25: bo han Light Mode - giao dien Admin gio chi con 1 "Executive
+        // Panel" Dark Mode duy nhat (thep chai/vang kim/xanh rung), khong con nut chuyen Sang/Toi
+        // hay script FOUC guard doc localStorage['cms-theme'] nhu Phase 18 truoc do.
+        self::assertStringNotContainsString('data-theme-toggle', $body);
+        self::assertStringNotContainsString("localStorage.getItem('cms-theme')", $body);
     }
 
     public function testDashboardLayoutIncludesConfirmModalPartialWithFixedId(): void

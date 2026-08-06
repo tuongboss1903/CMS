@@ -1,40 +1,4 @@
-(function () {
-    // Phase 18 (CMS-055): dark mode - doc localStorage TRUOC khi DOMContentLoaded de tranh
-    // "flash" theme sai luc tai trang (FOUC). Khong doi hanh vi server/Controller nao - thuan
-    // client-side, luu y bang [data-theme] tren <html> + localStorage.
-    var THEME_KEY = 'cms-theme';
-    var savedTheme = null;
-
-    try {
-        savedTheme = window.localStorage.getItem(THEME_KEY);
-    } catch (error) {
-        savedTheme = null;
-    }
-
-    if (savedTheme === 'light' || savedTheme === 'dark') {
-        document.documentElement.setAttribute('data-theme', savedTheme);
-    }
-})();
-
 document.addEventListener('DOMContentLoaded', function () {
-    var THEME_KEY = 'cms-theme';
-    var themeToggle = document.querySelector('[data-theme-toggle]');
-
-    if (themeToggle) {
-        themeToggle.addEventListener('click', function () {
-            var current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-            var next = current === 'light' ? 'dark' : 'light';
-
-            document.documentElement.setAttribute('data-theme', next);
-
-            try {
-                window.localStorage.setItem(THEME_KEY, next);
-            } catch (error) {
-                // Silent - localStorage khong kha dung (vd private mode) khong duoc lam gian doan UI.
-            }
-        });
-    }
-
     // Phase D (Polish): flash message tu dismiss (nut x hoac tu dong sau 5s cho alert-success),
     // fade-out qua class .is-dismissing (xem @keyframes alert-out trong components.css).
     document.querySelectorAll('[data-flash]').forEach(function (flash) {

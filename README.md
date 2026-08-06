@@ -39,7 +39,7 @@ vendor/bin/phpunit    # xac nhan 825/825 PASS truoc khi bat dau
 | [STAGING_CHECKLIST.md](STAGING_CHECKLIST.md) | Checklist triển khai Staging/VPS |
 | [DEMO_WALKTHROUGH.md](DEMO_WALKTHROUGH.md) | Kịch bản Demo khách hàng doanh nghiệp |
 | [PRODUCTION_MONITORING.md](PRODUCTION_MONITORING.md) | Health Check, Log Rotation, Backup, Security Hardening |
-| [core-architecture.md](core-architecture.md) | Tài liệu kiến trúc kỹ thuật đầy đủ — **đọc trước khi sửa code** |
+| [docs/kien-truc-cot-loi/](docs/kien-truc-cot-loi/) | Tài liệu kiến trúc kỹ thuật + đặc tả gốc từng module — **đọc `core-architecture.md` trước khi sửa code** |
 | [CHANGELOG.md](CHANGELOG.md) | Lịch sử thay đổi theo từng version |
 | [TODO.md](TODO.md) | Trạng thái tiến độ chi tiết từng Phase/Task |
 
@@ -53,4 +53,4 @@ Toàn bộ 825 test chạy trên SQLite in-memory (không phụ thuộc MySQL th
 
 ## Giấy phép
 
-Proprietary — xem `composer.json`.
+MIT — xem [LICENSE](LICENSE).

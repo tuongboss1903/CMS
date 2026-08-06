@@ -28,6 +28,9 @@ $router->get('/admin/audit-logs', [\Modules\Admin\AuditLogController::class, 'ha
 $router->get('/admin/system-settings', [\Modules\Admin\SystemSettingListController::class, 'handle']);
 $router->get('/admin/plugins', [\Modules\Admin\PluginListController::class, 'handle']);
 $router->get('/admin/notifications', [\Modules\Admin\NotificationListController::class, 'handle']);
+$router->get('/admin/storage', [\Modules\Admin\StorageUsageController::class, 'handle']);
+$router->get('/admin/email-settings', [\Modules\Admin\EmailSettingListController::class, 'handle']);
+$router->get('/admin/search', [\Modules\Admin\GlobalSearchController::class, 'handle']);
 
 $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], function (\Core\Router $router): void {
     $router->post('/admin/notifications/read-all', [\Modules\Admin\NotificationMarkAllReadController::class, 'handle']);
@@ -72,4 +75,5 @@ $router->group(['middleware' => [\Core\Middleware\CsrfMiddleware::class]], funct
     $router->post('/admin/system-settings', [\Modules\Admin\SystemSettingSaveController::class, 'handle']);
     $router->post('/admin/plugins/{key}/toggle', [\Modules\Admin\PluginToggleController::class, 'handle']);
     $router->post('/admin/system-settings/{id}/delete', [\Modules\Admin\SystemSettingDeleteController::class, 'handle']);
+    $router->post('/admin/email-settings/test', [\Modules\Admin\EmailSettingTestController::class, 'handle']);
 });

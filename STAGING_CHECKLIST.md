@@ -57,7 +57,7 @@ php bin/seed_demo.php staging-restaurant.example.com restaurant
 ```
 
 - [ ] Bước 1 hoàn tất, `migrate.php status` không còn dòng nào "chưa áp dụng".
-- [ ] Bước 2 chỉ chạy **đúng 1 lần** — script tự chặn nếu đã có `users` (xem `DEPLOYMENT.md`/`core-architecture.md` mục 3.45).
+- [ ] Bước 2 chỉ chạy **đúng 1 lần** — script tự chặn nếu đã có `users` (xem `DEPLOYMENT.md`/`docs/kien-truc-cot-loi/core-architecture.md` mục 3.45).
 - [ ] Bước 3-5 chạy xong, kiểm tra bằng 2 URL thật (`https://staging-cms.example.com/`, `https://staging-restaurant.example.com/`) hiển thị đúng nội dung tương ứng.
 - [ ] Đổi mật khẩu Admin mặc định trên Staging thật (không dùng mật khẩu ví dụ ở trên cho môi trường thật lâu dài).
 

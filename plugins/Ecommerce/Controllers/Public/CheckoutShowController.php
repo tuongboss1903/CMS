@@ -9,6 +9,7 @@ use Core\Http\Request;
 use Core\Http\Response;
 use Core\View;
 use Plugins\Ecommerce\Services\CartService;
+use Plugins\Ecommerce\Services\Payment\PaymentGatewaySettings;
 
 /** GET /checkout - gio hang rong thi quay ve /cart (khong hien form dat hang vo nghia). */
 final class CheckoutShowController
@@ -16,6 +17,7 @@ final class CheckoutShowController
     public function __construct(
         private readonly CartService $cartService,
         private readonly Csrf $csrf,
+        private readonly PaymentGatewaySettings $paymentGatewaySettings,
         private readonly View $view,
     ) {
     }
@@ -30,6 +32,7 @@ final class CheckoutShowController
             'items' => $this->cartService->items(),
             'total' => $this->cartService->total(),
             'errors' => [],
+            'enabled_payment_methods' => $this->paymentGatewaySettings->enabledDrivers(),
             'csrf_token' => $this->csrf->token(),
         ]);
 

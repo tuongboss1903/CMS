@@ -16,7 +16,7 @@
             <label for="location_key">Vị trí hiển thị (location key)</label>
             <input type="text" id="location_key" name="location_key" value="<?= $this->e($menu['location_key']) ?>">
         </div>
-        <button type="submit" class="btn btn-secondary">Lưu Menu</button>
+        <button type="submit" class="btn btn-primary">Lưu Menu</button>
     </form>
 </div>
 
@@ -78,7 +78,7 @@ $flatten = function (array $nodes, int $depth = 0) use (&$flatten): array {
                 <?php endforeach; ?>
             </select>
         </div>
-        <button type="submit" class="btn btn-primary"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Thêm</button>
+        <button type="submit" class="btn btn-secondary"><?php $this->include('admin.partials.icon', ['name' => 'plus']); ?> Thêm</button>
     </form>
 </div>
 
@@ -96,12 +96,14 @@ $flatten = function (array $nodes, int $depth = 0) use (&$flatten): array {
                 <div class="menu-tree-item-row">
                     <span class="drag-handle" aria-hidden="true">::</span>
                     <strong><?= $this->e($node['label']) ?></strong>
-                    <span class="badge badge-neutral"><?= $this->e($node['type']) ?></span>
+                    <span class="badge"><?= $this->e($node['type']) ?></span>
+                    <div class="table-actions">
                     <button type="button" class="btn btn-secondary btn-sm" data-modal-open="<?= $modalId ?>"><?php $this->include('admin.partials.icon', ['name' => 'edit']); ?> Sửa</button>
                     <form method="POST" action="/admin/menu-items/<?= $itemId ?>/delete" data-confirm="Xoá mục này và toàn bộ mục con?">
                         <input type="hidden" name="_token" value="<?= $this->e($csrf_token) ?>">
                         <button type="submit" class="btn btn-danger btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'trash']); ?> Xoá</button>
                     </form>
+                    </div>
                 </div>
 
                 <div class="modal-overlay" id="<?= $modalId ?>">

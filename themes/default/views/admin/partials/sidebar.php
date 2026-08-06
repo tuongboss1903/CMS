@@ -38,6 +38,9 @@ $isActive = static function (string $prefix) use ($currentPath): bool {
     <a href="/admin/media" title="Media"<?= $isActive('/admin/media') ? ' class="is-active"' : '' ?>>
         <span class="nav-link-inner"><?php $this->include('admin.partials.icon', ['name' => 'media']); ?><span class="nav-label">Media</span></span>
     </a>
+    <a href="/admin/storage" title="Dung lượng lưu trữ"<?= $isActive('/admin/storage') ? ' class="is-active"' : '' ?>>
+        <span class="nav-link-inner"><?php $this->include('admin.partials.icon', ['name' => 'server']); ?><span class="nav-label">Dung lượng lưu trữ</span></span>
+    </a>
     <a href="/admin/menus" title="Menu điều hướng"<?= $isActive('/admin/menus') ? ' class="is-active"' : '' ?>>
         <span class="nav-link-inner"><?php $this->include('admin.partials.icon', ['name' => 'menu']); ?><span class="nav-label">Menu điều hướng</span></span>
     </a>
@@ -54,6 +57,9 @@ $isActive = static function (string $prefix) use ($currentPath): bool {
     </a>
     <a href="/admin/system-settings" title="Cấu hình hệ thống"<?= $isActive('/admin/system-settings') ? ' class="is-active"' : '' ?>>
         <span class="nav-link-inner"><?php $this->include('admin.partials.icon', ['name' => 'system-settings']); ?><span class="nav-label">Cấu hình hệ thống</span></span>
+    </a>
+    <a href="/admin/email-settings" title="Cấu hình Email"<?= $isActive('/admin/email-settings') ? ' class="is-active"' : '' ?>>
+        <span class="nav-link-inner"><?php $this->include('admin.partials.icon', ['name' => 'mail']); ?><span class="nav-label">Cấu hình Email</span></span>
     </a>
     <a href="/admin/audit-logs" title="Nhật ký hoạt động"<?= $isActive('/admin/audit-logs') ? ' class="is-active"' : '' ?>>
         <span class="nav-link-inner"><?php $this->include('admin.partials.icon', ['name' => 'audit-log']); ?><span class="nav-label">Nhật ký hoạt động</span></span>

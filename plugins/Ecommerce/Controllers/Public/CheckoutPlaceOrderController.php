@@ -15,6 +15,7 @@ use Modules\Admin\NotificationService;
 use Plugins\Ecommerce\Actions\EcommerceValidationException;
 use Plugins\Ecommerce\Actions\PlaceOrderAction;
 use Plugins\Ecommerce\Services\CartService;
+use Plugins\Ecommerce\Services\Payment\PaymentGatewaySettings;
 use Plugins\Ecommerce\Services\Payment\PaymentManager;
 
 /**
@@ -37,6 +38,7 @@ final class CheckoutPlaceOrderController
         private readonly Hook $hook,
         private readonly Mailer $mailer,
         private readonly NotificationService $notificationService,
+        private readonly PaymentGatewaySettings $paymentGatewaySettings,
         private readonly PaymentManager $paymentManager,
         private readonly View $view,
     ) {
@@ -54,6 +56,7 @@ final class CheckoutPlaceOrderController
                 'total' => $this->cartService->total(),
                 'errors' => $exception->errors(),
                 'old' => $data,
+                'enabled_payment_methods' => $this->paymentGatewaySettings->enabledDrivers(),
                 'csrf_token' => $this->csrf->token(),
             ]);
 
@@ -70,7 +73,12 @@ final class CheckoutPlaceOrderController
             }
         }
 
-        return Response::html($this->view->render('checkout.success', ['order_number' => $order['order_number']]));
+        return Response::html($this->view->render('checkout.success', [
+            'order_number' => $order['order_number'],
+            'shipping_fee' => $order['shipping_fee'],
+            'shipping_distance_km' => $order['shipping_distance_km'],
+            'total_amount' => $order['total_amount'],
+        ]));
     }
 
     /** @param array{id: int, order_number: string, total_amount: float, payment_method: string} $order */

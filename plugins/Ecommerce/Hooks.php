@@ -42,6 +42,8 @@ $hook->filter('admin.menu.items', static function (array $items, ?TenantManager 
         ...$items,
         ['label' => 'Sản phẩm', 'url' => '/admin/products'],
         ['label' => 'Đơn hàng', 'url' => '/admin/orders'],
+        ['label' => 'Giao dịch thanh toán', 'url' => '/admin/payments'],
+        ['label' => 'Quản lý thanh toán', 'url' => '/admin/payment-settings'],
     ];
 });
 

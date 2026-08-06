@@ -44,21 +44,21 @@ final class AuditLogController
         $dateTo = \trim((string) ($request->query('date_to') ?? ''));
         $page = \max(1, (int) ($request->query('page') ?? 1));
 
-        $conditions = ['tenant_id = ?'];
+        $conditions = ['audit_logs.tenant_id = ?'];
         $bindings = [$tenantId];
 
         if ($event !== '') {
-            $conditions[] = 'event = ?';
+            $conditions[] = 'audit_logs.event = ?';
             $bindings[] = $event;
         }
 
         if ($dateFrom !== '') {
-            $conditions[] = 'created_at >= ?';
+            $conditions[] = 'audit_logs.created_at >= ?';
             $bindings[] = $dateFrom . ' 00:00:00';
         }
 
         if ($dateTo !== '') {
-            $conditions[] = 'created_at <= ?';
+            $conditions[] = 'audit_logs.created_at <= ?';
             $bindings[] = $dateTo . ' 23:59:59';
         }
 
@@ -69,8 +69,14 @@ final class AuditLogController
         $page = \min($page, $totalPages);
         $offset = ($page - 1) * self::PER_PAGE;
 
+        /* LEFT JOIN users (Design Audit Phase 24) - "Nguoi dung ID" truoc day hien so tho (vd "1"),
+           doi sang Avatar + ten that o view, dong bo voi dashboard.php. */
         $logs = $this->database->select(
-            "SELECT * FROM audit_logs WHERE {$where} ORDER BY created_at DESC, id DESC LIMIT " . self::PER_PAGE . " OFFSET {$offset}",
+            "SELECT audit_logs.*, users.name AS user_name
+                FROM audit_logs
+                LEFT JOIN users ON users.id = audit_logs.user_id
+                WHERE {$where}
+                ORDER BY audit_logs.created_at DESC, audit_logs.id DESC LIMIT " . self::PER_PAGE . " OFFSET {$offset}",
             $bindings
         );
 

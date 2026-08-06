@@ -8,12 +8,16 @@ $orderStatusLabels = [
     'completed' => 'Hoàn tất', 'cancelled' => 'Đã huỷ',
 ];
 $paymentStatusLabels = ['completed' => 'Thành công', 'failed' => 'Thất bại', 'pending' => 'Chờ xử lý'];
+$orderStatusDotClass = [
+    'pending' => 'status-dot--draft', 'processing' => 'status-dot--active', 'shipped' => 'status-dot--active',
+    'completed' => 'status-dot--published', 'cancelled' => 'status-dot--archived',
+];
 ?>
 <div class="card mb-5">
     <p><strong>Khách hàng:</strong> <?= $this->e((string) $order['guest_name']) ?> (<?= $this->e((string) $order['guest_email']) ?>)</p>
     <p><strong>Địa chỉ giao hàng:</strong> <?= $this->e((string) ($order['shipping_address'] ?? '-')) ?></p>
-    <p><strong>Trạng thái:</strong> <span class="badge badge-neutral"><?= $this->e($orderStatusLabels[$order['status']] ?? (string) $order['status']) ?></span></p>
-    <p><strong>Tổng tiền:</strong> <?= $this->e(\number_format((float) $order['total_amount'], 0, ',', '.')) ?> đ</p>
+    <p><strong>Trạng thái:</strong> <span class="status-dot <?= $this->e($orderStatusDotClass[$order['status']] ?? 'status-dot--draft') ?>"><?= $this->e($orderStatusLabels[$order['status']] ?? (string) $order['status']) ?></span></p>
+    <p><strong>Tổng tiền:</strong> <span style="font-family:var(--font-mono);font-weight:600;font-size:var(--text-lg);"><?= $this->e(\number_format((float) $order['total_amount'], 0, ',', '.')) ?> đ</span></p>
 
     <?php
     $transitions = [
@@ -32,25 +36,45 @@ $available = $transitions[$order['status']] ?? [];
     <?php endforeach; ?>
 </div>
 
-<div class="table-wrap">
+<div class="table-wrap table-wrap--flat">
 <table class="data-table">
-<thead><tr><th scope="col">Sản phẩm</th><th scope="col">Đơn giá</th><th scope="col">Số lượng</th><th scope="col">Thành tiền</th></tr></thead>
+<thead><tr><th scope="col">Sản phẩm</th><th scope="col" style="text-align:right;">Đơn giá</th><th scope="col" style="text-align:right;">Số lượng</th><th scope="col" style="text-align:right;">Thành tiền</th></tr></thead>
 <tbody>
 <?php foreach ($items as $item): ?>
 <tr>
     <td><?= $this->e((string) $item['product_name_snapshot']) ?></td>
-    <td><?= $this->e(\number_format((float) $item['unit_price'], 0, ',', '.')) ?> đ</td>
-    <td><?= $this->e((string) $item['quantity']) ?></td>
-    <td><?= $this->e(\number_format((float) $item['subtotal'], 0, ',', '.')) ?> đ</td>
+    <td style="text-align:right;font-family:var(--font-mono);"><?= $this->e(\number_format((float) $item['unit_price'], 0, ',', '.')) ?> đ</td>
+    <td style="text-align:right;font-family:var(--font-mono);"><?= $this->e((string) $item['quantity']) ?></td>
+    <td style="text-align:right;font-family:var(--font-mono);"><?= $this->e(\number_format((float) $item['subtotal'], 0, ',', '.')) ?> đ</td>
 </tr>
 <?php endforeach; ?>
+<tr>
+    <td colspan="3" style="text-align:right;font-weight:600;border-top:1px solid var(--color-border);">Tổng cộng</td>
+    <td style="text-align:right;font-family:var(--font-mono);font-weight:600;border-top:1px solid var(--color-border);"><?= $this->e(\number_format((float) $order['total_amount'], 0, ',', '.')) ?> đ</td>
+</tr>
 </tbody>
 </table>
 </div>
 
 <div class="card mt-5">
+    <h2 style="font-size:16px;">Lịch sử trạng thái</h2>
+    <ol class="order-timeline">
+        <li class="order-timeline-item">
+            <div class="order-timeline-text">Đơn hàng được tạo</div>
+            <div class="order-timeline-time"><?= $this->e((string) $order['created_at']) ?></div>
+        </li>
+        <?php if (!empty($order['updated_at']) && $order['updated_at'] !== $order['created_at']): ?>
+        <li class="order-timeline-item">
+            <div class="order-timeline-text">Trạng thái hiện tại: <?= $this->e($orderStatusLabels[$order['status']] ?? (string) $order['status']) ?></div>
+            <div class="order-timeline-time"><?= $this->e((string) $order['updated_at']) ?></div>
+        </li>
+        <?php endif; ?>
+    </ol>
+</div>
+
+<div class="card mt-5">
     <h2 style="font-size:16px;">Lịch sử thanh toán</h2>
-    <div class="table-wrap">
+    <div class="table-wrap table-wrap--flat">
     <table class="data-table">
     <thead><tr><th scope="col">Cổng thanh toán</th><th scope="col">Trạng thái</th><th scope="col">Số tiền</th><th scope="col">Mã giao dịch</th><th scope="col">Thời gian</th></tr></thead>
     <tbody>

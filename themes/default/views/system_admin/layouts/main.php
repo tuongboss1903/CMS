@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= $this->e($title ?? 'System Admin') ?> - CMS System Admin</title>
-    <link rel="stylesheet" href="/assets/css/admin.css">
-    <script>try { var t = localStorage.getItem('cms-theme'); if (t === 'light' || t === 'dark') { document.documentElement.setAttribute('data-theme', t); } } catch (e) {}</script>
+    <?php $adminCssVersion = @\filemtime($_SERVER['DOCUMENT_ROOT'] . '/assets/css/admin.css') ?: \time(); ?>
+    <link rel="stylesheet" href="/assets/css/admin.css?v=<?= $this->e((string) $adminCssVersion) ?>">
 </head>
 <body class="admin-shell">
 <a href="#main-content" class="skip-link">Bỏ qua, đến nội dung chính</a>

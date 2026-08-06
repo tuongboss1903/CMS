@@ -20,7 +20,7 @@ Cấu trúc thư mục quan trọng:
 - `config/` — file cấu hình PHP thuần (không dùng `vlucas/phpdotenv`, biến môi trường nạp qua parser tối giản tự viết `bin/load_env.php`, xem `.env.example`).
 - `database/migrations/` — migration dạng `return ['up' => Closure, 'down' => Closure]`, chạy qua `MigrationManager`/`bin/migrate.php`.
 - `tests/` — PHPUnit, namespace `Tests\`, testsuite "Core" khai báo trong `phpunit.xml`.
-- `core-architecture.md` — tài liệu kiến trúc kỹ thuật đầy đủ, **đọc trước khi sửa code Core**.
+- `docs/kien-truc-cot-loi/core-architecture.md` — tài liệu kiến trúc kỹ thuật đầy đủ, **đọc trước khi sửa code Core**.
 
 ## Lệnh CLI quan trọng
 
@@ -58,4 +58,4 @@ Cấu trúc thư mục quan trọng:
 - Commit/PR: tiền tố bằng mã ticket, dạng `CMS-XXX: <Mo ta> (PHASE N)` (vd `CMS-055: UI/UX Admin Dashboard Overhaul & Theme Engine Enhancement (PHASE 18)`). Một số commit rất sớm trong lịch sử dùng Conventional Commits (`feat:`, `docs:`...) — không theo mẫu đó nữa, dùng đúng mẫu `CMS-XXX: ...` ở trên cho code mới.
 - Không tự ý `git commit`/`git push`/tạo tag/merge — chỉ thực hiện khi được yêu cầu rõ ràng.
 
-Chi tiết kiến trúc sâu hơn xem `core-architecture.md`.
+Chi tiết kiến trúc sâu hơn xem `docs/kien-truc-cot-loi/core-architecture.md`.

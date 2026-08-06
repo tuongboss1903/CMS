@@ -8,7 +8,7 @@
     <a href="/admin/comments?status=rejected" class="btn <?= $status === 'rejected' ? 'btn-primary' : 'btn-secondary' ?> btn-sm">Đã từ chối</a>
 </div>
 
-<div class="table-wrap" data-bulk-select="comments-bulk-form">
+<div class="table-wrap table-wrap--flat" data-bulk-select="comments-bulk-form">
     <div class="bulk-actions-bar" data-bulk-bar>
         <span data-bulk-count>0 mục đã chọn</span>
         <button type="submit" form="comments-bulk-form" class="btn btn-danger btn-sm"><?php $this->include('admin.partials.icon', ['name' => 'trash']); ?> Xoá đã chọn</button>

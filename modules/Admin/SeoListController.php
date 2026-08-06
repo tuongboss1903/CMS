@@ -43,9 +43,16 @@ final class SeoListController
             [$siteId]
         );
 
+        $configuredCount = \count(\array_filter($pages, static fn (array $page): bool => (int) $page['has_seo_meta'] === 1));
+
         $html = $this->view->render('admin.pages.seo.list', [
             'breadcrumb_items' => [['label' => 'SEO']],
             'pages' => $pages,
+            'stats' => [
+                'total' => \count($pages),
+                'configured' => $configuredCount,
+                'missing' => \count($pages) - $configuredCount,
+            ],
         ]);
 
         return Response::html($html);

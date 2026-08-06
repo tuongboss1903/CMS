@@ -53,15 +53,22 @@ final class ProductUpdateController
             'slug' => 'required|string',
             'price' => 'required|numeric',
             'stock_quantity' => 'nullable|integer',
+            'image_id' => 'nullable|integer',
         ]);
 
         if ($result->fails()) {
             return $this->renderWithErrors($productId, $result->errors(), $data);
         }
 
+        $imageId = $this->resolveImageId($data, (string) $tenantId);
+
+        if ($imageId === false) {
+            return $this->renderWithErrors($productId, ['image_id' => ['Anh khong hop le.']], $data);
+        }
+
         try {
             $this->database->update(
-                'UPDATE products SET name = ?, slug = ?, description = ?, category = ?, price = ?, sku = ?, stock_quantity = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                'UPDATE products SET name = ?, slug = ?, description = ?, category = ?, price = ?, sku = ?, stock_quantity = ?, status = ?, image_id = ?, updated_at = CURRENT_TIMESTAMP
                  WHERE id = ? AND tenant_id = ?',
                 [
                     (string) $data['name'],
@@ -72,6 +79,7 @@ final class ProductUpdateController
                     ($data['sku'] ?? '') !== '' ? (string) $data['sku'] : null,
                     (int) ($data['stock_quantity'] ?? 0),
                     ($data['status'] ?? 'draft') === 'published' ? 'published' : 'draft',
+                    $imageId,
                     $productId,
                     $tenantId,
                 ]
@@ -86,6 +94,22 @@ final class ProductUpdateController
     }
 
     /**
+     * @param array<string, mixed> $data
+     * @return int|null|false null = khong chon anh, false = image_id gui len khong hop le/khac tenant
+     */
+    private function resolveImageId(array $data, string $tenantId): int|null|false
+    {
+        if (($data['image_id'] ?? '') === '' || ($data['image_id'] ?? null) === null) {
+            return null;
+        }
+
+        $imageId = (int) $data['image_id'];
+        $media = $this->database->selectOne('SELECT id FROM media WHERE id = ? AND tenant_id = ?', [$imageId, $tenantId]);
+
+        return $media !== null ? $imageId : false;
+    }
+
+    /**
      * @param array<string, list<string>> $errors
      * @param array<string, mixed> $data
      */
@@ -95,6 +119,7 @@ final class ProductUpdateController
             'product' => ['id' => $productId],
             'errors' => $errors,
             'old' => $data,
+            'images' => $this->database->select('SELECT id, file_name FROM media WHERE tenant_id = ? ORDER BY created_at DESC', [$this->tenantManager->id()]),
             'breadcrumb_items' => [['label' => 'Sản phẩm', 'url' => '/admin/products'], ['label' => 'Sửa']],
             'csrf_token' => $this->csrf->token(),
         ]);

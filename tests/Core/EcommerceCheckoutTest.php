@@ -118,7 +118,7 @@ final class EcommerceCheckoutTest extends TestCase
             id INTEGER PRIMARY KEY AUTOINCREMENT, tenant_id BIGINT NOT NULL, name VARCHAR(255) NOT NULL,
             slug VARCHAR(255) NOT NULL, description TEXT NULL, category VARCHAR(100) NULL,
             price DECIMAL(12,2) NOT NULL, sku VARCHAR(100) NULL, stock_quantity INT NOT NULL DEFAULT 0,
-            status VARCHAR(20) NOT NULL DEFAULT 'draft', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(20) NOT NULL DEFAULT 'draft', image_id BIGINT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP NULL, deleted_at TIMESTAMP NULL
         )");
         $this->database->statement('CREATE TABLE product_variants (
@@ -130,7 +130,9 @@ final class EcommerceCheckoutTest extends TestCase
             id INTEGER PRIMARY KEY AUTOINCREMENT, tenant_id BIGINT NOT NULL, order_number VARCHAR(40) NOT NULL,
             guest_name VARCHAR(255) NOT NULL, guest_email VARCHAR(255) NOT NULL, shipping_address TEXT NULL,
             status VARCHAR(20) NOT NULL DEFAULT 'pending', total_amount DECIMAL(12,2) NOT NULL,
-            payment_method VARCHAR(20) NOT NULL DEFAULT 'cod', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NULL
+            payment_method VARCHAR(20) NOT NULL DEFAULT 'cod', shipping_fee DECIMAL(12,2) NOT NULL DEFAULT 0,
+            shipping_distance_km DECIMAL(6,2) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NULL
         )");
         $this->database->statement('CREATE TABLE order_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT, order_id BIGINT NOT NULL, product_id BIGINT NOT NULL,
@@ -237,7 +239,7 @@ final class EcommerceCheckoutTest extends TestCase
             '/checkout',
             'example.com',
             [],
-            ['guest_name' => 'Nguyen Van A', 'guest_email' => 'a@example.com', 'shipping_address' => '123 Le Loi', '_token' => $this->csrfToken()]
+            ['guest_name' => 'Nguyen Van A', 'guest_email' => 'a@example.com', 'shipping_address' => '123 Le Loi', 'customer_lat' => '10.7769', 'customer_lng' => '106.7009', '_token' => $this->csrfToken()]
         ));
 
         self::assertSame(200, $response->getStatusCode());
@@ -246,7 +248,8 @@ final class EcommerceCheckoutTest extends TestCase
         $order = $this->database->selectOne('SELECT * FROM orders WHERE tenant_id = ?', [$siteId]);
         self::assertNotNull($order);
         self::assertSame('Nguyen Van A', $order['guest_name']);
-        self::assertSame(200.0, (float) $order['total_amount']);
+        self::assertSame(15200.0, (float) $order['total_amount']);
+        self::assertSame(15000.0, (float) $order['shipping_fee']);
 
         $items = $this->database->select('SELECT * FROM order_items WHERE order_id = ?', [$order['id']]);
         self::assertCount(1, $items);
@@ -257,5 +260,38 @@ final class EcommerceCheckoutTest extends TestCase
 
         $cartResponse = $this->router->dispatch(new Request('GET', '/cart', 'example.com'));
         self::assertStringContainsString('trống', $cartResponse->getBody());
+    }
+
+    public function testCheckoutPlaceOrderOutsideDeliveryRadiusIsRejected(): void
+    {
+        $siteId = $this->seedSite();
+        $productId = $this->seedProduct($siteId, 10);
+        $this->actingAsShopper($siteId);
+
+        $this->router->dispatch(new Request(
+            'POST',
+            '/cart/add',
+            'example.com',
+            [],
+            ['product_id' => (string) $productId, 'quantity' => '1', '_token' => $this->csrfToken()]
+        ));
+
+        // ~11km ve phia bac shop (fixture config/shipping.php: 10.7769,106.7009, ban kinh 5km).
+        $response = $this->router->dispatch(new Request(
+            'POST',
+            '/checkout',
+            'example.com',
+            [],
+            ['guest_name' => 'Nguyen Van A', 'guest_email' => 'a@example.com', 'customer_lat' => '10.8769', 'customer_lng' => '106.7009', '_token' => $this->csrfToken()]
+        ));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('vượt quá phạm vi giao hàng', $response->getBody());
+
+        $order = $this->database->selectOne('SELECT id FROM orders WHERE tenant_id = ?', [$siteId]);
+        self::assertNull($order);
+
+        $product = $this->database->selectOne('SELECT stock_quantity FROM products WHERE id = ?', [$productId]);
+        self::assertSame(10, (int) $product['stock_quantity']);
     }
 }

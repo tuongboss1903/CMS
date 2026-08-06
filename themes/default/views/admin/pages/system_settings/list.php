@@ -6,7 +6,7 @@
 <?php foreach ($grouped as $group => $items): ?>
 <div class="card mt-4">
     <h2 style="font-size:16px; text-transform: capitalize;"><?= $this->e($group) ?></h2>
-    <div class="table-wrap">
+    <div class="table-wrap table-wrap--flat">
     <table class="data-table">
     <thead>
     <tr><th scope="col">Key</th><th scope="col">Giá trị</th><th scope="col"></th></tr>

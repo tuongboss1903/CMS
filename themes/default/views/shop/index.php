@@ -11,7 +11,13 @@
 <?php foreach ($products as $product): ?>
 <?php $inStock = (int) ($product['stock_quantity'] ?? 0) > 0; ?>
 <div class="product-card">
+    <?php if (!empty($product['image_path'])): ?>
+    <a href="/shop/<?= $this->e((string) $product['slug']) ?>" class="product-card-visual product-card-visual--image">
+        <img src="/media/<?= $this->e(\basename((string) $product['image_path'])) ?>" alt="<?= $this->e((string) $product['name']) ?>">
+    </a>
+    <?php else: ?>
     <a href="/shop/<?= $this->e((string) $product['slug']) ?>" class="product-card-visual" aria-hidden="true"><?= $this->e(\mb_strtoupper(\mb_substr((string) $product['name'], 0, 1))) ?></a>
+    <?php endif; ?>
     <div class="product-card-body">
         <?php if (!empty($product['category'])): ?>
         <div class="product-card-category"><?= $this->e((string) $product['category']) ?></div>

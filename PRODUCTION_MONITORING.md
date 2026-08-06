@@ -113,7 +113,7 @@ mysqldump --single-transaction --routines --triggers \
 ```
 
 - `--single-transaction` — backup nhất quán mà **không khóa bảng** (quan trọng cho InnoDB, tránh downtime khi backup lúc hệ thống đang chạy thật).
-- `--routines --triggers` — dự án hiện chưa dùng Stored Procedure/Trigger nào (đúng nguyên tắc "không Trigger cho business logic" đã giữ xuyên suốt — xem `core-architecture.md`), nhưng thêm cờ này để backup luôn đầy đủ nếu phát sinh sau này, không rủi ro thiếu sót.
+- `--routines --triggers` — dự án hiện chưa dùng Stored Procedure/Trigger nào (đúng nguyên tắc "không Trigger cho business logic" đã giữ xuyên suốt — xem `docs/kien-truc-cot-loi/core-architecture.md`), nhưng thêm cờ này để backup luôn đầy đủ nếu phát sinh sau này, không rủi ro thiếu sót.
 
 ### 3.2. Backup File Storage (Media)
 
@@ -122,7 +122,7 @@ tar -czf /path/to/backups/media_$(date +%Y%m%d_%H%M%S).tar.gz \
   -C /path/to/cms storage/app/media
 ```
 
-Chỉ backup `storage/app/media/` — **không** `public/uploads/` (đã xác nhận không phải nơi lưu Media thật, xem `STAGING_CHECKLIST.md`/`core-architecture.md` mục 3.46).
+Chỉ backup `storage/app/media/` — **không** `public/uploads/` (đã xác nhận không phải nơi lưu Media thật, xem `STAGING_CHECKLIST.md`/`docs/kien-truc-cot-loi/core-architecture.md` mục 3.46).
 
 ### 3.3. Lệnh khôi phục (Restore) — luôn kiểm thử trên môi trường riêng trước
 
@@ -183,7 +183,7 @@ add_header Content-Security-Policy "default-src 'self'; img-src 'self' data:; st
 
 - `X-Frame-Options: SAMEORIGIN` — chặn Clickjacking (nhúng Admin qua `<iframe>` từ domain khác).
 - `X-Content-Type-Options: nosniff` — chặn trình duyệt tự đoán sai MIME type (giảm rủi ro XSS qua file upload Media giả dạng).
-- `Content-Security-Policy` — **`script-src` phải bao gồm `https://cdn.quilljs.com`** (Rich Text Editor dùng qua CDN từ Pages Admin UI, xem `core-architecture.md` mục 3.38) — nếu thiếu domain này, Admin Create/Edit Page sẽ bị chặn tải Quill.js, giao diện soạn thảo hỏng hoàn toàn. **Kiểm tra kỹ trên Staging trước khi áp dụng CSP lên Production** — CSP quá chặt là nguyên nhân phổ biến nhất gây vỡ giao diện âm thầm (không lỗi PHP, chỉ lỗi Console trình duyệt).
+- `Content-Security-Policy` — **`script-src` phải bao gồm `https://cdn.quilljs.com`** (Rich Text Editor dùng qua CDN từ Pages Admin UI, xem `docs/kien-truc-cot-loi/core-architecture.md` mục 3.38) — nếu thiếu domain này, Admin Create/Edit Page sẽ bị chặn tải Quill.js, giao diện soạn thảo hỏng hoàn toàn. **Kiểm tra kỹ trên Staging trước khi áp dụng CSP lên Production** — CSP quá chặt là nguyên nhân phổ biến nhất gây vỡ giao diện âm thầm (không lỗi PHP, chỉ lỗi Console trình duyệt).
 
 ### 4.3. Phân tích minh bạch: vì sao KHÔNG dùng `RateLimiter` sẵn có cho việc này
 

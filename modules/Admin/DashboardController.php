@@ -195,13 +195,20 @@ final class DashboardController
      * dung schema toi gian hon) - bat Throwable, fallback rong, dung nguyen tac da ap dung cho bang
      * analytics_views o fetchAnalyticsSummary() phia tren.
      *
-     * @return list<array{event: string, created_at: string}>
+     * LEFT JOIN users (Design Audit Phase 24) - View truoc day hien "user#1" tho, doi sang Avatar +
+     * ten that (user_name null neu user_id null - vd dang nhap that bai - hoac user da bi xoa).
+     *
+     * @return list<array{event: string, created_at: string, user_id: int|null, user_name: string|null}>
      */
     private function fetchRecentAuditLogs(int|string|null $siteId): array
     {
         try {
             return $this->database->select(
-                'SELECT event, created_at FROM audit_logs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 5',
+                'SELECT audit_logs.event, audit_logs.created_at, audit_logs.user_id, users.name AS user_name
+                    FROM audit_logs
+                    LEFT JOIN users ON users.id = audit_logs.user_id
+                    WHERE audit_logs.tenant_id = ?
+                    ORDER BY audit_logs.created_at DESC LIMIT 5',
                 [$siteId]
             );
         } catch (\Throwable) {

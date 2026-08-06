@@ -40,7 +40,7 @@
         <label for="robots_txt_custom">Robots.txt tuỳ chỉnh (để trống để dùng mặc định)</label>
         <textarea id="robots_txt_custom" name="robots_txt_custom" rows="5"><?= $this->e((string) ($settings['robots_txt_custom'] ?? '')) ?></textarea>
     </div>
-    <button type="submit" class="btn btn-primary">Lưu cài đặt</button>
+    <button type="submit" class="btn btn-primary"><?php $this->include('admin.partials.icon', ['name' => 'check']); ?> Lưu cài đặt</button>
 </form>
 </div>
 <?php $this->endSection(); ?>

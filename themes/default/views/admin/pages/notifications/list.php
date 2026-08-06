@@ -9,7 +9,14 @@
 </div>
 <p class="text-muted"><?= $this->e((string) $total) ?> thông báo.</p>
 
-<div class="table-wrap">
+<?php if (empty($notifications)): ?>
+<?php $this->include('admin.partials.empty_state', [
+    'icon' => 'notification',
+    'title' => 'Chưa có thông báo nào',
+    'description' => 'Thông báo sẽ xuất hiện ở đây khi có bình luận mới, đăng ký người dùng, hoặc sự kiện hệ thống cần bạn chú ý.',
+]); ?>
+<?php else: ?>
+<div class="table-wrap table-wrap--flat">
 <table class="data-table">
 <thead>
 <tr><th scope="col">Trạng thái</th><th scope="col">Tiêu đề</th><th scope="col">Nội dung</th><th scope="col">Thời gian</th><th scope="col">Hành động</th></tr>
@@ -18,7 +25,7 @@
 <?php foreach ($notifications as $notification): ?>
 <tr>
     <td data-field="status">
-        <span class="badge <?= empty($notification['read_at']) ? 'badge-danger' : 'badge-secondary' ?>"><?= empty($notification['read_at']) ? 'Chưa đọc' : 'Đã đọc' ?></span>
+        <span class="status-dot <?= empty($notification['read_at']) ? 'status-dot--active' : 'status-dot--draft' ?>"><?= empty($notification['read_at']) ? 'Chưa đọc' : 'Đã đọc' ?></span>
     </td>
     <td><?= $this->e((string) $notification['title']) ?></td>
     <td class="text-muted"><?= $this->e((string) $notification['body']) ?></td>
@@ -33,12 +40,10 @@
     </td>
 </tr>
 <?php endforeach; ?>
-<?php if (empty($notifications)): ?>
-<tr><td colspan="5" class="empty-state">Chưa có thông báo nào.</td></tr>
-<?php endif; ?>
 </tbody>
 </table>
 </div>
+<?php endif; ?>
 
 <?php $this->include('admin.partials.pagination', [
     'page' => $page,

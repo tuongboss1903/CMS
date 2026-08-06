@@ -23,31 +23,36 @@
             <label for="shipping_address">Địa chỉ giao hàng</label>
             <textarea id="shipping_address" name="shipping_address" rows="3"><?= $this->e((string) ($old['shipping_address'] ?? '')) ?></textarea>
         </div>
+        <input type="hidden" name="customer_lat" data-geo-lat value="<?= $this->e((string) ($old['customer_lat'] ?? '')) ?>">
+        <input type="hidden" name="customer_lng" data-geo-lng value="<?= $this->e((string) ($old['customer_lng'] ?? '')) ?>">
+        <p class="field-hint" data-geo-status></p>
+        <?php foreach ($errors['shipping'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
+        <button type="button" class="btn btn-secondary btn-sm" data-geo-retry>Thử lại định vị</button>
         </div>
 
         <div class="card">
         <h2>Phương thức thanh toán</h2>
-        <?php $selectedMethod = (string) ($old['payment_method'] ?? 'cod'); ?>
+        <?php
+        $paymentMethodLabels = ['cod' => 'Thanh toán khi nhận hàng (COD)', 'momo' => 'Ví MoMo', 'vnpay' => 'VNPay'];
+        $enabledMethods = $enabled_payment_methods ?? \array_keys($paymentMethodLabels);
+        $selectedMethod = (string) ($old['payment_method'] ?? ($enabledMethods[0] ?? 'cod'));
+        ?>
         <div class="payment-method-options">
+            <?php foreach ($paymentMethodLabels as $methodKey => $methodLabel): ?>
+            <?php if (!\in_array($methodKey, $enabledMethods, true)) { continue; } ?>
             <label class="payment-method-option">
-                <input type="radio" name="payment_method" value="cod" <?= $selectedMethod === 'cod' ? 'checked' : '' ?>>
-                <span>Thanh toán khi nhận hàng (COD)</span>
+                <input type="radio" name="payment_method" value="<?= $this->e($methodKey) ?>" <?= $selectedMethod === $methodKey ? 'checked' : '' ?>>
+                <span><?= $this->e($methodLabel) ?></span>
             </label>
-            <label class="payment-method-option">
-                <input type="radio" name="payment_method" value="momo" <?= $selectedMethod === 'momo' ? 'checked' : '' ?>>
-                <span>Ví MoMo</span>
-            </label>
-            <label class="payment-method-option">
-                <input type="radio" name="payment_method" value="vnpay" <?= $selectedMethod === 'vnpay' ? 'checked' : '' ?>>
-                <span>VNPay</span>
-            </label>
+            <?php endforeach; ?>
         </div>
+        <?php foreach ($errors['payment_method'] ?? [] as $error): ?><p class="field-error"><?= $this->e($error) ?></p><?php endforeach; ?>
         </div>
 
         <?php if (!empty($errors['cart'])): ?>
         <div class="alert alert-danger mt-4"><?= $this->e($errors['cart'][0]) ?></div>
         <?php endif; ?>
-        <button type="submit" class="btn btn-primary btn-block mt-5">Xác nhận đặt hàng</button>
+        <button type="submit" class="btn btn-primary btn-block mt-5" data-geo-submit>Xác nhận đặt hàng</button>
     </form>
 
     <aside class="order-summary">
@@ -58,7 +63,9 @@
             <span><?= $this->e(\number_format(((float) $item['price']) * ((int) $item['quantity']), 0, ',', '.')) ?> đ</span>
         </div>
         <?php endforeach; ?>
-        <div class="order-summary-total"><span>Tổng cộng</span><span><?= $this->e(\number_format((float) $total, 0, ',', '.')) ?> đ</span></div>
+        <div class="order-summary-row"><span>Tạm tính</span><span><?= $this->e(\number_format((float) $total, 0, ',', '.')) ?> đ</span></div>
+        <div class="order-summary-row"><span>Phí giao hàng</span><span>Tính khi xác nhận</span></div>
+        <p class="field-hint">Phí giao hàng cố định trong bán kính giao hàng, tính theo vị trí GPS của bạn khi xác nhận đặt hàng.</p>
     </aside>
 </div>
 </div>

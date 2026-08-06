@@ -10,7 +10,7 @@
  * va class CSS (badge badge-neutral, empty-state...) de khong vo test cu (AdminAuditLogTest.php).
  */
 $eventOptions = \array_map(
-    static fn (string $eventOption): array => ['value' => $eventOption, 'label' => $eventOption],
+    static fn (string $eventOption): array => ['value' => $eventOption, 'label' => \Modules\Admin\AuditLogPresenter::eventLabel($eventOption)],
     $available_events
 );
 ?>
@@ -23,29 +23,42 @@ $eventOptions = \array_map(
     ],
 ]); ?>
 
-<div class="table-wrap">
+<div class="table-wrap table-wrap--flat">
 <table class="data-table">
 <thead>
-<tr><th scope="col">Thời gian</th><th scope="col">Sự kiện</th><th scope="col">Người dùng ID</th><th scope="col">Đối tượng</th><th scope="col">IP</th><th scope="col">Chi tiết</th></tr>
+<tr><th scope="col">Thời gian</th><th scope="col">Sự kiện</th><th scope="col">Người dùng</th><th scope="col">Đối tượng</th><th scope="col">Nguồn truy cập</th><th scope="col">Chi tiết</th></tr>
 </thead>
 <tbody>
 <?php foreach ($logs as $log): ?>
+<?php $userName = (string) ($log['user_name'] ?? ''); ?>
 <tr>
-    <td class="text-muted"><?= $this->e((string) $log['created_at']) ?></td>
-    <td><span class="badge badge-neutral"><?= $this->e((string) $log['event']) ?></span></td>
-    <td><?= $this->e((string) ($log['user_id'] ?? '-')) ?></td>
+    <td class="text-muted" style="font-family:var(--font-mono);font-size:var(--text-xs);"><?= $this->e((string) $log['created_at']) ?></td>
+    <td><span class="badge <?= $this->e(\Modules\Admin\AuditLogPresenter::eventBadgeClass((string) $log['event'])) ?>" title="<?= $this->e((string) $log['event']) ?>"><?= $this->e(\Modules\Admin\AuditLogPresenter::eventLabel((string) $log['event'])) ?></span></td>
+    <td>
+    <?php if ($userName !== ''): ?>
+        <div class="user-cell">
+            <div class="user-cell-avatar"><?= $this->e(\mb_strtoupper(\mb_substr($userName, 0, 1))) ?></div>
+            <span class="text-truncate" title="<?= $this->e($userName) ?>"><?= $this->e($userName) ?></span>
+        </div>
+    <?php else: ?>
+        <span class="text-muted">—</span>
+    <?php endif; ?>
+    </td>
     <td>
     <?php if (!empty($log['auditable_type'])): ?>
         <?= $this->e((string) $log['auditable_type']) ?>#<?= $this->e((string) ($log['auditable_id'] ?? '')) ?>
     <?php else: ?>
-        -
+        <span class="text-muted">—</span>
     <?php endif; ?>
     </td>
-    <td class="text-muted"><?= $this->e((string) ($log['ip_address'] ?? '-')) ?></td>
+    <td class="text-muted"><?= $this->e(\Modules\Admin\AuditLogPresenter::ipLabel($log['ip_address'] ?? null)) ?></td>
     <td>
-    <?php if (!empty($log['old_values']) || !empty($log['new_values'])): ?>
+    <?php if (!empty($log['old_values']) || !empty($log['new_values']) || !empty($log['ip_address'])): ?>
         <details>
         <summary>Xem</summary>
+        <?php if (!empty($log['ip_address'])): ?>
+        <div><strong>IP:</strong> <code><?= $this->e((string) $log['ip_address']) ?></code></div>
+        <?php endif; ?>
         <?php if (!empty($log['old_values'])): ?>
         <div><strong>Trước:</strong> <code><?= $this->e((string) $log['old_values']) ?></code></div>
         <?php endif; ?>
@@ -54,7 +67,7 @@ $eventOptions = \array_map(
         <?php endif; ?>
         </details>
     <?php else: ?>
-        -
+        <span class="text-muted">—</span>
     <?php endif; ?>
     </td>
 </tr>

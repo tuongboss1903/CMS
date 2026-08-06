@@ -5,6 +5,10 @@
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-5);
   padding: var(--space-8) 0;
+  // So thu tu lon (01, 02, 03...) thay icon minh hoa (public-home.md - muc Feature) - dem bang
+  // CSS counter thuan, KHONG doi cau truc HTML/class (.feature-grid/.feature-card giu nguyen,
+  // xem PublicPageBuilderRenderingTest::testAllSixBlockTypesRenderWithCorrectCssClasses).
+  counter-reset: feature;
 
   @include mixins.respond(tablet) { grid-template-columns: repeat(2, 1fr); }
   @include mixins.respond(mobile) { grid-template-columns: 1fr; padding: var(--space-6) 0; }
@@ -14,18 +18,31 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
+  counter-increment: feature;
 
   // Da xoa hover (border-color + translateY) - Design Audit Phase 6/4.9: thuan minh hoa, khong
   // co link/button ben trong, hover truoc do tao cam giac bam duoc trong khi khong the.
 
+  &::before {
+    content: counter(feature, decimal-leading-zero);
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--text-2xl);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-3);
+  }
+
+  // Icon van giu nguyen trong DOM (noi dung do Content Editor nhap, khong tu y an) - chi giam
+  // vai tro thi giac (nho lai, dat canh so thu tu) thay vi la diem neo chinh nhu truoc.
   .feature-icon {
-    width: 44px; height: 44px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: var(--radius-md);
-    background: var(--color-accent-soft);
+    display: inline-flex;
+    width: auto; height: auto;
+    align-items: center; justify-content: center;
+    background: none;
     color: var(--color-accent-text);
-    font-size: var(--text-lg);
-    margin-bottom: var(--space-4);
+    font-size: var(--text-base);
+    margin-bottom: 0;
+    margin-left: var(--space-2);
   }
   h3 { font-size: var(--text-md); margin-bottom: var(--space-2); }
   p { font-size: var(--text-base); color: var(--color-text-secondary); margin: 0; }

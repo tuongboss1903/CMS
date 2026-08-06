@@ -256,6 +256,10 @@ final class Application
             $currentUserName = \is_array($currentUser) && !empty($currentUser['name'])
                 ? (string) $currentUser['name']
                 : null;
+            // current_user_id (Design Audit Phase 24) - dropdown Avatar o Topbar can link "Ho so"
+            // toi dung /admin/users/{id}/edit cua CHINH nguoi dang dang nhap, cung nguyen tac voi
+            // current_user_name o tren (doc thang tu Session, khong qua Module Service).
+            $currentUserId = $session->isStarted() ? $session->get('auth.user_id') : null;
 
             // Buoc 5 (Notification UI, CMS-066): badge so thong bao chua doc cho sidebar.php -
             // tinh 1 lan/request giong dung pattern current_user_name o tren (khong qua Module
@@ -305,6 +309,7 @@ final class Application
             return new View($this->basePath . '/themes', $activeTheme, $defaultTheme, [
                 'extra_admin_menu_items' => $extraMenuItems,
                 'current_user_name' => $currentUserName,
+                'current_user_id' => $currentUserId,
                 'unread_notifications_count' => $unreadNotificationsCount,
                 'current_path' => $currentPath,
                 'csrf_token' => $csrfToken,

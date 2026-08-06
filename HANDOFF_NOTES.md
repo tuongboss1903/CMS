@@ -27,8 +27,8 @@
 | `PRODUCTION_MONITORING.md` | Health check, Log rotation, Backup/Restore, Security hardening | Sau go-live, vận hành liên tục |
 | `CHANGELOG.md` | Lịch sử đầy đủ mọi thay đổi theo từng version | Tra cứu "tính năng X thêm từ bản nào" |
 | `TODO.md` | Trạng thái hoàn thành từng Phase/Task, Technical Debt còn mở | Tra cứu tiến độ chi tiết |
-| `core-architecture.md` | Tài liệu kiến trúc kỹ thuật đầy đủ nhất (mọi quyết định thiết kế đã chốt) | Bắt buộc đọc trước khi sửa code |
-| `database-design.md`, `cms-architecture-proposal.md`, `0X-module-*.md` | Tài liệu đề xuất kiến trúc gốc (giai đoạn thiết kế ban đầu) | Tham khảo lịch sử quyết định, không phải trạng thái hiện tại |
+| `docs/kien-truc-cot-loi/core-architecture.md` | Tài liệu kiến trúc kỹ thuật đầy đủ nhất (mọi quyết định thiết kế đã chốt) | Bắt buộc đọc trước khi sửa code |
+| `docs/kien-truc-cot-loi/{database-design,cms-architecture-proposal,0X-module-*}.md` | Tài liệu đề xuất kiến trúc gốc (giai đoạn thiết kế ban đầu) | Tham khảo lịch sử quyết định, không phải trạng thái hiện tại |
 
 ## 3. Quick Start for New Engineers
 
@@ -74,4 +74,4 @@ Thêm 2 dòng vào file hosts (`127.0.0.1 cms.test`, `127.0.0.1 restaurant.test`
 ---
 
 **Người bàn giao**: Kỹ thuật (AI-assisted development, giám sát bởi Owner/Technical Lead qua toàn bộ 10 Phase, mọi tính năng đều qua Architecture Analysis → Owner Approval → Implementation → PHPUnit thật → Documentation).
-**Liên hệ kỹ thuật tiếp theo**: xem `core-architecture.md` để hiểu đầy đủ quyết định thiết kế trước khi sửa bất kỳ phần nào của hệ thống.
+**Liên hệ kỹ thuật tiếp theo**: xem `docs/kien-truc-cot-loi/core-architecture.md` để hiểu đầy đủ quyết định thiết kế trước khi sửa bất kỳ phần nào của hệ thống.

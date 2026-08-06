@@ -57,7 +57,7 @@ $permissionKeys = [
     'product.view', 'product.create', 'product.update', 'product.delete',
     'order.view', 'order.update_status',
     'plugin.manage',
-    'payment.view',
+    'payment.view', 'payment.manage',
 ];
 
 try {

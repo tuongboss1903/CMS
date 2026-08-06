@@ -103,10 +103,15 @@ final class EcommerceProductManagementTest extends TestCase
             id INTEGER PRIMARY KEY AUTOINCREMENT, tenant_id BIGINT NOT NULL, name VARCHAR(255) NOT NULL,
             slug VARCHAR(255) NOT NULL, description TEXT NULL, category VARCHAR(100) NULL,
             price DECIMAL(12,2) NOT NULL, sku VARCHAR(100) NULL, stock_quantity INT NOT NULL DEFAULT 0,
-            status VARCHAR(20) NOT NULL DEFAULT 'draft', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(20) NOT NULL DEFAULT 'draft', image_id BIGINT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP NULL, deleted_at TIMESTAMP NULL
         )");
         $this->database->statement('CREATE UNIQUE INDEX uq_products_tenant_slug ON products (tenant_id, slug)');
+        $this->database->statement('CREATE TABLE media (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, tenant_id BIGINT NOT NULL, file_name VARCHAR(255) NOT NULL,
+            path VARCHAR(500) NOT NULL, mime_type VARCHAR(100) NOT NULL, size BIGINT NOT NULL,
+            uploaded_by BIGINT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )');
         $this->database->statement('CREATE TABLE product_variants (
             id INTEGER PRIMARY KEY AUTOINCREMENT, tenant_id BIGINT NOT NULL, product_id BIGINT NOT NULL,
             name VARCHAR(255) NOT NULL, sku VARCHAR(100) NULL, price_override DECIMAL(12,2) NULL,

@@ -27,9 +27,11 @@
   }
   .showcase-media {
     border: 1px solid var(--color-border);
+    border-top: 1px solid var(--edge-highlight);
+    border-left: 1px solid var(--edge-highlight);
     border-radius: var(--radius-lg);
     background: var(--color-bg-card);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-raised-1);
     padding: var(--space-2);
 
     img { display: block; width: 100%; border-radius: var(--radius-md); }

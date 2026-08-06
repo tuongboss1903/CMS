@@ -8,7 +8,13 @@
 
 <?php $inStock = (int) ($product['stock_quantity'] ?? 0) > 0; ?>
 <div class="product-detail">
+    <?php if (!empty($product['image_path'])): ?>
+    <div class="product-detail-visual product-detail-visual--image">
+        <img src="/media/<?= $this->e(\basename((string) $product['image_path'])) ?>" alt="<?= $this->e((string) $product['name']) ?>">
+    </div>
+    <?php else: ?>
     <div class="product-detail-visual" aria-hidden="true"><?= $this->e(\mb_strtoupper(\mb_substr((string) $product['name'], 0, 1))) ?></div>
+    <?php endif; ?>
     <div>
         <div class="product-detail-meta">
         <?php if (!empty($product['category'])): ?>

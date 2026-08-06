@@ -25,4 +25,8 @@ if (!isset($icons[$name])) {
 
 $class = $this->e((string) ($class ?? 'icon'));
 $safeName = $this->e($name);
-?><svg class="<?= $class ?>" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="/assets/icons/sprite.svg#icon-<?= $safeName ?>"></use></svg>
+/* Cache-busting filemtime (dong bo ly do voi admin.css o layouts/main.php) - sprite.svg la static
+   file sinh boi bin/build_icon_sprite.php, thieu version se khong len icon moi/sua path icon cu
+   ngay tren trinh duyet da tung tai trang truoc do. */
+$spriteVersion = @\filemtime($_SERVER['DOCUMENT_ROOT'] . '/assets/icons/sprite.svg') ?: \time();
+?><svg class="<?= $class ?>" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="/assets/icons/sprite.svg?v=<?= $this->e((string) $spriteVersion) ?>#icon-<?= $safeName ?>"></use></svg>

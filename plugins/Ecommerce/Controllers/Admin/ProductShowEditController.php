@@ -51,6 +51,7 @@ final class ProductShowEditController
             'product' => $product,
             'errors' => [],
             'old' => $product,
+            'images' => $this->database->select('SELECT id, file_name FROM media WHERE tenant_id = ? ORDER BY created_at DESC', [$this->tenantManager->id()]),
             'breadcrumb_items' => [['label' => 'Sản phẩm', 'url' => '/admin/products'], ['label' => 'Sửa']],
             'csrf_token' => $this->csrf->token(),
         ]);

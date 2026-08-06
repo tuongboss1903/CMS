@@ -80,7 +80,12 @@
 </div>
 <?php endforeach; ?>
 <?php if (empty($media)): ?>
-<div class="empty-state">Chưa có file nào.</div>
+<?php $this->include('admin.partials.empty_state', [
+    'icon' => 'media',
+    'title' => 'Chưa có file nào',
+    'description' => 'Tải ảnh, PDF hoặc tài liệu lên để bắt đầu quản lý thư viện Media của bạn.',
+    'action' => ['label' => 'Tải file đầu tiên lên', 'modal' => 'upload-modal', 'icon' => 'upload'],
+]); ?>
 <?php endif; ?>
 </div>
 

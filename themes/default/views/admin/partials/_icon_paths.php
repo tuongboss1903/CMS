@@ -32,8 +32,6 @@ return [
     'unlock' => '<rect x="4" y="11" width="16" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.4-2" />',
     'logout' => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" />',
     'search' => '<circle cx="11" cy="11" r="7" /><path d="m20 20-4.3-4.3" />',
-    'sun' => '<circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />',
-    'moon' => '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />',
     'check' => '<path d="M20 6 9 17l-5-5" />',
     'x' => '<path d="M18 6 6 18M6 6l12 12" />',
     'upload' => '<path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />',
@@ -43,4 +41,20 @@ return [
     'server' => '<rect x="3" y="4" width="18" height="7" rx="1.5" /><rect x="3" y="13" width="18" height="7" rx="1.5" /><path d="M7 7.5h.01M7 16.5h.01" />',
     'palette' => '<path d="M12 2a10 10 0 1 0 0 20c1.1 0 2-1 2-2 0-.5-.2-1-.5-1.4-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a3 3 0 0 0 3-3c0-5-3.6-9-8-9Z" /><circle cx="7.5" cy="10.5" r="1" /><circle cx="10.5" cy="7" r="1" /><circle cx="15" cy="8" r="1" />',
     'billing' => '<rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" />',
+    'home' => '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /><path d="M9 22V12h6v10" />',
+    'mail' => '<rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" />',
+
+    /*
+     * ===== Icon KPI/Executive (Design Audit Phase 25) =====
+     * Khac 31 icon outline o tren (fill="none" stroke="currentColor" ke thua tu <svg> bao ngoai
+     * trong icon.php, doi mau theo trang thai/ngu canh) - 5 icon duoi day la SILHOUETTE DAC (fill
+     * dat truc tiep tren tung path) tham chieu gradient dung chung "icon-gold-fill" (dinh nghia o
+     * bin/build_icon_sprite.php) - LUON vang kim co dinh, danh rieng cho KPI/Stat Card trang
+     * Dashboard (bang mockup Executive Panel), khong dung cho nut/nav can doi mau theo trang thai.
+     */
+    'kpi-pages' => '<path d="M6 3h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" fill="url(#icon-gold-fill)" stroke="none" /><path d="M14 3v5h5" fill="none" stroke="#3d2f10" stroke-width="1" stroke-linejoin="round" /><path d="M8 13h8M8 16.5h8M8 20h5" stroke="#3d2f10" stroke-width="1.3" stroke-linecap="round" />',
+    'kpi-media' => '<rect x="2.5" y="7" width="19" height="13" rx="2" fill="url(#icon-gold-fill)" stroke="none" /><path d="M8 7 9.4 4.5h5.2L16 7Z" fill="url(#icon-gold-fill)" stroke="none" /><circle cx="12" cy="14" r="4" fill="#3d2f10" /><circle cx="12" cy="14" r="2.4" fill="url(#icon-gold-fill)" /><circle cx="17.5" cy="10" r="0.9" fill="#3d2f10" />',
+    'kpi-users' => '<circle cx="9" cy="8" r="3.2" fill="url(#icon-gold-fill)" /><path d="M3.2 20c0-3.6 2.5-6 5.8-6s5.8 2.4 5.8 6" fill="url(#icon-gold-fill)" /><circle cx="17" cy="7.3" r="2.5" fill="url(#icon-gold-fill)" opacity="0.72" /><path d="M14.2 20c-.1-3 1.8-5.6 4.4-5.8 2.7-.2 5.1 2 5.1 5.8" fill="url(#icon-gold-fill)" opacity="0.72" />',
+    'kpi-roles' => '<circle cx="10" cy="7.5" r="3.4" fill="url(#icon-gold-fill)" /><path d="M4 20c0-3.8 2.7-6.3 6-6.3 1.4 0 2.7.4 3.7 1.2" fill="url(#icon-gold-fill)" /><circle cx="17.3" cy="16" r="4.6" fill="#3d2f10" /><path d="M15.1 16.1l1.5 1.5 3-3.1" fill="none" stroke="url(#icon-gold-fill)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />',
+    'star' => '<path d="M12 2.5 14.7 8.6l6.6.6-5 4.4 1.5 6.5L12 16.8 6.2 20.1l1.5-6.5-5-4.4 6.6-.6Z" fill="url(#icon-gold-fill)" stroke="none" />',
 ];

@@ -75,6 +75,16 @@ final class AdminAuditLogTest extends TestCase
             name VARCHAR(150) NOT NULL,
             status VARCHAR(20) NOT NULL DEFAULT \'active\'
         )');
+        // Design Audit Phase 24: AuditLogController LEFT JOIN users (avatar + ten that thay "user#N")
+        // - fixture truoc day khong co bang users, gay loi SQL "no such table: users".
+        $this->database->statement('CREATE TABLE users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name VARCHAR(150) NOT NULL,
+            email VARCHAR(150) NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT \'active\'
+        )');
+        $this->database->insert('INSERT INTO users (id, name, email, password) VALUES (1, ?, ?, ?)', ['Admin Test', 'admin@example.com', 'x']);
         $this->database->statement('CREATE TABLE audit_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tenant_id BIGINT NULL,
@@ -149,11 +159,11 @@ final class AdminAuditLogTest extends TestCase
         $response = $this->router->dispatch(new Request('GET', '/admin/audit-logs', 'example.com', ['event' => 'page.created']));
 
         self::assertSame(200, $response->getStatusCode());
-        // Dung badge <span> thay vi kiem tra toan bo body - dropdown loc luon liet ke MOI event
-        // khac nhau cua tenant (dung UX), nen "auth.login_success" van xuat hien trong <option>
-        // du bang du lieu da loc dung (phat hien qua PHPUnit that).
-        self::assertStringContainsString('<span class="badge badge-neutral">page.created</span>', $response->getBody());
-        self::assertStringNotContainsString('<span class="badge badge-neutral">auth.login_success</span>', $response->getBody());
+        // Design Audit Phase 24: badge gio hien LABEL da dich (vd "Tạo trang mới") thay vi ma tho,
+        // ma goc chi con o thuoc tinh title="..." - dung title de assert dung 1 dong (khong bi lan
+        // voi <option value="..."> cua dropdown loc, van liet ke MOI event nhu comment cu giai thich).
+        self::assertStringContainsString('title="page.created">Tạo trang mới</span>', $response->getBody());
+        self::assertStringNotContainsString('title="auth.login_success">', $response->getBody());
     }
 
     public function testListFiltersByDateRange(): void
@@ -169,10 +179,10 @@ final class AdminAuditLogTest extends TestCase
         ]));
 
         self::assertSame(200, $response->getStatusCode());
-        // Dung badge <span> thay vi kiem tra toan bo body - cung ly do o testListFiltersByEvent()
-        // ben tren (dropdown loc liet ke moi event, bao gom ca "page.created" du bang da loc dung).
-        self::assertStringContainsString('<span class="badge badge-neutral">page.updated</span>', $response->getBody());
-        self::assertStringNotContainsString('<span class="badge badge-neutral">page.created</span>', $response->getBody());
+        // Cung ly do o testListFiltersByEvent() ben tren - assert qua title="..." (ma goc), khong
+        // phai label da dich, vi dropdown loc van liet ke moi event du bang da loc dung.
+        self::assertStringContainsString('title="page.updated">Cập nhật trang</span>', $response->getBody());
+        self::assertStringNotContainsString('title="page.created">', $response->getBody());
     }
 
     public function testListRequiresAuditLogViewPermission(): void
